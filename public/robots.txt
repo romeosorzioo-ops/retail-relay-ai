@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /store
+Disallow: /promotions
+Disallow: /generate
+Disallow: /calendar
+Disallow: /library
