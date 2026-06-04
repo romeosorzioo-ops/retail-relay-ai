@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const login = useServerFn(loginFn);
+  const signup = useServerFn(signupFn);
   const [loading, setLoading] = useState(false);
 
   async function doLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -22,15 +25,19 @@ function AuthPage() {
     const fd = new FormData(e.currentTarget);
     setLoading(true);
     try {
-      await loginFn({
+      const result = await login({
         data: {
           email: String(fd.get("email")),
           password: String(fd.get("password")),
         },
       });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       navigate({ to: "/dashboard" });
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error("Connexion impossible pour le moment.");
     } finally {
       setLoading(false);
     }
@@ -41,16 +48,20 @@ function AuthPage() {
     const fd = new FormData(e.currentTarget);
     setLoading(true);
     try {
-      await signupFn({
+      const result = await signup({
         data: {
           name: String(fd.get("name")),
           email: String(fd.get("email")),
           password: String(fd.get("password")),
         },
       });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       navigate({ to: "/store" });
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error("Inscription impossible pour le moment.");
     } finally {
       setLoading(false);
     }

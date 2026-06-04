@@ -18,15 +18,22 @@ export const signupFn = createServerFn({ method: "POST" })
       data.email.toLowerCase(),
     ]);
     if (exists.rowCount && exists.rowCount > 0) {
-      throw new Error("Un compte existe déjà avec cet email.");
+      return { ok: false, error: "Un compte existe déjà avec cet email." };
     }
     const hash = await hashPassword(data.password);
-    const { rows } = await pool.query(
-      "INSERT INTO users (email, password_hash, name) VALUES ($1,$2,$3) RETURNING id, email, name",
-      [data.email.toLowerCase(), hash, data.name],
-    );
-    await createSession(rows[0].id);
-    return rows[0];
+    try {
+      const { rows } = await pool.query(
+        "INSERT INTO users (email, password_hash, name) VALUES ($1,$2,$3) RETURNING id, email, name",
+        [data.email.toLowerCase(), hash, data.name],
+      );
+      await createSession(rows[0].id);
+      return { ok: true, user: rows[0] };
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505") {
+        return { ok: false, error: "Un compte existe déjà avec cet email." };
+      }
+      throw error;
+    }
   });
 
 export const loginFn = createServerFn({ method: "POST" })
@@ -49,10 +56,10 @@ export const loginFn = createServerFn({ method: "POST" })
     );
     const u = rows[0];
     if (!u || !(await verifyPassword(data.password, u.password_hash))) {
-      throw new Error("Email ou mot de passe incorrect.");
+      return { ok: false, error: "Email ou mot de passe incorrect." };
     }
     await createSession(u.id);
-    return { id: u.id, email: u.email, name: u.name };
+    return { ok: true, user: { id: u.id, email: u.email, name: u.name } };
   });
 
 export const logoutFn = createServerFn({ method: "POST" }).handler(async () => {
