@@ -19,11 +19,14 @@ function AuthPage() {
   const login = useServerFn(loginFn);
   const signup = useServerFn(signupFn);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signupError, setSignupError] = useState<string | null>(null);
 
   async function doLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setLoading(true);
+    setLoginError(null);
     try {
       const result = await login({
         data: {
@@ -32,12 +35,16 @@ function AuthPage() {
         },
       });
       if (!result.ok) {
+        setLoginError(result.error);
         toast.error(result.error);
         return;
       }
+      toast.success("Connexion réussie");
       navigate({ to: "/dashboard" });
     } catch (err) {
-      toast.error("Connexion impossible pour le moment.");
+      const msg = "Connexion impossible pour le moment.";
+      setLoginError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -47,6 +54,7 @@ function AuthPage() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setLoading(true);
+    setSignupError(null);
     try {
       const result = await signup({
         data: {
@@ -56,12 +64,16 @@ function AuthPage() {
         },
       });
       if (!result.ok) {
+        setSignupError(result.error);
         toast.error(result.error);
         return;
       }
-      navigate({ to: "/store" });
+      toast.success("Compte créé");
+      navigate({ to: "/dashboard" });
     } catch (err) {
-      toast.error("Inscription impossible pour le moment.");
+      const msg = "Inscription impossible pour le moment.";
+      setSignupError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
