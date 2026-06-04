@@ -122,8 +122,16 @@ function AuthPage() {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    Se connecter
+                    {loading ? "Connexion..." : "Se connecter"}
                   </Button>
+                  {loginError && (
+                    <p
+                      role="alert"
+                      className="text-sm text-destructive text-center"
+                    >
+                      {loginError}
+                    </p>
+                  )}
                 </form>
               </TabsContent>
               <TabsContent value="signup">
