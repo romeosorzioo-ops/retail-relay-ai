@@ -162,8 +162,16 @@ function AuthPage() {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    Créer mon compte
+                    {loading ? "Création..." : "Créer mon compte"}
                   </Button>
+                  {signupError && (
+                    <p
+                      role="alert"
+                      className="text-sm text-destructive text-center"
+                    >
+                      {signupError}
+                    </p>
+                  )}
                 </form>
               </TabsContent>
             </Tabs>
