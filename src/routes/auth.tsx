@@ -178,6 +178,7 @@ function AuthPage() {
           </CardContent>
         </Card>
       </div>
+      <Toaster />
     </div>
   );
 }
