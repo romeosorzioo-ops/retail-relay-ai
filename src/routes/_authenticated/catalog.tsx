@@ -829,7 +829,7 @@ function CatalogPage() {
                 ) : (
                   <Wand2 className="mr-1 h-4 w-4" />
                 )}
-                Générer ma campagne ({selectedCount})
+                Recommandations IA ({selectedCount})
               </Button>
               <Button variant="outline" disabled={recos.length === 0 || calMut.isPending}
                 onClick={() => calMut.mutate(currentId)}
