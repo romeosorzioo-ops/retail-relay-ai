@@ -1162,11 +1162,18 @@ function CreationPage() {
                 width: previewWidth,
                 height: previewHeight,
                 background: config.bgColor ?? "#1f2937",
-                backgroundImage: config.bgImage ? `linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.3)), url(${config.bgImage})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
               }}
             >
+              {config.bgImage && (
+                <img
+                  src={config.bgImage}
+                  alt=""
+                  draggable={false}
+                  crossOrigin="anonymous"
+                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                  style={{ objectFit: "fill", objectPosition: "top left" }}
+                />
+              )}
               {config.blocks.map((b) => {
                 const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
                   ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
