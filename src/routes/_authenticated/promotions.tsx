@@ -241,6 +241,22 @@ function PromotionsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["promotions"] }),
   });
 
+  const [genResult, setGenResult] = useState<any>(null);
+  const [genOpen, setGenOpen] = useState(false);
+  const [genPromoName, setGenPromoName] = useState<string>("");
+
+  const gen = useMutation({
+    mutationFn: (id: string) =>
+      generateContentFn({ data: { promotion_id: id } }),
+    onSuccess: (r) => {
+      setGenResult(r);
+      setGenOpen(true);
+      qc.invalidateQueries({ queryKey: ["contents"] });
+      toast.success("Contenus générés !");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div className="flex items-center justify-between">
