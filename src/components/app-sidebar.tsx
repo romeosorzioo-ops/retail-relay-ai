@@ -7,6 +7,7 @@ import {
   Calendar,
   Library,
   LogOut,
+  Plug,
 } from "lucide-react";
 import {
   Sidebar,
