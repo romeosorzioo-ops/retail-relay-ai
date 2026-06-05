@@ -125,11 +125,22 @@ function CreationPage() {
   function applyTemplate(t: (typeof templates)[number]) {
     setTemplateId(t.id);
     const cfg = (t.config_json ?? {}) as Config;
-    setConfig((prev) => ({ ...prev, ...cfg }));
+    setConfig((prev) => ({
+      ...prev,
+      ...cfg,
+      // Brand identity always wins over template defaults
+      primaryColor: brand?.primary_color ?? cfg.primaryColor ?? prev.primaryColor,
+      secondaryColor:
+        brand?.secondary_color ?? cfg.secondaryColor ?? prev.secondaryColor,
+      fontFamily: brand?.font_family ?? cfg.fontFamily ?? prev.fontFamily,
+      slogan: brand?.slogan ?? cfg.slogan ?? prev.slogan,
+      logoUrl: brand?.logo_url ?? prev.logoUrl ?? cfg.logoUrl ?? null,
+    }));
     if (t.format === "ig_square" || t.format === "story" || t.format === "fb_post") {
       setFormat(t.format);
     }
   }
+
 
   function applyPromotion(id: string) {
     setPromotionId(id);
