@@ -848,6 +848,98 @@ function CreationPage() {
                 </ScrollArea>
               </TabsContent>
 
+              <TabsContent value="elements">
+                <ScrollArea className="h-[560px] pr-2">
+                  {selectedElement ? (
+                    <div className="space-y-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium">{getElementDef(selectedElement.key)?.name ?? "Élément"}</p>
+                        <div className="flex gap-1">
+                          <Button variant="outline" size="sm" onClick={() => duplicateElement(selectedElement.id)}>
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => deleteElement(selectedElement.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Couleur</Label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={selectedElement.color}
+                            onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })}
+                            className="h-9 w-12 cursor-pointer rounded border" />
+                          <Input value={selectedElement.color}
+                            onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Épaisseur du trait ({selectedElement.strokeWidth})</Label>
+                        <Slider value={[selectedElement.strokeWidth]} min={0} max={20} step={0.5}
+                          onValueChange={(v) => updateElement(selectedElement.id, { strokeWidth: v[0] })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Opacité ({Math.round(selectedElement.opacity * 100)}%)</Label>
+                        <Slider value={[selectedElement.opacity * 100]} min={10} max={100} step={1}
+                          onValueChange={(v) => updateElement(selectedElement.id, { opacity: v[0] / 100 })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs flex items-center gap-1"><RotateCw className="h-3 w-3" /> Rotation ({selectedElement.rotation}°)</Label>
+                        <Slider value={[selectedElement.rotation]} min={-180} max={180} step={1}
+                          onValueChange={(v) => updateElement(selectedElement.id, { rotation: v[0] })} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="mb-1 block text-xs">Largeur (%)</Label>
+                          <Input type="number" value={Math.round(selectedElement.width)}
+                            onChange={(e) => {
+                              const w = Math.max(3, Math.min(120, Number(e.target.value) || 10));
+                              const ratio = selectedElement.width > 0 ? selectedElement.height / selectedElement.width : 1;
+                              updateElement(selectedElement.id, { width: w, height: w * ratio });
+                            }} />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-xs">Hauteur (%)</Label>
+                          <Input type="number" value={Math.round(selectedElement.height)}
+                            onChange={(e) => updateElement(selectedElement.id, { height: Math.max(3, Math.min(120, Number(e.target.value) || 10)) })} />
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedElementId(null)}>
+                        Retour à la bibliothèque
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 py-2">
+                      {ELEMENT_CATEGORIES.map((cat) => (
+                        <div key={cat.key}>
+                          <p className="mb-2 text-xs font-semibold text-muted-foreground">{cat.label}</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {GRAPHIC_ELEMENTS.filter((e) => e.category === cat.key).map((el) => {
+                              const svg = renderElementSvg(el.key, {
+                                color: el.defaultColor, stroke: el.defaultStroke,
+                                secondary: el.defaultSecondary, width: 60, height: 60, opacity: 1, rotation: 0,
+                              });
+                              return (
+                                <button
+                                  key={el.key}
+                                  type="button"
+                                  title={el.name}
+                                  onClick={() => addElement(el.key)}
+                                  className="flex aspect-square items-center justify-center rounded-md border bg-muted/30 p-1 transition hover:border-primary hover:bg-accent"
+                                  dangerouslySetInnerHTML={{ __html: svg }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+
+
+
               <TabsContent value="templates">
                 <ScrollArea className="h-[560px] pr-2">
                   <div className="grid grid-cols-2 gap-2">
