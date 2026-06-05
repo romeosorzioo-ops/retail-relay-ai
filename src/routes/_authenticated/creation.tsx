@@ -55,12 +55,9 @@ export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
 });
 
-type FormatKey = "ig_square" | "story" | "fb_post";
-const FORMATS: Record<FormatKey, { label: string; w: number; h: number; previewW: number }> = {
-  ig_square: { label: "Post Instagram 1:1", w: 1080, h: 1080, previewW: 420 },
-  story:     { label: "Story / Reel 9:16",  w: 1080, h: 1920, previewW: 260 },
-  fb_post:   { label: "Post Facebook",       w: 1200, h: 630,  previewW: 480 },
-};
+import { POST_FORMATS, POST_FORMAT_LIST, type PostFormatKey } from "@/lib/post-formats";
+type FormatKey = PostFormatKey;
+const FORMATS = POST_FORMATS;
 
 type BlockRole = "title" | "subtitle" | "price_main" | "price_old" | "badge" | "custom";
 type Block = {
