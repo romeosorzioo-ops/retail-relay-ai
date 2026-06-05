@@ -227,6 +227,11 @@ function CatalogPage() {
   const [edit, setEdit] = useState<any>({});
   const [addingOnPage, setAddingOnPage] = useState<number | null>(null);
   const [newPromo, setNewPromo] = useState<any>({});
+  const [cropPromo, setCropPromo] = useState<any | null>(null);
+  const [cropPageImage, setCropPageImage] = useState<string | null>(null);
+  const autoExtractedRef = useRef<Set<string>>(new Set());
+  const renderedPagesRef = useRef<Set<string>>(new Set());
+
 
   const { data: imports = [] } = useQuery({
     queryKey: ["catalog-imports"],
@@ -334,6 +339,20 @@ function CatalogPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const setImgMut = useMutation({
+    mutationFn: (vars: { promotion_id: string; data_base64: string; content_type: string; crop_coordinates?: CropBox | null }) =>
+      setPromotionImageFn({ data: vars }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const clearImgMut = useMutation({
+    mutationFn: (id: string) => clearPromotionImageFn({ data: { promotion_id: id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const genMut = useMutation({
     mutationFn: (id: string) => generateCampaignFn({ data: { catalog_import_id: id } }),
