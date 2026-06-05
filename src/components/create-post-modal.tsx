@@ -418,6 +418,22 @@ export function CreatePostModal({
               </div>
             </section>
 
+            {/* Format */}
+            <section>
+              <Label className="mb-2 block text-sm font-medium">Format</Label>
+              <Select value={formatKey} onValueChange={setFormatKey}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {POST_FORMAT_LIST.map((f) => (
+                    <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {getPostFormat(formatKey).w}×{getPostFormat(formatKey).h} px
+              </p>
+            </section>
+
             {/* Date / Time */}
             <section className="grid grid-cols-2 gap-3">
               <div>
