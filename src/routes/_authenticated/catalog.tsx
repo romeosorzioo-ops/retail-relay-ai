@@ -243,6 +243,7 @@ function PromoCard({
 
 function CatalogPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
