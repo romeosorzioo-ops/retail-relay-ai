@@ -267,6 +267,7 @@ export type Database = {
           error_message: string | null
           id: string
           notes: string | null
+          page_image_url: string | null
           page_number: number
           promotions_count: number
           status: string
@@ -280,6 +281,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           notes?: string | null
+          page_image_url?: string | null
           page_number: number
           promotions_count?: number
           status?: string
@@ -293,6 +295,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           notes?: string | null
+          page_image_url?: string | null
           page_number?: number
           promotions_count?: number
           status?: string
@@ -315,13 +318,16 @@ export type Database = {
           category: string | null
           confidence: number | null
           created_at: string
+          crop_coordinates: Json | null
           detection_source: string
           discount_percent: number | null
           end_date: string | null
           id: string
           missing_fields: Json | null
           old_price: number | null
+          page_image_url: string | null
           page_number: number | null
+          product_image_url: string | null
           product_name: string
           promo_price: number | null
           recommendation_reason: string | null
@@ -337,13 +343,16 @@ export type Database = {
           category?: string | null
           confidence?: number | null
           created_at?: string
+          crop_coordinates?: Json | null
           detection_source?: string
           discount_percent?: number | null
           end_date?: string | null
           id?: string
           missing_fields?: Json | null
           old_price?: number | null
+          page_image_url?: string | null
           page_number?: number | null
+          product_image_url?: string | null
           product_name: string
           promo_price?: number | null
           recommendation_reason?: string | null
@@ -359,13 +368,16 @@ export type Database = {
           category?: string | null
           confidence?: number | null
           created_at?: string
+          crop_coordinates?: Json | null
           detection_source?: string
           discount_percent?: number | null
           end_date?: string | null
           id?: string
           missing_fields?: Json | null
           old_price?: number | null
+          page_image_url?: string | null
           page_number?: number | null
+          product_image_url?: string | null
           product_name?: string
           promo_price?: number | null
           recommendation_reason?: string | null
