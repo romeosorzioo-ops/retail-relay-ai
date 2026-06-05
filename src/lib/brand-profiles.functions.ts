@@ -9,6 +9,8 @@ const brandSchema = z.object({
   font_family: z.string().max(80).nullable().optional(),
   slogan: z.string().max(200).nullable().optional(),
   communication_style: z.string().max(60).nullable().optional(),
+  custom_font_url: z.string().max(2000).nullable().optional(),
+  custom_font_name: z.string().max(80).nullable().optional(),
 });
 
 export const getMyBrandProfileFn = createServerFn({ method: "GET" })
