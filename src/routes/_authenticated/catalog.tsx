@@ -276,6 +276,7 @@ function CatalogPage() {
   const [newPromo, setNewPromo] = useState<any>({});
   const [cropPromo, setCropPromo] = useState<any | null>(null);
   const [cropPageImage, setCropPageImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
   const autoExtractedRef = useRef<Set<string>>(new Set());
   const renderedPagesRef = useRef<Set<string>>(new Set());
 
