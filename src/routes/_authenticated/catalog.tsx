@@ -409,6 +409,25 @@ function CatalogPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const buildCampaignMut = useMutation({
+    mutationFn: async () => {
+      const ids = promos.filter((p: any) => p.selected).map((p: any) => p.id);
+      if (!currentId || ids.length === 0) throw new Error("Sélectionnez au moins une promo");
+      return createCampaignFromSelectionFn({
+        data: { catalog_import_id: currentId, promotion_ids: ids },
+      });
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success(`Campagne créée — ${r.items_count} visuel(s) en file d'attente.`);
+      navigate({
+        to: "/creation",
+        search: { campaign: r.campaign_id, tab: "queue" } as never,
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const calMut = useMutation({
     mutationFn: (id: string) => addCampaignToCalendarFn({ data: { catalog_import_id: id } }),
     onSuccess: (r: any) => {
