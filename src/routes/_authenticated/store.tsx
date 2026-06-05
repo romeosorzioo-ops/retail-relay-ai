@@ -84,8 +84,11 @@ function StorePage() {
     font_family: "Inter",
     slogan: "",
     communication_style: "Familial",
+    custom_font_url: "" as string,
+    custom_font_name: "" as string,
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFont, setUploadingFont] = useState(false);
 
   useEffect(() => {
     if (data) {
