@@ -55,7 +55,7 @@ export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
 });
 
-import { POST_FORMATS, POST_FORMAT_LIST, type PostFormatKey } from "@/lib/post-formats";
+import { POST_FORMATS, POST_FORMAT_LIST, DEFAULT_POST_FORMAT, type PostFormatKey } from "@/lib/post-formats";
 type FormatKey = PostFormatKey;
 const FORMATS = POST_FORMATS;
 
