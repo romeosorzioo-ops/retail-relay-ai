@@ -84,6 +84,7 @@ function CalendarPage() {
           scheduled_at: next.toISOString(),
           promotion_id: v.post.promotion_id,
           generated_content_id: v.post.generated_content_id,
+          format: v.post.format,
         },
       });
     },
