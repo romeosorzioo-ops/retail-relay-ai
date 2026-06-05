@@ -288,6 +288,107 @@ function CreationPage() {
     enabled: !!search.cp,
   });
 
+  const [activeTab, setActiveTab] = useState<"editor" | "queue">(search.tab ?? (search.campaign ? "queue" : "editor"));
+  const [currentItemId, setCurrentItemId] = useState<string | null>(search.item ?? null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [postValidateOpen, setPostValidateOpen] = useState(false);
+
+  const { data: queueData } = useQuery({
+    queryKey: ["campaign-items", search.campaign ?? null],
+    queryFn: () => listCampaignItemsFn({ data: { campaign_id: search.campaign ?? null } }),
+    enabled: !!search.campaign || activeTab === "queue",
+  });
+  const { data: currentItem } = useQuery({
+    queryKey: ["campaign-item", currentItemId],
+    queryFn: () => getCampaignItemFn({ data: { id: currentItemId as string } }),
+    enabled: !!currentItemId,
+  });
+
+  // Apply campaign item to editor when opened
+  const itemAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentItem || itemAppliedRef.current === currentItem.id) return;
+    itemAppliedRef.current = currentItem.id;
+    setConfig((c) => {
+      const blocks = c.blocks.map((b) => {
+        if (b.role === "custom" && currentItem.product_name) return { ...b, text: currentItem.product_name };
+        if (b.role === "price_main" && currentItem.promo_price != null)
+          return { ...b, text: `${String(currentItem.promo_price).replace(".", ",")} €` };
+        if (b.role === "price_old" && currentItem.old_price != null)
+          return { ...b, text: `${String(currentItem.old_price).replace(".", ",")} €` };
+        if (b.role === "badge" && currentItem.discount_percent != null)
+          return { ...b, text: `-${currentItem.discount_percent}%` };
+        return b;
+      });
+      return {
+        ...c,
+        bgImage: currentItem.creation_mode === "catalog_visual" && currentItem.source_image_url
+          ? currentItem.source_image_url : c.bgImage,
+        blocks,
+      };
+    });
+    if (currentItem.creation_mode === "catalog_visual" && currentItem.source_image_url) {
+      setSourceType("catalog");
+      setSourceImageUrl(currentItem.source_image_url);
+    } else if (currentItem.creation_mode === "field_photo") {
+      setSourceType("field_photo");
+    }
+    updateCampaignItemFn({ data: { id: currentItem.id, status: "in_progress" } }).catch(() => {});
+  }, [currentItem]);
+
+  function openQueueItem(itemId: string, mode?: "catalog_visual" | "field_photo") {
+    setCurrentItemId(itemId);
+    setActiveTab("editor");
+    itemAppliedRef.current = null;
+    const updates: { id: string; creation_mode?: "catalog_visual" | "field_photo" } = { id: itemId };
+    if (mode) updates.creation_mode = mode;
+    updateCampaignItemFn({ data: updates }).then(() =>
+      qc.invalidateQueries({ queryKey: ["campaign-items"] }),
+    ).catch(() => {});
+    navigate({
+      to: "/creation",
+      search: { campaign: search.campaign, tab: "editor", item: itemId } as never,
+      replace: true,
+    });
+  }
+
+  const validateItemMut = useMutation({
+    mutationFn: async () => {
+      if (!currentItemId) throw new Error("Aucun élément en cours");
+      const r = await exportPng();
+      let final_visual_url: string | null = null;
+      if (r) {
+        const data_base64 = await blobToBase64(r.blob);
+        const up = await uploadVisualImageFn({
+          data: { file_name: `visual-${Date.now()}.png`, file_type: "image/png", data_base64 },
+        });
+        final_visual_url = up.url;
+      }
+      return updateCampaignItemFn({
+        data: { id: currentItemId, status: "validated", final_visual_url },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaign-items"] });
+      qc.invalidateQueries({ queryKey: ["campaign-item", currentItemId] });
+      toast.success("Visuel validé");
+      setPostValidateOpen(true);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function statusBadge(s: string) {
+    const m: Record<string, { label: string; cls: string }> = {
+      to_create:   { label: "À créer",     cls: "bg-muted text-muted-foreground" },
+      in_progress: { label: "En cours",    cls: "bg-blue-100 text-blue-700" },
+      to_validate: { label: "À valider",   cls: "bg-amber-100 text-amber-700" },
+      validated:   { label: "Validé",      cls: "bg-emerald-100 text-emerald-700" },
+      scheduled:   { label: "Programmé",   cls: "bg-primary/15 text-primary" },
+    };
+    const meta = m[s] ?? m.to_create;
+    return <Badge className={meta.cls}>{meta.label}</Badge>;
+  }
+
   // Register every uploaded font in this page
   useEffect(() => { brandFonts.forEach((f) => registerCustomFont(f.name, f.url)); }, [brandFonts]);
 
