@@ -125,6 +125,9 @@ export type Database = {
           category: string | null
           created_at: string
           end_date: string | null
+          file_name: string | null
+          file_type: string | null
+          file_url: string | null
           id: string
           old_price: number | null
           photo_url: string | null
@@ -139,6 +142,9 @@ export type Database = {
           category?: string | null
           created_at?: string
           end_date?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           old_price?: number | null
           photo_url?: string | null
@@ -153,6 +159,9 @@ export type Database = {
           category?: string | null
           created_at?: string
           end_date?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           old_price?: number | null
           photo_url?: string | null

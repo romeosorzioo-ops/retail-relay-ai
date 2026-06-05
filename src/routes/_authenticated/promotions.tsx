@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,8 @@ import {
   deletePromotionFn,
   listPromotionsFn,
 } from "@/lib/promotions.functions";
-import { Trash2, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Trash2, Plus, UploadCloud, FileText, X, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/promotions")({
   component: PromotionsPage,
@@ -41,6 +42,130 @@ const CATEGORIES = [
   "Poissonnerie",
 ];
 
+const ACCEPTED = ["image/png", "image/jpeg", "application/pdf"];
+const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+
+type Uploaded = { url: string; type: string; name: string };
+
+function FileDropzone({
+  value,
+  onChange,
+}: {
+  value: Uploaded | null;
+  onChange: (v: Uploaded | null) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    if (!ACCEPTED.includes(file.type)) {
+      toast.error("Format non accepté. Utilisez PNG, JPG, JPEG ou PDF.");
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error("Fichier trop volumineux (10 Mo maximum).");
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userData.user) throw new Error("Non authentifié");
+      const ext = file.name.split(".").pop() ?? "bin";
+      const path = `${userData.user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("promotion-files")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage
+        .from("promotion-files")
+        .getPublicUrl(path);
+      onChange({ url: pub.publicUrl, type: file.type, name: file.name });
+      toast.success("Fichier importé.");
+    } catch (e: any) {
+      toast.error(e.message || "Échec de l'import.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (value) {
+    const isImage = value.type.startsWith("image/");
+    return (
+      <div className="flex items-center gap-3 rounded-md border p-3">
+        {isImage ? (
+          <img
+            src={value.url}
+            alt={value.name}
+            className="h-16 w-16 rounded object-cover"
+          />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded bg-muted">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{value.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {isImage ? "Image" : "PDF"}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onChange(null)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) handleFile(f);
+      }}
+      className={`flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center transition-colors ${
+        dragOver ? "border-primary bg-accent" : "border-input hover:bg-accent"
+      }`}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = "";
+        }}
+      />
+      {uploading ? (
+        <Loader2 className="mb-2 h-6 w-6 animate-spin text-muted-foreground" />
+      ) : (
+        <UploadCloud className="mb-2 h-6 w-6 text-muted-foreground" />
+      )}
+      <p className="text-sm font-medium">
+        Glissez-déposez un fichier ou cliquez pour parcourir
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        PNG, JPG, JPEG ou PDF · 10 Mo max
+      </p>
+    </div>
+  );
+}
+
 function PromotionsPage() {
   const qc = useQueryClient();
   const { data: promos = [] } = useQuery({
@@ -48,15 +173,16 @@ function PromotionsPage() {
     queryFn: () => listPromotionsFn(),
   });
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
+  const emptyForm = {
     product_name: "",
     price: "",
     old_price: "",
     start_date: "",
     end_date: "",
     category: "Épicerie",
-    photo_url: "",
-  });
+  };
+  const [form, setForm] = useState(emptyForm);
+  const [file, setFile] = useState<Uploaded | null>(null);
 
   const create = useMutation({
     mutationFn: () =>
@@ -68,22 +194,17 @@ function PromotionsPage() {
           start_date: form.start_date || null,
           end_date: form.end_date || null,
           category: form.category,
-          photo_url: form.photo_url || null,
+          file_url: file?.url ?? null,
+          file_type: file?.type ?? null,
+          file_name: file?.name ?? null,
         },
       }),
     onSuccess: () => {
       toast.success("Promotion ajoutée.");
       qc.invalidateQueries({ queryKey: ["promotions"] });
       setOpen(false);
-      setForm({
-        product_name: "",
-        price: "",
-        old_price: "",
-        start_date: "",
-        end_date: "",
-        category: "Épicerie",
-        photo_url: "",
-      });
+      setForm(emptyForm);
+      setFile(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -178,15 +299,11 @@ function PromotionsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Photo (URL)</Label>
-              <Input
-                value={form.photo_url}
-                onChange={(e) =>
-                  setForm({ ...form, photo_url: e.target.value })
-                }
-                placeholder="https://…"
-              />
+            <div className="sm:col-span-2">
+              <Label>Fichier produit ou catalogue</Label>
+              <div className="mt-2">
+                <FileDropzone value={file} onChange={setFile} />
+              </div>
             </div>
             <div className="sm:col-span-2 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -211,6 +328,7 @@ function PromotionsPage() {
                 <TableHead>Produit</TableHead>
                 <TableHead>Prix</TableHead>
                 <TableHead>Catégorie</TableHead>
+                <TableHead>Fichier</TableHead>
                 <TableHead>Période</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -219,41 +337,69 @@ function PromotionsPage() {
               {promos.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
                     Aucune promotion. Ajoutez votre première offre.
                   </TableCell>
                 </TableRow>
               )}
-              {promos.map((p: any) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">
-                    {p.product_name}
-                  </TableCell>
-                  <TableCell>
-                    {p.price ? `${p.price} €` : "—"}
-                    {p.old_price && (
-                      <span className="ml-2 text-xs text-muted-foreground line-through">
-                        {p.old_price} €
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>{p.category ?? "—"}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {p.start_date ?? "—"} → {p.end_date ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => del.mutate(p.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {promos.map((p: any) => {
+                const isImage = p.file_type?.startsWith("image/");
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">
+                      {p.product_name}
+                    </TableCell>
+                    <TableCell>
+                      {p.price ? `${p.price} €` : "—"}
+                      {p.old_price && (
+                        <span className="ml-2 text-xs text-muted-foreground line-through">
+                          {p.old_price} €
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>{p.category ?? "—"}</TableCell>
+                    <TableCell>
+                      {p.file_url ? (
+                        <a
+                          href={p.file_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 text-sm hover:underline"
+                        >
+                          {isImage ? (
+                            <img
+                              src={p.file_url}
+                              alt={p.file_name ?? ""}
+                              className="h-8 w-8 rounded object-cover"
+                            />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                          <span className="max-w-[140px] truncate">
+                            {p.file_name ?? "Voir"}
+                          </span>
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {p.start_date ?? "—"} → {p.end_date ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => del.mutate(p.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
