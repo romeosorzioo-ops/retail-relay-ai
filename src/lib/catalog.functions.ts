@@ -123,6 +123,12 @@ export const listCatalogPagesFn = createServerFn({ method: "POST" })
     return rows ?? [];
   });
 
+const bboxSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
 const promoExtractedSchema = z.object({
   product_name: z.string().min(1).max(300),
   promo_price: z.number().nullable().optional(),
@@ -135,11 +141,13 @@ const promoExtractedSchema = z.object({
   confidence: z.number().int().min(0).max(100).nullable().optional(),
   recommendation_reason: z.string().max(500).nullable().optional(),
   missing_fields: z.array(z.string().max(60)).max(20).nullable().optional(),
+  bbox: bboxSchema.nullable().optional(),
 });
 const pageAnalysisSchema = z.object({
   promotions: z.array(promoExtractedSchema).max(200),
   notes: z.string().max(800).nullable().optional(),
 });
+
 
 function parseJsonLoose(text: string) {
   const t = text.trim();
@@ -207,13 +215,15 @@ Extrais TOUTES les promotions visibles sans en oublier. Pour chacune, renvoie:
 - social_score (0-100): pertinence réseaux sociaux (frais local, promo forte, saisonnier, marque connue)
 - confidence (0-100): à quel point tu es certain de cette détection
 - recommendation_reason (1 phrase courte)
-- missing_fields: liste des champs que tu n'as PAS pu lire avec certitude (ex: ["old_price","end_date"])
+- missing_fields: liste des champs que tu n'as PAS pu lire avec certitude
+- bbox: cadre englobant la promo (photo produit + nom + prix + remise) en coordonnées NORMALISÉES 0-1 relatives à la page : { "x": 0.0-1.0, "y": 0.0-1.0, "width": 0.0-1.0, "height": 0.0-1.0 }. (0,0) = coin haut-gauche. Le cadre doit englober toute la zone de la promo, photo comprise, sans déborder hors page. Si tu ne peux pas localiser la promo, mets bbox à null.
 
 Ajoute aussi un champ "notes" (string) listant brièvement les zones de la page que tu n'as pas pu analyser ou qui sont ambiguës.
 
 Format strict:
 { "promotions": [ { ... }, ... ], "notes": "..." }
 Pas de markdown, pas de texte autour.`;
+
 
     const { text } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),
