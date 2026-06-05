@@ -106,13 +106,19 @@ function StorePage() {
 
   useEffect(() => {
     if (brand) {
+      const b = brand as typeof brand & {
+        custom_font_url?: string | null;
+        custom_font_name?: string | null;
+      };
       setBrandForm({
-        logo_url: brand.logo_url ?? "",
-        primary_color: brand.primary_color ?? "#e11d48",
-        secondary_color: brand.secondary_color ?? "#1f2937",
-        font_family: brand.font_family ?? "Inter",
-        slogan: brand.slogan ?? "",
-        communication_style: brand.communication_style ?? "Familial",
+        logo_url: b.logo_url ?? "",
+        primary_color: b.primary_color ?? "#e11d48",
+        secondary_color: b.secondary_color ?? "#1f2937",
+        font_family: b.font_family ?? "Inter",
+        slogan: b.slogan ?? "",
+        communication_style: b.communication_style ?? "Familial",
+        custom_font_url: b.custom_font_url ?? "",
+        custom_font_name: b.custom_font_name ?? "",
       });
     }
   }, [brand]);
