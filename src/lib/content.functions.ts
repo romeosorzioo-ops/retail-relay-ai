@@ -2,20 +2,28 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const CONTENT_TYPES = [
+  "facebook_post",
+  "instagram_post",
+  "instagram_story",
+  "reel_idea",
+] as const;
+export type ContentType = (typeof CONTENT_TYPES)[number];
+
 type ContentRow = {
   id: string;
   user_id: string;
   promotion_id: string | null;
-  facebook_post: string;
-  instagram_post: string;
-  instagram_story: string;
-  reel_idea: string;
+  store_id: string | null;
+  content_type: ContentType;
+  content_text: string;
+  reel_idea: string | null;
   created_at: string;
   updated_at: string;
-  promotions: { product_name: string } | null;
+  promotions?: { product_name: string } | null;
 };
 
-const generatedContentSchema = z.object({
+const aiSchema = z.object({
   facebook_post: z.string().min(1).max(5000),
   instagram_post: z.string().min(1).max(5000),
   instagram_story: z.string().min(1).max(5000),
@@ -25,11 +33,11 @@ const generatedContentSchema = z.object({
 function parseGeneratedContent(text: string) {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1] ?? trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
-
+  const candidate =
+    fenced?.[1] ?? trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
   try {
     const raw = JSON.parse(candidate) as Record<string, unknown>;
-    return generatedContentSchema.parse({
+    return aiSchema.parse({
       facebook_post: String(raw.facebook_post ?? raw.facebook ?? "").trim(),
       instagram_post: String(raw.instagram_post ?? raw.instagram ?? "").trim(),
       instagram_story: String(raw.instagram_story ?? raw.story ?? "").trim(),
@@ -55,6 +63,22 @@ export const listContentsFn = createServerFn({ method: "GET" })
     });
   });
 
+export const listContentsByPromotionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ promotion_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("generated_contents")
+      .select("*")
+      .eq("user_id", context.userId)
+      .eq("promotion_id", data.promotion_id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as unknown as ContentRow[];
+  });
+
 export const deleteContentFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
@@ -74,28 +98,20 @@ export const updateContentFn = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        facebook_post: z.string().max(5000),
-        instagram_post: z.string().max(5000),
-        instagram_story: z.string().max(5000),
-        reel_idea: z.string().max(5000),
+        content_text: z.string().min(1).max(5000),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: updated, error } = await context.supabase
       .from("generated_contents")
-      .update({
-        facebook_post: data.facebook_post,
-        instagram_post: data.instagram_post,
-        instagram_story: data.instagram_story,
-        reel_idea: data.reel_idea,
-      })
+      .update({ content_text: data.content_text })
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return updated;
+    return updated as unknown as ContentRow;
   });
 
 export const generateContentFn = createServerFn({ method: "POST" })
@@ -126,9 +142,7 @@ export const generateContentFn = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY manquant.");
 
-    const { createLovableAiGatewayProvider } = await import(
-      "@/lib/ai-gateway.server"
-    );
+    const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
     const { generateText } = await import("ai");
     const gateway = createLovableAiGatewayProvider(key);
 
@@ -164,18 +178,24 @@ Réponds uniquement avec un objet JSON valide, sans markdown, avec exactement ce
     });
     const out = parseGeneratedContent(text);
 
+    const rows = [
+      { content_type: "facebook_post" as const, content_text: out.facebook_post },
+      { content_type: "instagram_post" as const, content_text: out.instagram_post },
+      { content_type: "instagram_story" as const, content_text: out.instagram_story },
+      { content_type: "reel_idea" as const, content_text: out.reel_idea, reel_idea: out.reel_idea },
+    ].map((r) => ({
+      user_id: context.userId,
+      promotion_id: promo.id,
+      store_id: store.id,
+      content_type: r.content_type,
+      content_text: r.content_text,
+      reel_idea: (r as { reel_idea?: string }).reel_idea ?? null,
+    }));
+
     const { data: inserted, error } = await context.supabase
       .from("generated_contents")
-      .insert({
-        user_id: context.userId,
-        promotion_id: promo.id,
-        facebook_post: out.facebook_post,
-        instagram_post: out.instagram_post,
-        instagram_story: out.instagram_story,
-        reel_idea: out.reel_idea,
-      })
-      .select("*")
-      .single();
+      .insert(rows)
+      .select("*");
     if (error) throw new Error(error.message);
-    return inserted;
+    return (inserted ?? []) as unknown as ContentRow[];
   });
