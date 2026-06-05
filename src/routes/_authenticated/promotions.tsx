@@ -26,8 +26,30 @@ import {
   deletePromotionFn,
   listPromotionsFn,
 } from "@/lib/promotions.functions";
+import { generateContentFn, updateContentFn } from "@/lib/content.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Plus, UploadCloud, FileText, X, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Trash2,
+  Plus,
+  UploadCloud,
+  FileText,
+  X,
+  Loader2,
+  Sparkles,
+  Copy,
+  Pencil,
+  Save,
+  Facebook,
+  Instagram,
+  Film,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/promotions")({
   component: PromotionsPage,
