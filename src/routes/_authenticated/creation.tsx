@@ -822,21 +822,129 @@ function CreationPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const stepperActive: CampaignStep = currentItem?.status === "scheduled"
+    ? "schedule"
+    : currentItem?.status === "validated" ? "validate"
+    : activeTab === "queue" ? "create" : "create";
+
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-6">
-      <div className="flex items-center justify-between">
+      {(search.campaign || currentItemId) && <CampaignStepper active={stepperActive} />}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Création</h1>
           <p className="text-sm text-muted-foreground">Composez un visuel social-media en quelques clics.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {search.campaign && (
+            <div className="inline-flex rounded-md border bg-background p-0.5">
+              <Button size="sm" variant={activeTab === "editor" ? "default" : "ghost"} className="h-8 text-xs gap-1"
+                onClick={() => setActiveTab("editor")}>
+                <Layout className="h-3.5 w-3.5" /> Éditeur
+              </Button>
+              <Button size="sm" variant={activeTab === "queue" ? "default" : "ghost"} className="h-8 text-xs gap-1"
+                onClick={() => setActiveTab("queue")}>
+                <ListChecks className="h-3.5 w-3.5" /> File d'attente
+                {queueData?.items?.length ? (
+                  <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">{queueData.items.length}</Badge>
+                ) : null}
+              </Button>
+            </div>
+          )}
           <Button variant="outline" onClick={downloadPng}><Download className="h-4 w-4" /> PNG</Button>
+          {currentItemId && (
+            <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => validateItemMut.mutate()} disabled={validateItemMut.isPending}>
+              {validateItemMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Valider le visuel
+            </Button>
+          )}
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Enregistrer
           </Button>
         </div>
       </div>
+
+      {activeTab === "queue" && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h2 className="text-base font-semibold">File d'attente ({queueData?.items?.length ?? 0})</h2>
+            {(!queueData?.items || queueData.items.length === 0) && (
+              <p className="text-sm text-muted-foreground italic">Aucune promo en file. Importez un catalogue et générez une campagne.</p>
+            )}
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {(queueData?.items ?? []).map((it: any) => (
+                <div key={it.id} className="rounded-lg border p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <div className="h-16 w-16 flex-shrink-0 rounded border overflow-hidden bg-muted">
+                      {it.source_image_url ? (
+                        <img src={it.source_image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <ImageIcon className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{it.product_name}</p>
+                      <div className="flex items-baseline gap-1 flex-wrap">
+                        {it.promo_price != null && (
+                          <span className="text-sm font-bold text-primary">{String(it.promo_price).replace(".", ",")} €</span>
+                        )}
+                        {it.old_price != null && (
+                          <span className="text-[10px] line-through text-muted-foreground">{String(it.old_price).replace(".", ",")} €</span>
+                        )}
+                        {it.discount_percent != null && (
+                          <Badge className="bg-red-100 text-red-700 text-[10px]">-{it.discount_percent}%</Badge>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {statusBadge(it.status)}
+                        {it.category && <Badge variant="outline" className="text-[10px]">{it.category}</Badge>}
+                      </div>
+                      {(it.start_date || it.end_date) && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {it.start_date ?? "—"} → {it.end_date ?? "—"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    <Button size="sm" variant={it.creation_mode === "catalog_visual" ? "default" : "outline"}
+                      className="h-8 text-[11px] gap-1"
+                      onClick={() => openQueueItem(it.id, "catalog_visual")}
+                      disabled={!it.source_image_url}>
+                      <Layout className="h-3 w-3" /> Visuel catalogue
+                    </Button>
+                    <Button size="sm" variant={it.creation_mode === "field_photo" ? "default" : "outline"}
+                      className="h-8 text-[11px] gap-1"
+                      onClick={() => openQueueItem(it.id, "field_photo")}>
+                      <Camera className="h-3 w-3" /> Photo terrain
+                    </Button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="flex-1 h-8 text-xs"
+                      onClick={() => openQueueItem(it.id)}>
+                      Ouvrir
+                    </Button>
+                    {it.status === "validated" && (
+                      <Button size="sm" className="h-8 text-xs gap-1"
+                        onClick={() => { setCurrentItemId(it.id); setScheduleOpen(true); }}>
+                        <CalendarPlus className="h-3 w-3" /> Programmer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "editor" && (
+      <>
+
 
       {catalogPromo && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border bg-primary/5 p-3">
