@@ -24,6 +24,7 @@ import {
   listVisualTemplatesFn, saveVisualFn, uploadVisualImageFn,
 } from "@/lib/visuals.functions";
 import { listPromotionsFn } from "@/lib/promotions.functions";
+import { getCatalogPromotionFn, setPromotionCreationModeFn } from "@/lib/catalog.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
