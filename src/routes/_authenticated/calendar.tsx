@@ -302,6 +302,11 @@ function DraggablePost({
       <p className="line-clamp-2 text-muted-foreground">
         {post.caption || post.post_type}
       </p>
+      {post.format && (
+        <span className="mt-0.5 inline-block rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+          {formatShortLabel(post.format)}
+        </span>
+      )}
     </div>
   );
 }
