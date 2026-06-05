@@ -640,7 +640,7 @@ function CreationPage() {
       price?: string; oldPrice?: string; badge?: { text?: string; color?: string };
       slogan?: string; fontFamily?: string;
     };
-    if (t.format === "ig_square" || t.format === "story" || t.format === "fb_post") setFormat(t.format);
+    if (typeof t.format === "string" && t.format in FORMATS) setFormat(t.format as FormatKey);
     if (Array.isArray(cfg.blocks) && cfg.blocks.length) {
       // New-style template
       const fTitle = brand?.font_primary;
