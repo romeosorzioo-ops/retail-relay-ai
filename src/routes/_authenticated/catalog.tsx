@@ -85,7 +85,9 @@ function confidenceBadge(c?: number | null) {
 
 function PromoCard({
   p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
+  onRecrop, onReplace, onClearImage,
 }: any) {
+  const fileRef = useRef<HTMLInputElement>(null);
   return (
     <div
       className={cn(
@@ -94,80 +96,110 @@ function PromoCard({
         (p.confidence ?? 100) < 50 ? "border-amber-300" : "",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
-          <Checkbox checked={!!p.selected} onCheckedChange={(v) => onToggle(!!v)} />
-          {isEdit ? (
-            <Input
-              className="h-8"
-              value={edit.product_name ?? p.product_name}
-              onChange={(e) => setEdit((s: any) => ({ ...s, product_name: e.target.value }))}
-            />
+      <div className="flex gap-3">
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-muted">
+          {p.product_image_url ? (
+            <img src={p.product_image_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <p className="text-sm font-semibold leading-tight">{p.product_name}</p>
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <ImageIcon className="h-6 w-6" />
+            </div>
           )}
         </div>
-        <div className="flex flex-col items-end gap-1">
-          {confidenceBadge(p.confidence)}
-          {p.detection_source === "manual" && (
-            <Badge variant="outline" className="text-[10px]">Manuel</Badge>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <Checkbox checked={!!p.selected} onCheckedChange={(v) => onToggle(!!v)} />
+              {isEdit ? (
+                <Input
+                  className="h-8"
+                  value={edit.product_name ?? p.product_name}
+                  onChange={(e) => setEdit((s: any) => ({ ...s, product_name: e.target.value }))}
+                />
+              ) : (
+                <p className="text-sm font-semibold leading-tight">{p.product_name}</p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              {confidenceBadge(p.confidence)}
+              {p.detection_source === "manual" && (
+                <Badge variant="outline" className="text-[10px]">Manuel</Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-2 flex items-baseline gap-2 flex-wrap">
+            {isEdit ? (
+              <>
+                <Input type="number" step="0.01" className="h-8 w-20" placeholder="Prix"
+                  value={edit.promo_price ?? p.promo_price ?? ""}
+                  onChange={(e) => setEdit((s: any) => ({
+                    ...s, promo_price: e.target.value === "" ? null : Number(e.target.value),
+                  }))}
+                />
+                <Input type="number" step="0.01" className="h-8 w-20" placeholder="Ancien"
+                  value={edit.old_price ?? p.old_price ?? ""}
+                  onChange={(e) => setEdit((s: any) => ({
+                    ...s, old_price: e.target.value === "" ? null : Number(e.target.value),
+                  }))}
+                />
+              </>
+            ) : (
+              <>
+                <span className="text-lg font-bold text-primary">
+                  {p.promo_price != null ? `${p.promo_price} €` : "—"}
+                </span>
+                {p.old_price != null && (
+                  <span className="text-xs text-muted-foreground line-through">{p.old_price} €</span>
+                )}
+                {p.discount_percent != null && (
+                  <Badge className="bg-red-100 text-red-700">-{p.discount_percent}%</Badge>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground items-center">
+            {isEdit ? (
+              <Input className="h-7" placeholder="Catégorie"
+                value={edit.category ?? p.category ?? ""}
+                onChange={(e) => setEdit((s: any) => ({ ...s, category: e.target.value }))}
+              />
+            ) : (
+              p.category && <Badge variant="outline">{p.category}</Badge>
+            )}
+          </div>
+
+          {p.missing_fields && Array.isArray(p.missing_fields) && p.missing_fields.length > 0 && !isEdit && (
+            <p className="mt-2 text-xs text-amber-700">
+              Données manquantes : {p.missing_fields.join(", ")}
+            </p>
+          )}
+          {p.recommendation_reason && !isEdit && (
+            <p className="mt-2 text-xs italic text-muted-foreground">{p.recommendation_reason}</p>
           )}
         </div>
       </div>
 
-      <div className="mt-2 flex items-baseline gap-2 flex-wrap">
-        {isEdit ? (
+      <div className="mt-3 flex flex-wrap justify-end gap-1">
+        {!isEdit && (
           <>
-            <Input type="number" step="0.01" className="h-8 w-20" placeholder="Prix"
-              value={edit.promo_price ?? p.promo_price ?? ""}
-              onChange={(e) => setEdit((s: any) => ({
-                ...s, promo_price: e.target.value === "" ? null : Number(e.target.value),
-              }))}
+            <Button size="sm" variant="ghost" onClick={onRecrop} title="Recadrer depuis la page">
+              <Crop className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => fileRef.current?.click()} title="Remplacer l'image">
+              <Replace className="h-4 w-4" />
+            </Button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onReplace(f); e.currentTarget.value = ""; }}
             />
-            <Input type="number" step="0.01" className="h-8 w-20" placeholder="Ancien"
-              value={edit.old_price ?? p.old_price ?? ""}
-              onChange={(e) => setEdit((s: any) => ({
-                ...s, old_price: e.target.value === "" ? null : Number(e.target.value),
-              }))}
-            />
-          </>
-        ) : (
-          <>
-            <span className="text-lg font-bold text-primary">
-              {p.promo_price != null ? `${p.promo_price} €` : "—"}
-            </span>
-            {p.old_price != null && (
-              <span className="text-xs text-muted-foreground line-through">{p.old_price} €</span>
-            )}
-            {p.discount_percent != null && (
-              <Badge className="bg-red-100 text-red-700">-{p.discount_percent}%</Badge>
+            {p.product_image_url && (
+              <Button size="sm" variant="ghost" onClick={onClearImage} title="Supprimer l'image">
+                <X className="h-4 w-4" />
+              </Button>
             )}
           </>
         )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground items-center">
-        {isEdit ? (
-          <Input className="h-7" placeholder="Catégorie"
-            value={edit.category ?? p.category ?? ""}
-            onChange={(e) => setEdit((s: any) => ({ ...s, category: e.target.value }))}
-          />
-        ) : (
-          p.category && <Badge variant="outline">{p.category}</Badge>
-        )}
-      </div>
-
-      {p.missing_fields && Array.isArray(p.missing_fields) && p.missing_fields.length > 0 && !isEdit && (
-        <p className="mt-2 text-xs text-amber-700">
-          Données manquantes : {p.missing_fields.join(", ")}
-        </p>
-      )}
-
-      {p.recommendation_reason && !isEdit && (
-        <p className="mt-2 text-xs italic text-muted-foreground">{p.recommendation_reason}</p>
-      )}
-
-      <div className="mt-3 flex justify-end gap-1">
         {isEdit ? (
           <>
             <Button size="icon" variant="ghost" onClick={onSave}><Check className="h-4 w-4" /></Button>
@@ -183,6 +215,7 @@ function PromoCard({
     </div>
   );
 }
+
 
 function CatalogPage() {
   const qc = useQueryClient();
