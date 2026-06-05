@@ -52,6 +52,8 @@ export const saveVisualFn = createServerFn({ method: "POST" })
         promotion_id: z.string().uuid().nullable().optional(),
         format: z.enum(FORMATS),
         image_url: z.string().max(2000).nullable().optional(),
+        source_type: z.enum(["template", "catalog", "field_photo"]).optional(),
+        source_image_url: z.string().max(2000).nullable().optional(),
         config_json: configSchema,
       })
       .parse(d),
@@ -72,6 +74,8 @@ export const saveVisualFn = createServerFn({ method: "POST" })
         promotion_id: data.promotion_id ?? null,
         format: data.format,
         image_url: data.image_url ?? null,
+        source_type: data.source_type ?? "template",
+        source_image_url: data.source_image_url ?? null,
         config_json: data.config_json as never,
       })
       .select("*")
