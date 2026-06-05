@@ -378,6 +378,25 @@ function CatalogPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const setModeMut = useMutation({
+    mutationFn: (v: { id: string; mode: "catalog_visual" | "field_photo" }) =>
+      setPromotionCreationModeFn({ data: { promotion_id: v.id, creation_mode: v.mode } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+  });
+
+  function startCreation(p: any, mode: "catalog_visual" | "field_photo") {
+    if (mode === "catalog_visual" && !p.product_image_url) {
+      toast.error("Aucun visuel catalogue extrait. Utilisez Recadrer ou Remplacer d'abord.");
+      return;
+    }
+    setModeMut.mutate({ id: p.id, mode });
+    navigate({
+      to: "/creation",
+      search: { cp: p.id, mode } as never,
+    });
+  }
+
+
 
   const genMut = useMutation({
     mutationFn: (id: string) => generateCampaignFn({ data: { catalog_import_id: id } }),
