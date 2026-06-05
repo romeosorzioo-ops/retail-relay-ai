@@ -455,7 +455,12 @@ function StorePage() {
             <div>
               <Label>Police principale</Label>
               <Select
-                value={brandForm.font_family}
+                value={
+                  FONTS.includes(brandForm.font_family) ||
+                  brandForm.font_family === brandForm.custom_font_name
+                    ? brandForm.font_family
+                    : "Inter"
+                }
                 onValueChange={(v) =>
                   setBrandForm({ ...brandForm, font_family: v })
                 }
@@ -469,9 +474,69 @@ function StorePage() {
                       {f}
                     </SelectItem>
                   ))}
+                  {brandForm.custom_font_name && (
+                    <SelectItem value={brandForm.custom_font_name}>
+                      {brandForm.custom_font_name} (importée)
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
+            <div className="sm:col-span-2">
+              <Label className="mb-2 block">Police personnalisée</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                {brandForm.custom_font_url ? (
+                  <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
+                    <span className="font-medium">
+                      {brandForm.custom_font_name || "Police importée"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Aucune police importée
+                  </div>
+                )}
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-accent">
+                  {uploadingFont ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  Importer (.woff, .woff2, .ttf, .otf)
+                  <input
+                    type="file"
+                    accept=".woff,.woff2,.ttf,.otf,font/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadFont(f);
+                    }}
+                  />
+                </label>
+                {brandForm.custom_font_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setBrandForm((b) => ({
+                        ...b,
+                        custom_font_url: "",
+                        custom_font_name: "",
+                        font_family: FONTS.includes(b.font_family)
+                          ? b.font_family
+                          : "Inter",
+                      }))
+                    }
+                  >
+                    Retirer
+                  </Button>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                La police importée sera utilisée dans tous vos visuels.
+              </p>
+            </div>
+
             <div>
               <Label>Style de communication</Label>
               <Select
