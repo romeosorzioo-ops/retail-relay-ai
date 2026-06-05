@@ -179,6 +179,7 @@ export type Database = {
           start_date: string | null
           status: string
           store_id: string | null
+          thumbnail_url: string | null
           updated_at: string
           user_id: string
         }
@@ -205,6 +206,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           store_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -231,6 +233,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           store_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -465,6 +468,7 @@ export type Database = {
           social_score: number | null
           start_date: string | null
           store_id: string | null
+          thumbnail_url: string | null
           updated_at: string
           user_id: string
         }
@@ -491,6 +495,7 @@ export type Database = {
           social_score?: number | null
           start_date?: string | null
           store_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -517,6 +522,7 @@ export type Database = {
           social_score?: number | null
           start_date?: string | null
           store_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
         }

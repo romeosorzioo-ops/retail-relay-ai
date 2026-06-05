@@ -24,6 +24,7 @@ import {
 } from "@/lib/catalog.functions";
 import { createCampaignFromSelectionFn } from "@/lib/campaigns.functions";
 import { CropModal, type CropBox } from "@/components/crop-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   renderPdfPageToCanvas, canvasToBase64, cropImageUrl,
 } from "@/lib/pdf-browser";
@@ -88,9 +89,10 @@ function confidenceBadge(c?: number | null) {
 
 function PromoCard({
   p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
-  onRecrop, onReplace, onClearImage, onCreateCatalog, onCreateField,
+  onRecrop, onReplace, onClearImage, onCreateCatalog, onCreateField, onPreview,
 }: any) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const thumb = p.thumbnail_url ?? p.product_image_url ?? null;
   return (
     <div
       className={cn(
@@ -100,15 +102,24 @@ function PromoCard({
       )}
     >
       <div className="flex gap-3">
-        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-muted">
-          {p.product_image_url ? (
-            <img src={p.product_image_url} alt="" className="h-full w-full object-cover" />
+        <button
+          type="button"
+          onClick={() => thumb ? onPreview(thumb, p.product_name) : fileRef.current?.click()}
+          title={thumb ? "Agrandir la miniature" : "Ajouter une miniature"}
+          className={cn(
+            "relative h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-muted",
+            thumb ? "cursor-zoom-in" : "cursor-pointer hover:bg-muted/70",
+          )}
+        >
+          {thumb ? (
+            <img src={thumb} alt={p.product_name} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-              <ImageIcon className="h-6 w-6" />
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+              <ImageIcon className="h-5 w-5" />
+              <span className="text-[9px] leading-tight px-1 text-center">Ajouter</span>
             </div>
           )}
-        </div>
+        </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -210,6 +221,16 @@ function PromoCard({
 
         {!isEdit && (
           <>
+            {!thumb && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mr-auto h-8 gap-1 text-[11px]"
+                onClick={() => fileRef.current?.click()}
+              >
+                <ImageIcon className="h-3 w-3" /> Ajouter une miniature
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={onRecrop} title="Recadrer depuis la page">
               <Crop className="h-4 w-4" />
             </Button>
@@ -219,7 +240,7 @@ function PromoCard({
             <input ref={fileRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onReplace(f); e.currentTarget.value = ""; }}
             />
-            {p.product_image_url && (
+            {thumb && (
               <Button size="sm" variant="ghost" onClick={onClearImage} title="Supprimer l'image">
                 <X className="h-4 w-4" />
               </Button>
@@ -256,6 +277,7 @@ function CatalogPage() {
   const [newPromo, setNewPromo] = useState<any>({});
   const [cropPromo, setCropPromo] = useState<any | null>(null);
   const [cropPageImage, setCropPageImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
   const autoExtractedRef = useRef<Set<string>>(new Set());
   const renderedPagesRef = useRef<Set<string>>(new Set());
 
@@ -811,6 +833,7 @@ function CatalogPage() {
                           onClearImage={() => clearImgMut.mutate(p.id)}
                           onCreateCatalog={() => startCreation(p, "catalog_visual")}
                           onCreateField={() => startCreation(p, "field_photo")}
+                          onPreview={(url: string, label: string) => setPreviewImage({ url, label })}
                         />
 
                       ))}
@@ -902,6 +925,23 @@ function CatalogPage() {
           }
         }}
       />
+
+      <Dialog open={!!previewImage} onOpenChange={(v) => { if (!v) setPreviewImage(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewImage?.label ?? "Miniature"}</DialogTitle>
+          </DialogHeader>
+          {previewImage && (
+            <div className="flex items-center justify-center bg-muted/40 rounded-md overflow-hidden">
+              <img
+                src={previewImage.url}
+                alt={previewImage.label}
+                className="max-h-[70vh] w-auto object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {selectedCount > 0 && (
         <button
