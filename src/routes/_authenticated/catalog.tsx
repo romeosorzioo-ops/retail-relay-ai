@@ -220,6 +220,16 @@ function PromoCard({
 
         {!isEdit && (
           <>
+            {!thumb && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mr-auto h-8 gap-1 text-[11px]"
+                onClick={() => fileRef.current?.click()}
+              >
+                <ImageIcon className="h-3 w-3" /> Ajouter une miniature
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={onRecrop} title="Recadrer depuis la page">
               <Crop className="h-4 w-4" />
             </Button>
@@ -229,7 +239,7 @@ function PromoCard({
             <input ref={fileRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onReplace(f); e.currentTarget.value = ""; }}
             />
-            {p.product_image_url && (
+            {thumb && (
               <Button size="sm" variant="ghost" onClick={onClearImage} title="Supprimer l'image">
                 <X className="h-4 w-4" />
               </Button>
