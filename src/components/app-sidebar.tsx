@@ -8,6 +8,7 @@ import {
   Library,
   LogOut,
   Plug,
+  Palette,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,10 +30,12 @@ const items = [
   { title: "Mon magasin", url: "/store", icon: Store },
   { title: "Promotions", url: "/promotions", icon: Tag },
   { title: "Génération IA", url: "/generate", icon: Sparkles },
+  { title: "Création", url: "/creation", icon: Palette },
   { title: "Calendrier", url: "/calendar", icon: Calendar },
   { title: "Bibliothèque", url: "/library", icon: Library },
   { title: "Connexions", url: "/connections", icon: Plug },
 ];
+
 
 export function AppSidebar({ userName }: { userName?: string }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
