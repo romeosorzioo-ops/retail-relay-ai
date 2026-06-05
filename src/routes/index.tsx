@@ -80,8 +80,8 @@ function Landing() {
           },
           {
             icon: Sparkles,
-            t: "4 contenus par promo",
-            d: "Post Facebook, post Insta, story et idée de Reel — d'un clic.",
+            t: "Posts adaptés à chaque réseau",
+            d: "Post Facebook, post Instagram et Story — d'un clic.",
           },
           {
             icon: Calendar,

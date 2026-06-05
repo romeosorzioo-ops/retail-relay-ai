@@ -23,7 +23,6 @@ const TYPE_META: Record<ContentType, { label: string; icon: any }> = {
   facebook_post: { label: "Post Facebook", icon: Facebook },
   instagram_post: { label: "Post Instagram", icon: Instagram },
   instagram_story: { label: "Story Instagram", icon: Instagram },
-  reel_idea: { label: "Idée de Reel", icon: Film },
 };
 
 function GeneratePage() {
@@ -51,7 +50,7 @@ function GeneratePage() {
     toast.success("Copié.");
   }
 
-  const order: ContentType[] = ["facebook_post", "instagram_post", "instagram_story", "reel_idea"];
+  const order: ContentType[] = ["facebook_post", "instagram_post", "instagram_story"];
   const sorted = [...result].sort(
     (a, b) => order.indexOf(a.content_type) - order.indexOf(b.content_type),
   );

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createScheduledPostFn } from "@/lib/scheduled-posts.functions";
 import { updateCampaignItemFn } from "@/lib/campaigns.functions";
-import { POST_FORMAT_LIST, getPostFormat } from "@/lib/post-formats";
+import { POST_FORMAT_LIST, getPostFormat, DEFAULT_POST_FORMAT } from "@/lib/post-formats";
 
 export type CampaignItemForSchedule = {
   id: string;
@@ -36,7 +36,7 @@ export function ScheduleItemModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
   const [caption, setCaption] = useState("");
-  const [formatKey, setFormatKey] = useState<string>("ig_square");
+  const [formatKey, setFormatKey] = useState<string>(DEFAULT_POST_FORMAT);
 
   useEffect(() => {
     if (!item) return;
@@ -44,7 +44,7 @@ export function ScheduleItemModal({
     setDate(item.recommended_date ?? new Date().toISOString().slice(0, 10));
     setTime(item.recommended_time ?? "10:00");
     setCaption(item.generated_caption ?? "");
-    setFormatKey(item.recommended_format ?? "ig_square");
+    setFormatKey(getPostFormat(item.recommended_format).key);
   }, [item]);
 
   const schedule = useMutation({

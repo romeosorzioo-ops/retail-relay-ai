@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const PLATFORMS = ["facebook", "instagram"] as const;
-const POST_TYPES = ["post", "story", "reel"] as const;
+const POST_TYPES = ["post", "story"] as const;
 const STATUSES = ["draft", "scheduled", "published", "failed"] as const;
 
 const baseSchema = z.object({

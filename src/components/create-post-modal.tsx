@@ -13,7 +13,6 @@ import {
   Sparkles,
   Trash2,
   Upload,
-  Video,
   X,
 } from "lucide-react";
 import {
@@ -48,10 +47,10 @@ import {
   uploadPostMediaFn,
 } from "@/lib/scheduled-posts.functions";
 import { listContentsFn } from "@/lib/content.functions";
-import { POST_FORMAT_LIST, getPostFormat } from "@/lib/post-formats";
+import { POST_FORMAT_LIST, getPostFormat, DEFAULT_POST_FORMAT } from "@/lib/post-formats";
 
 type Platform = "facebook" | "instagram" | "tiktok";
-type PostType = "post" | "story" | "reel";
+type PostType = "post" | "story";
 
 export type EditingPost = {
   id?: string;
@@ -66,7 +65,7 @@ export type EditingPost = {
   format?: string | null;
 } | null;
 
-const ACCEPT = "image/jpeg,image/png,image/jpg,video/mp4,video/quicktime";
+const ACCEPT = "image/jpeg,image/png,image/jpg";
 
 export function CreatePostModal({
   open,
@@ -92,7 +91,7 @@ export function CreatePostModal({
     "facebook",
   );
   const [genContentId, setGenContentId] = useState<string | null>(null);
-  const [formatKey, setFormatKey] = useState<string>("ig_square");
+  const [formatKey, setFormatKey] = useState<string>(DEFAULT_POST_FORMAT);
   const dropRef = useRef<HTMLDivElement>(null);
 
   const { data: generated = [] } = useQuery({
@@ -106,12 +105,13 @@ export function CreatePostModal({
     if (!open) return;
     if (editing && editing.id) {
       setPlatforms((editing.platforms ?? ["facebook"]) as Platform[]);
-      setPostType((editing.post_type ?? "post") as PostType);
+      const et = (editing.post_type ?? "post") as string;
+      setPostType((et === "story" ? "story" : "post") as PostType);
       setCaption(editing.caption ?? "");
       setMediaUrl(editing.media_url ?? null);
       setMediaType(editing.media_type ?? null);
       setGenContentId(editing.generated_content_id ?? null);
-      setFormatKey(editing.format ?? "ig_square");
+      setFormatKey(getPostFormat(editing.format).key);
       const d = editing.scheduled_at ? new Date(editing.scheduled_at) : new Date();
       setDate(format(d, "yyyy-MM-dd"));
       setTime(format(d, "HH:mm"));
@@ -123,7 +123,7 @@ export function CreatePostModal({
       setMediaUrl(null);
       setMediaType(null);
       setGenContentId(null);
-      setFormatKey("ig_square");
+      setFormatKey(DEFAULT_POST_FORMAT);
       setDate(format(d, "yyyy-MM-dd"));
       setTime("10:00");
     }
@@ -144,12 +144,11 @@ export function CreatePostModal({
     );
   };
 
-  const isVideo = mediaType?.startsWith("video/");
   const isImage = mediaType?.startsWith("image/");
 
   async function handleFile(file: File) {
     if (!ACCEPT.split(",").includes(file.type)) {
-      toast.error("Format non supporté (jpg, png, mp4, mov)");
+      toast.error("Format non supporté (jpg, png)");
       return;
     }
     if (file.size > 50 * 1024 * 1024) {
@@ -223,8 +222,8 @@ export function CreatePostModal({
   function validate(): string | null {
     if (platforms.length === 0) return "Sélectionnez au moins un réseau";
     if (!caption.trim()) return "Ajoutez du texte à votre publication";
-    if ((postType === "story" || postType === "reel") && !mediaUrl)
-      return "Une Story ou un Reel nécessite un média";
+    if (postType === "story" && !mediaUrl)
+      return "Une Story nécessite un média";
     const scheduled = new Date(`${date}T${time}:00`);
     if (scheduled.getTime() < Date.now() - 60_000)
       return "La date doit être dans le futur";
@@ -273,7 +272,7 @@ export function CreatePostModal({
               </div>
 
               <div className="mt-3 flex gap-2">
-                {(["post", "story", "reel"] as PostType[]).map((t) => (
+                {(["post", "story"] as PostType[]).map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -285,7 +284,7 @@ export function CreatePostModal({
                         : "border-input bg-background hover:bg-accent",
                     )}
                   >
-                    {t}
+                    {t === "post" ? "Post" : "Story"}
                   </button>
                 ))}
               </div>
@@ -365,17 +364,11 @@ export function CreatePostModal({
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 ) : mediaUrl ? (
                   <div className="flex w-full items-center gap-3">
-                    {isImage ? (
-                      <img
-                        src={mediaUrl}
-                        alt="aperçu"
-                        className="h-20 w-20 rounded-md object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-md bg-muted">
-                        <Video className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
+                    <img
+                      src={mediaUrl}
+                      alt="aperçu"
+                      className="h-20 w-20 rounded-md object-cover"
+                    />
                     <div className="flex-1 text-left text-sm">
                       <p className="font-medium">Média ajouté</p>
                       <p className="text-xs text-muted-foreground">{mediaType}</p>
@@ -411,7 +404,7 @@ export function CreatePostModal({
                       />
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      jpg, png, mp4, mov · 50 Mo max
+                      jpg, png · 50 Mo max
                     </p>
                   </>
                 )}
@@ -546,7 +539,6 @@ export function CreatePostModal({
               platform={previewPlatform}
               caption={caption}
               mediaUrl={mediaUrl}
-              isVideo={!!isVideo}
               isImage={!!isImage}
             />
             <p className="mt-3 text-center text-xs text-muted-foreground">
@@ -597,13 +589,11 @@ function MobilePreview({
   caption,
   mediaUrl,
   isImage,
-  isVideo,
 }: {
   platform: "facebook" | "instagram";
   caption: string;
   mediaUrl: string | null;
   isImage: boolean;
-  isVideo: boolean;
 }) {
   return (
     <div className="mx-auto w-full max-w-[280px] overflow-hidden rounded-[28px] border-8 border-foreground/90 bg-background shadow-lg">
@@ -614,11 +604,6 @@ function MobilePreview({
         {mediaUrl && isImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={mediaUrl} alt="aperçu" className="h-full w-full object-cover" />
-        ) : mediaUrl && isVideo ? (
-          <div className="flex flex-col items-center gap-1 text-muted-foreground">
-            <Video className="h-10 w-10" />
-            <span className="text-xs">Vidéo</span>
-          </div>
         ) : (
           <div className="flex flex-col items-center gap-1 text-muted-foreground">
             <ImageIcon className="h-8 w-8" />
