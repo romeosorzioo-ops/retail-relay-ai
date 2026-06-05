@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Upload, Loader2, FileText, Trash2, Sparkles, CalendarPlus,
   Wand2, Filter as FilterIcon, Pencil, Check, X, RefreshCw, Plus,
-  AlertTriangle, ShieldCheck, HelpCircle,
+  AlertTriangle, ShieldCheck, HelpCircle, Image as ImageIcon, Crop, Replace,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,14 @@ import {
   analyzeCatalogFn, listCatalogPromotionsFn, updateCatalogPromotionFn,
   generateCampaignFn, listCampaignRecommendationsFn, addCampaignToCalendarFn,
   listCatalogPagesFn, reanalyzeCatalogPageFn, addCatalogPromotionFn,
-  deleteCatalogPromotionFn,
+  deleteCatalogPromotionFn, savePageImageFn, setPromotionImageFn,
+  clearPromotionImageFn,
 } from "@/lib/catalog.functions";
+import { CropModal, type CropBox } from "@/components/crop-modal";
+import {
+  renderPdfPageToCanvas, canvasToBase64, cropImageUrl,
+} from "@/lib/pdf-browser";
+
 
 export const Route = createFileRoute("/_authenticated/catalog")({
   component: CatalogPage,
@@ -79,7 +85,9 @@ function confidenceBadge(c?: number | null) {
 
 function PromoCard({
   p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
+  onRecrop, onReplace, onClearImage,
 }: any) {
+  const fileRef = useRef<HTMLInputElement>(null);
   return (
     <div
       className={cn(
@@ -88,80 +96,110 @@ function PromoCard({
         (p.confidence ?? 100) < 50 ? "border-amber-300" : "",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
-          <Checkbox checked={!!p.selected} onCheckedChange={(v) => onToggle(!!v)} />
-          {isEdit ? (
-            <Input
-              className="h-8"
-              value={edit.product_name ?? p.product_name}
-              onChange={(e) => setEdit((s: any) => ({ ...s, product_name: e.target.value }))}
-            />
+      <div className="flex gap-3">
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-muted">
+          {p.product_image_url ? (
+            <img src={p.product_image_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <p className="text-sm font-semibold leading-tight">{p.product_name}</p>
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <ImageIcon className="h-6 w-6" />
+            </div>
           )}
         </div>
-        <div className="flex flex-col items-end gap-1">
-          {confidenceBadge(p.confidence)}
-          {p.detection_source === "manual" && (
-            <Badge variant="outline" className="text-[10px]">Manuel</Badge>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <Checkbox checked={!!p.selected} onCheckedChange={(v) => onToggle(!!v)} />
+              {isEdit ? (
+                <Input
+                  className="h-8"
+                  value={edit.product_name ?? p.product_name}
+                  onChange={(e) => setEdit((s: any) => ({ ...s, product_name: e.target.value }))}
+                />
+              ) : (
+                <p className="text-sm font-semibold leading-tight">{p.product_name}</p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              {confidenceBadge(p.confidence)}
+              {p.detection_source === "manual" && (
+                <Badge variant="outline" className="text-[10px]">Manuel</Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-2 flex items-baseline gap-2 flex-wrap">
+            {isEdit ? (
+              <>
+                <Input type="number" step="0.01" className="h-8 w-20" placeholder="Prix"
+                  value={edit.promo_price ?? p.promo_price ?? ""}
+                  onChange={(e) => setEdit((s: any) => ({
+                    ...s, promo_price: e.target.value === "" ? null : Number(e.target.value),
+                  }))}
+                />
+                <Input type="number" step="0.01" className="h-8 w-20" placeholder="Ancien"
+                  value={edit.old_price ?? p.old_price ?? ""}
+                  onChange={(e) => setEdit((s: any) => ({
+                    ...s, old_price: e.target.value === "" ? null : Number(e.target.value),
+                  }))}
+                />
+              </>
+            ) : (
+              <>
+                <span className="text-lg font-bold text-primary">
+                  {p.promo_price != null ? `${p.promo_price} €` : "—"}
+                </span>
+                {p.old_price != null && (
+                  <span className="text-xs text-muted-foreground line-through">{p.old_price} €</span>
+                )}
+                {p.discount_percent != null && (
+                  <Badge className="bg-red-100 text-red-700">-{p.discount_percent}%</Badge>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground items-center">
+            {isEdit ? (
+              <Input className="h-7" placeholder="Catégorie"
+                value={edit.category ?? p.category ?? ""}
+                onChange={(e) => setEdit((s: any) => ({ ...s, category: e.target.value }))}
+              />
+            ) : (
+              p.category && <Badge variant="outline">{p.category}</Badge>
+            )}
+          </div>
+
+          {p.missing_fields && Array.isArray(p.missing_fields) && p.missing_fields.length > 0 && !isEdit && (
+            <p className="mt-2 text-xs text-amber-700">
+              Données manquantes : {p.missing_fields.join(", ")}
+            </p>
+          )}
+          {p.recommendation_reason && !isEdit && (
+            <p className="mt-2 text-xs italic text-muted-foreground">{p.recommendation_reason}</p>
           )}
         </div>
       </div>
 
-      <div className="mt-2 flex items-baseline gap-2 flex-wrap">
-        {isEdit ? (
+      <div className="mt-3 flex flex-wrap justify-end gap-1">
+        {!isEdit && (
           <>
-            <Input type="number" step="0.01" className="h-8 w-20" placeholder="Prix"
-              value={edit.promo_price ?? p.promo_price ?? ""}
-              onChange={(e) => setEdit((s: any) => ({
-                ...s, promo_price: e.target.value === "" ? null : Number(e.target.value),
-              }))}
+            <Button size="sm" variant="ghost" onClick={onRecrop} title="Recadrer depuis la page">
+              <Crop className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => fileRef.current?.click()} title="Remplacer l'image">
+              <Replace className="h-4 w-4" />
+            </Button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onReplace(f); e.currentTarget.value = ""; }}
             />
-            <Input type="number" step="0.01" className="h-8 w-20" placeholder="Ancien"
-              value={edit.old_price ?? p.old_price ?? ""}
-              onChange={(e) => setEdit((s: any) => ({
-                ...s, old_price: e.target.value === "" ? null : Number(e.target.value),
-              }))}
-            />
-          </>
-        ) : (
-          <>
-            <span className="text-lg font-bold text-primary">
-              {p.promo_price != null ? `${p.promo_price} €` : "—"}
-            </span>
-            {p.old_price != null && (
-              <span className="text-xs text-muted-foreground line-through">{p.old_price} €</span>
-            )}
-            {p.discount_percent != null && (
-              <Badge className="bg-red-100 text-red-700">-{p.discount_percent}%</Badge>
+            {p.product_image_url && (
+              <Button size="sm" variant="ghost" onClick={onClearImage} title="Supprimer l'image">
+                <X className="h-4 w-4" />
+              </Button>
             )}
           </>
         )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground items-center">
-        {isEdit ? (
-          <Input className="h-7" placeholder="Catégorie"
-            value={edit.category ?? p.category ?? ""}
-            onChange={(e) => setEdit((s: any) => ({ ...s, category: e.target.value }))}
-          />
-        ) : (
-          p.category && <Badge variant="outline">{p.category}</Badge>
-        )}
-      </div>
-
-      {p.missing_fields && Array.isArray(p.missing_fields) && p.missing_fields.length > 0 && !isEdit && (
-        <p className="mt-2 text-xs text-amber-700">
-          Données manquantes : {p.missing_fields.join(", ")}
-        </p>
-      )}
-
-      {p.recommendation_reason && !isEdit && (
-        <p className="mt-2 text-xs italic text-muted-foreground">{p.recommendation_reason}</p>
-      )}
-
-      <div className="mt-3 flex justify-end gap-1">
         {isEdit ? (
           <>
             <Button size="icon" variant="ghost" onClick={onSave}><Check className="h-4 w-4" /></Button>
@@ -178,6 +216,7 @@ function PromoCard({
   );
 }
 
+
 function CatalogPage() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -188,6 +227,11 @@ function CatalogPage() {
   const [edit, setEdit] = useState<any>({});
   const [addingOnPage, setAddingOnPage] = useState<number | null>(null);
   const [newPromo, setNewPromo] = useState<any>({});
+  const [cropPromo, setCropPromo] = useState<any | null>(null);
+  const [cropPageImage, setCropPageImage] = useState<string | null>(null);
+  const autoExtractedRef = useRef<Set<string>>(new Set());
+  const renderedPagesRef = useRef<Set<string>>(new Set());
+
 
   const { data: imports = [] } = useQuery({
     queryKey: ["catalog-imports"],
@@ -296,6 +340,20 @@ function CatalogPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const setImgMut = useMutation({
+    mutationFn: (vars: { promotion_id: string; data_base64: string; content_type: string; crop_coordinates?: CropBox | null }) =>
+      setPromotionImageFn({ data: vars }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const clearImgMut = useMutation({
+    mutationFn: (id: string) => clearPromotionImageFn({ data: { promotion_id: id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const genMut = useMutation({
     mutationFn: (id: string) => generateCampaignFn({ data: { catalog_import_id: id } }),
     onSuccess: (r: any) => {
@@ -359,6 +417,114 @@ function CatalogPage() {
     updMut.mutate({ id: p.id, ...edit });
     setEditId(null); setEdit({});
   }
+
+  // Auto-rasterize PDF pages once analyzed, then store the page image url.
+  useEffect(() => {
+    if (!current || current.status !== "analyzed" || !current.file_url) return;
+    const pdfUrl = current.file_url as string;
+    const importId = current.id as string;
+    pages.forEach((meta: any) => {
+      if (meta.page_image_url) return;
+      const key = `${importId}:${meta.page_number}`;
+      if (renderedPagesRef.current.has(key)) return;
+      renderedPagesRef.current.add(key);
+      (async () => {
+        try {
+          const canvas = await renderPdfPageToCanvas(pdfUrl, meta.page_number, 1400);
+          const base64 = canvasToBase64(canvas, "image/png");
+          await savePageImageFn({
+            data: {
+              catalog_import_id: importId,
+              page_number: meta.page_number,
+              data_base64: base64,
+              content_type: "image/png",
+            },
+          });
+          qc.invalidateQueries({ queryKey: ["catalog-pages", importId] });
+          qc.invalidateQueries({ queryKey: ["catalog-promos", importId] });
+        } catch {
+          renderedPagesRef.current.delete(key);
+        }
+      })();
+    });
+  }, [pages, current, qc]);
+
+  // Auto-extract product images for promos that have a bbox + page_image_url and no image yet.
+  useEffect(() => {
+    if (!currentId) return;
+    promos.forEach((p: any) => {
+      if (p.product_image_url) return;
+      if (!p.page_image_url || !p.crop_coordinates) return;
+      const c = p.crop_coordinates;
+      if (typeof c.x !== "number" || typeof c.width !== "number") return;
+      if (autoExtractedRef.current.has(p.id)) return;
+      autoExtractedRef.current.add(p.id);
+      (async () => {
+        try {
+          const { base64, contentType } = await cropImageUrl(p.page_image_url, c);
+          await setPromotionImageFn({
+            data: {
+              promotion_id: p.id,
+              data_base64: base64,
+              content_type: contentType,
+              crop_coordinates: c,
+            },
+          });
+          qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] });
+        } catch {
+          autoExtractedRef.current.delete(p.id);
+        }
+      })();
+    });
+  }, [promos, currentId, qc]);
+
+  async function handleRecrop(p: any) {
+    // Ensure page image is available — rasterize on demand if missing.
+    let pageImg = p.page_image_url as string | null;
+    if (!pageImg && current?.file_url) {
+      try {
+        const canvas = await renderPdfPageToCanvas(current.file_url, p.page_number ?? 1, 1400);
+        const base64 = canvasToBase64(canvas, "image/png");
+        const res = await savePageImageFn({
+          data: {
+            catalog_import_id: current.id,
+            page_number: p.page_number ?? 1,
+            data_base64: base64,
+            content_type: "image/png",
+          },
+        });
+        pageImg = res.url;
+      } catch (e) {
+        toast.error("Impossible de préparer l'image de la page.");
+        return;
+      }
+    }
+    if (!pageImg) return;
+    setCropPageImage(pageImg);
+    setCropPromo(p);
+  }
+
+  async function handleReplace(p: any, file: File) {
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ""));
+        r.onerror = () => reject(new Error("Lecture impossible"));
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+      await setImgMut.mutateAsync({
+        promotion_id: p.id,
+        data_base64: base64,
+        content_type: file.type || "image/png",
+        crop_coordinates: null,
+      });
+      toast.success("Image remplacée.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Échec");
+    }
+  }
+
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -574,7 +740,11 @@ function CatalogPage() {
                             if (confirm("Supprimer cette promo ?")) delPromoMut.mutate(p.id);
                           }}
                           onToggle={(v: boolean) => updMut.mutate({ id: p.id, selected: v })}
+                          onRecrop={() => handleRecrop(p)}
+                          onReplace={(f: File) => handleReplace(p, f)}
+                          onClearImage={() => clearImgMut.mutate(p.id)}
                         />
+
                       ))}
                     </div>
                   </div>
@@ -641,6 +811,30 @@ function CatalogPage() {
           </CardContent>
         </Card>
       )}
+
+      <CropModal
+        open={!!cropPromo}
+        onOpenChange={(v) => { if (!v) { setCropPromo(null); setCropPageImage(null); } }}
+        imageUrl={cropPageImage}
+        initial={cropPromo?.crop_coordinates ?? null}
+        title={cropPromo ? `Recadrer : ${cropPromo.product_name}` : ""}
+        onConfirm={async (crop) => {
+          if (!cropPromo || !cropPageImage) return;
+          try {
+            const { base64, contentType } = await cropImageUrl(cropPageImage, crop);
+            await setImgMut.mutateAsync({
+              promotion_id: cropPromo.id,
+              data_base64: base64,
+              content_type: contentType,
+              crop_coordinates: crop,
+            });
+            toast.success("Image recadrée.");
+          } catch (e: any) {
+            toast.error(e?.message ?? "Échec du recadrage");
+          }
+        }}
+      />
     </div>
   );
 }
+
