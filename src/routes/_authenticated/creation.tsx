@@ -1589,6 +1589,7 @@ function CreationPage() {
           generated_caption: currentItem.generated_caption,
           final_visual_url: currentItem.final_visual_url,
           promo_price: currentItem.promo_price,
+          recommended_format: currentItem.recommended_format ?? format,
         } : null}
         onScheduled={() => { setActiveTab("queue"); }}
       />
