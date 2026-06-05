@@ -1194,7 +1194,7 @@ function CreationPage() {
         imageUrl={cropSrc}
         title="Recadrer la photo terrain"
         aspectRatio={`${dims.w}/${dims.h}`}
-        initial={{ x: 0.05, y: 0.05, width: 0.9, height: 0.9 * (dims.w / dims.h) > 0.9 ? 0.9 : 0.9 }}
+        initial={{ x: 0.05, y: 0.05, width: 0.9, height: 0.9 }}
         onConfirm={handleCropConfirm}
       />
     </div>
