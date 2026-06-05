@@ -128,12 +128,14 @@ function CreationPage() {
   const [format, setFormat] = useState<FormatKey>("ig_square");
   const [config, setConfig] = useState<Config>({ bgImage: null, bgColor: "#1f2937", logoUrl: null, blocks: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [promotionId, setPromotionId] = useState<string | null>(null);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
+  const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
 
   const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
   const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
