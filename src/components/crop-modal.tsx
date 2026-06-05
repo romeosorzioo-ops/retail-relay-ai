@@ -56,7 +56,7 @@ export function CropModal({
           <div
             ref={wrapRef}
             className="relative w-full overflow-hidden rounded border bg-muted"
-            style={{ aspectRatio: "1/1.4", touchAction: "none" }}
+            style={{ aspectRatio: aspectRatio ?? "1/1.4", touchAction: "none" }}
             onPointerMove={onMove}
             onPointerUp={() => setDrag(null)}
           >
