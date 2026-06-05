@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Upload, Loader2, FileText, Trash2, Sparkles, CalendarPlus,
   Wand2, Filter as FilterIcon, Pencil, Check, X, RefreshCw, Plus,
-  AlertTriangle, ShieldCheck, HelpCircle,
+  AlertTriangle, ShieldCheck, HelpCircle, Image as ImageIcon, Crop, Replace,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,14 @@ import {
   analyzeCatalogFn, listCatalogPromotionsFn, updateCatalogPromotionFn,
   generateCampaignFn, listCampaignRecommendationsFn, addCampaignToCalendarFn,
   listCatalogPagesFn, reanalyzeCatalogPageFn, addCatalogPromotionFn,
-  deleteCatalogPromotionFn,
+  deleteCatalogPromotionFn, savePageImageFn, setPromotionImageFn,
+  clearPromotionImageFn,
 } from "@/lib/catalog.functions";
+import { CropModal, type CropBox } from "@/components/crop-modal";
+import {
+  renderPdfPageToCanvas, canvasToBase64, cropImageUrl,
+} from "@/lib/pdf-browser";
+
 
 export const Route = createFileRoute("/_authenticated/catalog")({
   component: CatalogPage,
