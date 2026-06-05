@@ -758,12 +758,24 @@ function CreationPage() {
   async function handleCropConfirm(box: CropBox) {
     if (!cropSrc) return;
     try {
-      const blob = await cropImageToBlob(cropSrc, box, dims.w, dims.h);
+      const { blob, naturalW, naturalH } = await cropImageToBlob(cropSrc, box, dims.w, dims.h);
       const data_base64 = await blobToBase64(blob);
       const res = await uploadVisualImageFn({
         data: { file_name: `field-${Date.now()}.jpg`, file_type: "image/jpeg", data_base64 },
       });
-      setConfig((c) => ({ ...c, bgImage: res.url }));
+      const zoom = box.width > 0 ? 1 / box.width : 1;
+      setConfig((c) => ({
+        ...c,
+        bgImage: res.url,
+        lastCrop: {
+          src: cropSrc,
+          x: box.x, y: box.y, width: box.width, height: box.height,
+          naturalW, naturalH,
+          targetW: dims.w, targetH: dims.h,
+          zoom, rotation: 0,
+          at: Date.now(),
+        },
+      }));
       toast.success("Photo recadrée");
     } catch (e) { toast.error((e as Error).message); }
   }
