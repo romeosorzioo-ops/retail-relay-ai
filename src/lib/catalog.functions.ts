@@ -270,9 +270,11 @@ Pas de markdown, pas de texte autour.`;
       confidence: p.confidence ?? null,
       recommendation_reason: p.recommendation_reason ?? null,
       missing_fields: p.missing_fields ?? null,
+      crop_coordinates: p.bbox ?? null,
       detection_source: "ai",
       selected: false,
     }));
+
     if (rows.length > 0) {
       const { error: insErr } = await context.supabase
         .from("catalog_promotions")
