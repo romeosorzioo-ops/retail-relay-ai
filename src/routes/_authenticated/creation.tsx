@@ -6,6 +6,7 @@ import { toPng } from "html-to-image";
 import {
   Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus, Save,
   Sparkles, Tag as TagIcon, Trash2, Type, Upload, Image as ImageIcon,
+  Shapes, Copy, RotateCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import {
   listVisualTemplatesFn, saveVisualFn, uploadVisualImageFn,
@@ -24,6 +26,10 @@ import { listPromotionsFn } from "@/lib/promotions.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
+import {
+  GRAPHIC_ELEMENTS, ELEMENT_CATEGORIES, getElementDef, renderElementSvg,
+  type ElementCategory,
+} from "@/lib/graphic-elements";
 
 export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
