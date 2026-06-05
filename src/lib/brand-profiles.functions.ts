@@ -9,6 +9,8 @@ const brandSchema = z.object({
   font_family: z.string().max(80).nullable().optional(),
   slogan: z.string().max(200).nullable().optional(),
   communication_style: z.string().max(60).nullable().optional(),
+  custom_font_url: z.string().max(2000).nullable().optional(),
+  custom_font_name: z.string().max(80).nullable().optional(),
 });
 
 export const getMyBrandProfileFn = createServerFn({ method: "GET" })
@@ -42,6 +44,8 @@ export const upsertBrandProfileFn = createServerFn({ method: "POST" })
       font_family: data.font_family ?? null,
       slogan: data.slogan ?? null,
       communication_style: data.communication_style ?? null,
+      custom_font_url: data.custom_font_url ?? null,
+      custom_font_name: data.custom_font_name ?? null,
     };
     const existing = await context.supabase
       .from("brand_profiles")

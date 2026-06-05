@@ -1,0 +1,1 @@
+ALTER TABLE public.brand_profiles ADD COLUMN IF NOT EXISTS custom_font_url TEXT, ADD COLUMN IF NOT EXISTS custom_font_name TEXT;

@@ -101,6 +101,25 @@ function CreationPage() {
   // Pre-fill brand identity into the visual when brand profile loads
   useEffect(() => {
     if (!brand) return;
+    const b = brand as typeof brand & {
+      custom_font_url?: string | null;
+      custom_font_name?: string | null;
+    };
+    // Register custom font so canvas can render it
+    if (b.custom_font_url && b.custom_font_name && typeof window !== "undefined") {
+      try {
+        const ff = new FontFace(b.custom_font_name, `url(${b.custom_font_url})`);
+        ff.load()
+          .then((loaded) => {
+            (document as Document).fonts.add(loaded);
+            // Force re-render of canvas once font is ready
+            setConfig((c) => ({ ...c }));
+          })
+          .catch(() => {});
+      } catch {
+        /* noop */
+      }
+    }
     setConfig((c) => ({
       ...c,
       primaryColor: c.primaryColor === "#E11D48" && brand.primary_color
@@ -113,6 +132,7 @@ function CreationPage() {
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand]);
+
 
 
   const dims = FORMATS[format];

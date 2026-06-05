@@ -84,8 +84,11 @@ function StorePage() {
     font_family: "Inter",
     slogan: "",
     communication_style: "Familial",
+    custom_font_url: "" as string,
+    custom_font_name: "" as string,
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFont, setUploadingFont] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -103,13 +106,19 @@ function StorePage() {
 
   useEffect(() => {
     if (brand) {
+      const b = brand as typeof brand & {
+        custom_font_url?: string | null;
+        custom_font_name?: string | null;
+      };
       setBrandForm({
-        logo_url: brand.logo_url ?? "",
-        primary_color: brand.primary_color ?? "#e11d48",
-        secondary_color: brand.secondary_color ?? "#1f2937",
-        font_family: brand.font_family ?? "Inter",
-        slogan: brand.slogan ?? "",
-        communication_style: brand.communication_style ?? "Familial",
+        logo_url: b.logo_url ?? "",
+        primary_color: b.primary_color ?? "#e11d48",
+        secondary_color: b.secondary_color ?? "#1f2937",
+        font_family: b.font_family ?? "Inter",
+        slogan: b.slogan ?? "",
+        communication_style: b.communication_style ?? "Familial",
+        custom_font_url: b.custom_font_url ?? "",
+        custom_font_name: b.custom_font_name ?? "",
       });
     }
   }, [brand]);
@@ -133,6 +142,8 @@ function StorePage() {
           font_family: brandForm.font_family,
           slogan: brandForm.slogan || null,
           communication_style: brandForm.communication_style,
+          custom_font_url: brandForm.custom_font_url || null,
+          custom_font_name: brandForm.custom_font_name || null,
         },
       }),
     onSuccess: () => {
@@ -141,6 +152,50 @@ function StorePage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  async function uploadFont(file: File) {
+    const allowed = [".woff", ".woff2", ".ttf", ".otf"];
+    const lower = file.name.toLowerCase();
+    if (!allowed.some((ext) => lower.endsWith(ext))) {
+      toast.error("Format accepté: .woff, .woff2, .ttf, .otf");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Police trop lourde (max 5 Mo)");
+      return;
+    }
+    setUploadingFont(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const data_base64 = btoa(binary);
+      const res = await uploadVisualImageFn({
+        data: {
+          file_name: file.name,
+          file_type: file.type || "font/" + lower.split(".").pop(),
+          data_base64,
+        },
+      });
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      setBrandForm((b) => ({
+        ...b,
+        custom_font_url: res.url,
+        custom_font_name: baseName,
+        font_family: baseName,
+      }));
+      toast.success("Police chargée");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploadingFont(false);
+    }
+  }
+
 
   async function uploadLogo(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -400,7 +455,12 @@ function StorePage() {
             <div>
               <Label>Police principale</Label>
               <Select
-                value={brandForm.font_family}
+                value={
+                  FONTS.includes(brandForm.font_family) ||
+                  brandForm.font_family === brandForm.custom_font_name
+                    ? brandForm.font_family
+                    : "Inter"
+                }
                 onValueChange={(v) =>
                   setBrandForm({ ...brandForm, font_family: v })
                 }
@@ -414,9 +474,69 @@ function StorePage() {
                       {f}
                     </SelectItem>
                   ))}
+                  {brandForm.custom_font_name && (
+                    <SelectItem value={brandForm.custom_font_name}>
+                      {brandForm.custom_font_name} (importée)
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
+            <div className="sm:col-span-2">
+              <Label className="mb-2 block">Police personnalisée</Label>
+              <div className="flex flex-wrap items-center gap-3">
+                {brandForm.custom_font_url ? (
+                  <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
+                    <span className="font-medium">
+                      {brandForm.custom_font_name || "Police importée"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Aucune police importée
+                  </div>
+                )}
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-accent">
+                  {uploadingFont ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  Importer (.woff, .woff2, .ttf, .otf)
+                  <input
+                    type="file"
+                    accept=".woff,.woff2,.ttf,.otf,font/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadFont(f);
+                    }}
+                  />
+                </label>
+                {brandForm.custom_font_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setBrandForm((b) => ({
+                        ...b,
+                        custom_font_url: "",
+                        custom_font_name: "",
+                        font_family: FONTS.includes(b.font_family)
+                          ? b.font_family
+                          : "Inter",
+                      }))
+                    }
+                  >
+                    Retirer
+                  </Button>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                La police importée sera utilisée dans tous vos visuels.
+              </p>
+            </div>
+
             <div>
               <Label>Style de communication</Label>
               <Select

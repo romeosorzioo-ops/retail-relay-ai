@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           communication_style: string | null
           created_at: string
+          custom_font_name: string | null
+          custom_font_url: string | null
           font_family: string | null
           id: string
           logo_url: string | null
@@ -31,6 +33,8 @@ export type Database = {
         Insert: {
           communication_style?: string | null
           created_at?: string
+          custom_font_name?: string | null
+          custom_font_url?: string | null
           font_family?: string | null
           id?: string
           logo_url?: string | null
@@ -44,6 +48,8 @@ export type Database = {
         Update: {
           communication_style?: string | null
           created_at?: string
+          custom_font_name?: string | null
+          custom_font_url?: string | null
           font_family?: string | null
           id?: string
           logo_url?: string | null
