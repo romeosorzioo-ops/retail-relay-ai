@@ -142,9 +142,59 @@ function StorePage() {
           font_family: brandForm.font_family,
           slogan: brandForm.slogan || null,
           communication_style: brandForm.communication_style,
+          custom_font_url: brandForm.custom_font_url || null,
+          custom_font_name: brandForm.custom_font_name || null,
         },
       }),
     onSuccess: () => {
+      toast.success("Identité visuelle enregistrée.");
+      qc.invalidateQueries({ queryKey: ["my-brand"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  async function uploadFont(file: File) {
+    const allowed = [".woff", ".woff2", ".ttf", ".otf"];
+    const lower = file.name.toLowerCase();
+    if (!allowed.some((ext) => lower.endsWith(ext))) {
+      toast.error("Format accepté: .woff, .woff2, .ttf, .otf");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Police trop lourde (max 5 Mo)");
+      return;
+    }
+    setUploadingFont(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const data_base64 = btoa(binary);
+      const res = await uploadVisualImageFn({
+        data: {
+          file_name: file.name,
+          file_type: file.type || "font/" + lower.split(".").pop(),
+          data_base64,
+        },
+      });
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      setBrandForm((b) => ({
+        ...b,
+        custom_font_url: res.url,
+        custom_font_name: baseName,
+        font_family: baseName,
+      }));
+      toast.success("Police chargée");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploadingFont(false);
+    }
+  }
       toast.success("Identité visuelle enregistrée.");
       qc.invalidateQueries({ queryKey: ["my-brand"] });
     },
