@@ -55,6 +55,7 @@ export const createScheduledPostFn = createServerFn({ method: "POST" })
         media_type: data.media_type ?? null,
         scheduled_at: data.scheduled_at,
         status: data.status ?? "scheduled",
+        format: data.format ?? null,
       })
       .select("*")
       .single();
