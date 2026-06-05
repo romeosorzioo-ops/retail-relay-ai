@@ -19,6 +19,7 @@ import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedGenerateRouteImport } from './routes/_authenticated/generate'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedLibraryPromotionIdRouteImport } from './routes/_authenticated/library.$promotionId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -69,6 +70,12 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLibraryPromotionIdRoute =
+  AuthenticatedLibraryPromotionIdRouteImport.update({
+    id: '/$promotionId',
+    path: '/$promotionId',
+    getParentRoute: () => AuthenticatedLibraryRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -77,9 +84,10 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/generate': typeof AuthenticatedGenerateRoute
-  '/library': typeof AuthenticatedLibraryRoute
+  '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -88,9 +96,10 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/generate': typeof AuthenticatedGenerateRoute
-  '/library': typeof AuthenticatedLibraryRoute
+  '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,9 +110,10 @@ export interface FileRoutesById {
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/generate': typeof AuthenticatedGenerateRoute
-  '/_authenticated/library': typeof AuthenticatedLibraryRoute
+  '/_authenticated/library': typeof AuthenticatedLibraryRouteWithChildren
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
+  '/_authenticated/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/library/$promotionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/library/$promotionId'
   id:
     | '__root__'
     | '/'
@@ -140,6 +152,7 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/promotions'
     | '/_authenticated/store'
+    | '/_authenticated/library/$promotionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,14 +234,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/library/$promotionId': {
+      id: '/_authenticated/library/$promotionId'
+      path: '/$promotionId'
+      fullPath: '/library/$promotionId'
+      preLoaderRoute: typeof AuthenticatedLibraryPromotionIdRouteImport
+      parentRoute: typeof AuthenticatedLibraryRoute
+    }
   }
 }
+
+interface AuthenticatedLibraryRouteChildren {
+  AuthenticatedLibraryPromotionIdRoute: typeof AuthenticatedLibraryPromotionIdRoute
+}
+
+const AuthenticatedLibraryRouteChildren: AuthenticatedLibraryRouteChildren = {
+  AuthenticatedLibraryPromotionIdRoute: AuthenticatedLibraryPromotionIdRoute,
+}
+
+const AuthenticatedLibraryRouteWithChildren =
+  AuthenticatedLibraryRoute._addFileChildren(AuthenticatedLibraryRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGenerateRoute: typeof AuthenticatedGenerateRoute
-  AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
+  AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRouteWithChildren
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedStoreRoute: typeof AuthenticatedStoreRoute
 }
@@ -237,7 +268,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGenerateRoute: AuthenticatedGenerateRoute,
-  AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
+  AuthenticatedLibraryRoute: AuthenticatedLibraryRouteWithChildren,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedStoreRoute: AuthenticatedStoreRoute,
 }
@@ -254,3 +285,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
