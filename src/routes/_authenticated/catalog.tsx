@@ -418,6 +418,114 @@ function CatalogPage() {
     setEditId(null); setEdit({});
   }
 
+  // Auto-rasterize PDF pages once analyzed, then store the page image url.
+  useEffect(() => {
+    if (!current || current.status !== "analyzed" || !current.file_url) return;
+    const pdfUrl = current.file_url as string;
+    const importId = current.id as string;
+    pages.forEach((meta: any) => {
+      if (meta.page_image_url) return;
+      const key = `${importId}:${meta.page_number}`;
+      if (renderedPagesRef.current.has(key)) return;
+      renderedPagesRef.current.add(key);
+      (async () => {
+        try {
+          const canvas = await renderPdfPageToCanvas(pdfUrl, meta.page_number, 1400);
+          const base64 = canvasToBase64(canvas, "image/png");
+          await savePageImageFn({
+            data: {
+              catalog_import_id: importId,
+              page_number: meta.page_number,
+              data_base64: base64,
+              content_type: "image/png",
+            },
+          });
+          qc.invalidateQueries({ queryKey: ["catalog-pages", importId] });
+          qc.invalidateQueries({ queryKey: ["catalog-promos", importId] });
+        } catch {
+          renderedPagesRef.current.delete(key);
+        }
+      })();
+    });
+  }, [pages, current, qc]);
+
+  // Auto-extract product images for promos that have a bbox + page_image_url and no image yet.
+  useEffect(() => {
+    if (!currentId) return;
+    promos.forEach((p: any) => {
+      if (p.product_image_url) return;
+      if (!p.page_image_url || !p.crop_coordinates) return;
+      const c = p.crop_coordinates;
+      if (typeof c.x !== "number" || typeof c.width !== "number") return;
+      if (autoExtractedRef.current.has(p.id)) return;
+      autoExtractedRef.current.add(p.id);
+      (async () => {
+        try {
+          const { base64, contentType } = await cropImageUrl(p.page_image_url, c);
+          await setPromotionImageFn({
+            data: {
+              promotion_id: p.id,
+              data_base64: base64,
+              content_type: contentType,
+              crop_coordinates: c,
+            },
+          });
+          qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] });
+        } catch {
+          autoExtractedRef.current.delete(p.id);
+        }
+      })();
+    });
+  }, [promos, currentId, qc]);
+
+  async function handleRecrop(p: any) {
+    // Ensure page image is available — rasterize on demand if missing.
+    let pageImg = p.page_image_url as string | null;
+    if (!pageImg && current?.file_url) {
+      try {
+        const canvas = await renderPdfPageToCanvas(current.file_url, p.page_number ?? 1, 1400);
+        const base64 = canvasToBase64(canvas, "image/png");
+        const res = await savePageImageFn({
+          data: {
+            catalog_import_id: current.id,
+            page_number: p.page_number ?? 1,
+            data_base64: base64,
+            content_type: "image/png",
+          },
+        });
+        pageImg = res.url;
+      } catch (e) {
+        toast.error("Impossible de préparer l'image de la page.");
+        return;
+      }
+    }
+    if (!pageImg) return;
+    setCropPageImage(pageImg);
+    setCropPromo(p);
+  }
+
+  async function handleReplace(p: any, file: File) {
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ""));
+        r.onerror = () => reject(new Error("Lecture impossible"));
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+      await setImgMut.mutateAsync({
+        promotion_id: p.id,
+        data_base64: base64,
+        content_type: file.type || "image/png",
+        crop_coordinates: null,
+      });
+      toast.success("Image remplacée.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Échec");
+    }
+  }
+
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div>
