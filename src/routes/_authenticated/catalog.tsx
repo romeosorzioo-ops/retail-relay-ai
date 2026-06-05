@@ -920,5 +920,4 @@ function CatalogPage() {
     </div>
   );
 }
-}
 
