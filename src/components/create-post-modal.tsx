@@ -196,6 +196,7 @@ export function CreatePostModal({
         media_type: mediaType,
         scheduled_at: scheduled.toISOString(),
         generated_content_id: genContentId,
+        format: formatKey,
       };
       if (editing?.id) {
         return updateScheduledPostFn({ data: { id: editing.id, ...payload } });
