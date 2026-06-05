@@ -25,6 +25,9 @@ import {
 } from "@/lib/visuals.functions";
 import { listPromotionsFn } from "@/lib/promotions.functions";
 import { getCatalogPromotionFn, setPromotionCreationModeFn } from "@/lib/catalog.functions";
+import {
+  listCampaignItemsFn, getCampaignItemFn, updateCampaignItemFn,
+} from "@/lib/campaigns.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
@@ -32,6 +35,11 @@ import {
   GRAPHIC_ELEMENTS, ELEMENT_CATEGORIES, getElementDef, renderElementSvg,
   type ElementCategory,
 } from "@/lib/graphic-elements";
+import { CampaignStepper, type CampaignStep } from "@/components/campaign-stepper";
+import { ScheduleItemModal } from "@/components/schedule-item-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/creation")({
   validateSearch: (s: Record<string, unknown>) => ({
