@@ -1,36 +1,35 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export const listContentsFn = createServerFn({ method: "GET" }).handler(
-  async () => {
+export const listContentsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
     const { pool } = await import("@/lib/lovable/database");
-    const { requireUser } = await import("@/lib/auth.server");
-    const user = await requireUser();
     const { rows } = await pool.query(
       `SELECT gc.*, p.product_name as promo_name
        FROM generated_contents gc
        LEFT JOIN promotions p ON p.id = gc.promotion_id
        WHERE gc.user_id=$1 ORDER BY gc.created_at DESC`,
-      [user.id],
+      [context.userId],
     );
     return rows;
-  },
-);
+  });
 
 export const deleteContentFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { pool } = await import("@/lib/lovable/database");
-    const { requireUser } = await import("@/lib/auth.server");
-    const user = await requireUser();
     await pool.query(
       "DELETE FROM generated_contents WHERE id=$1 AND user_id=$2",
-      [data.id, user.id],
+      [data.id, context.userId],
     );
     return { ok: true };
   });
 
 export const updateContentFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -42,10 +41,8 @@ export const updateContentFn = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { pool } = await import("@/lib/lovable/database");
-    const { requireUser } = await import("@/lib/auth.server");
-    const user = await requireUser();
     const { rows } = await pool.query(
       `UPDATE generated_contents
        SET facebook_post=$1, instagram_post=$2, instagram_story=$3, reel_idea=$4
@@ -56,30 +53,29 @@ export const updateContentFn = createServerFn({ method: "POST" })
         data.instagram_story,
         data.reel_idea,
         data.id,
-        user.id,
+        context.userId,
       ],
     );
     return rows[0];
   });
 
 export const generateContentFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({ promotion_id: z.string().uuid() }).parse(d),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { pool } = await import("@/lib/lovable/database");
-    const { requireUser } = await import("@/lib/auth.server");
-    const user = await requireUser();
 
     const store = (
       await pool.query("SELECT * FROM stores WHERE user_id=$1 LIMIT 1", [
-        user.id,
+        context.userId,
       ])
     ).rows[0];
     const promo = (
       await pool.query(
         "SELECT * FROM promotions WHERE id=$1 AND user_id=$2 LIMIT 1",
-        [data.promotion_id, user.id],
+        [data.promotion_id, context.userId],
       )
     ).rows[0];
 
@@ -131,7 +127,7 @@ Génère 4 contenus prêts à publier.`;
       `INSERT INTO generated_contents (user_id, promotion_id, facebook_post, instagram_post, instagram_story, reel_idea)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
       [
-        user.id,
+        context.userId,
         promo.id,
         out.facebook_post,
         out.instagram_post,
