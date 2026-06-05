@@ -357,6 +357,7 @@ function CreationPage() {
         bgImage: cfg.bgImage ?? c.bgImage,
         logoUrl: brand?.logo_url ?? c.logoUrl ?? cfg.logoUrl ?? null,
         blocks: enriched,
+        elements: cfg.elements ?? [],
       }));
     } else {
       // Legacy template -> rebuild blocks from old-shape config
