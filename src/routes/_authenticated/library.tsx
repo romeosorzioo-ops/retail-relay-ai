@@ -12,13 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,19 +20,19 @@ import {
   updateContentFn,
 } from "@/lib/content.functions";
 import { addCalendarPostFn } from "@/lib/calendar.functions";
-import { Copy, Trash2, Pencil, CalendarPlus } from "lucide-react";
+import { Copy, Trash2, Pencil, CalendarPlus, Facebook, Instagram, Film } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/library")({
   component: LibraryPage,
 });
 
-const CHANNELS = [
-  { v: "facebook_post", l: "Post Facebook" },
-  { v: "instagram_post", l: "Post Instagram" },
-  { v: "instagram_story", l: "Story Instagram" },
-  { v: "reel_idea", l: "Reel" },
-];
+const TYPE_META: Record<string, { label: string; icon: any }> = {
+  facebook_post: { label: "Post Facebook", icon: Facebook },
+  instagram_post: { label: "Post Instagram", icon: Instagram },
+  instagram_story: { label: "Story Instagram", icon: Instagram },
+  reel_idea: { label: "Idée de Reel", icon: Film },
+};
 
 function LibraryPage() {
   const qc = useQueryClient();
@@ -49,11 +42,9 @@ function LibraryPage() {
   });
 
   const [editing, setEditing] = useState<any>(null);
+  const [editDraft, setEditDraft] = useState("");
   const [planning, setPlanning] = useState<any>(null);
-  const [planDate, setPlanDate] = useState(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [planChannel, setPlanChannel] = useState("facebook_post");
+  const [planDate, setPlanDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
   const del = useMutation({
     mutationFn: (id: string) => deleteContentFn({ data: { id } }),
@@ -62,15 +53,7 @@ function LibraryPage() {
 
   const update = useMutation({
     mutationFn: () =>
-      updateContentFn({
-        data: {
-          id: editing.id,
-          facebook_post: editing.facebook_post ?? "",
-          instagram_post: editing.instagram_post ?? "",
-          instagram_story: editing.instagram_story ?? "",
-          reel_idea: editing.reel_idea ?? "",
-        },
-      }),
+      updateContentFn({ data: { id: editing.id, content_text: editDraft } }),
     onSuccess: () => {
       toast.success("Mis à jour.");
       qc.invalidateQueries({ queryKey: ["contents"] });
@@ -83,7 +66,7 @@ function LibraryPage() {
       addCalendarPostFn({
         data: {
           generated_content_id: planning.id,
-          channel: planChannel,
+          channel: planning.content_type,
           scheduled_date: planDate,
         },
       }),
@@ -102,110 +85,75 @@ function LibraryPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Bibliothèque de contenus
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Retrouvez tous vos contenus générés.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Bibliothèque de contenus</h1>
+        <p className="text-sm text-muted-foreground">Retrouvez tous vos contenus générés.</p>
       </div>
 
       {items.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Aucun contenu encore. Générez-en depuis la page « Génération IA ».
+            Aucun contenu encore. Générez-en depuis une promotion.
           </CardContent>
         </Card>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((c: any) => (
-          <Card key={c.id}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {c.promo_name ?? "Promo supprimée"}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {format(new Date(c.created_at), "d MMM yyyy", { locale: fr })}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="line-clamp-4 text-sm text-muted-foreground">
-                {c.facebook_post}
-              </p>
-              <div className="flex flex-wrap gap-1 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copy(c.facebook_post ?? "")}
-                >
-                  <Copy className="mr-1 h-3 w-3" /> FB
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copy(c.instagram_post ?? "")}
-                >
-                  <Copy className="mr-1 h-3 w-3" /> IG
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditing({ ...c })}
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setPlanning(c)}
-                >
-                  <CalendarPlus className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => del.mutate(c.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {items.map((c: any) => {
+          const meta = TYPE_META[c.content_type] ?? TYPE_META.facebook_post;
+          const Icon = meta.icon;
+          return (
+            <Card key={c.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Icon className="h-4 w-4 text-primary" />
+                  {meta.label}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  {c.promo_name ?? "Promo supprimée"} ·{" "}
+                  {format(new Date(c.created_at), "d MMM yyyy", { locale: fr })}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {c.content_text}
+                </p>
+                <div className="flex flex-wrap gap-1 pt-2">
+                  <Button size="sm" variant="outline" onClick={() => copy(c.content_text ?? "")}>
+                    <Copy className="mr-1 h-3 w-3" /> Copier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditing(c);
+                      setEditDraft(c.content_text ?? "");
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPlanning(c)}>
+                    <CalendarPlus className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Modifier les contenus</DialogTitle>
+            <DialogTitle>Modifier le contenu</DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="space-y-3">
-              {(
-                [
-                  ["facebook_post", "Post Facebook"],
-                  ["instagram_post", "Post Instagram"],
-                  ["instagram_story", "Story Instagram"],
-                  ["reel_idea", "Reel"],
-                ] as const
-              ).map(([k, l]) => (
-                <div key={k}>
-                  <Label>{l}</Label>
-                  <Textarea
-                    rows={3}
-                    value={editing[k] ?? ""}
-                    onChange={(e) =>
-                      setEditing({ ...editing, [k]: e.target.value })
-                    }
-                  />
-                </div>
-              ))}
+              <Textarea rows={10} value={editDraft} onChange={(e) => setEditDraft(e.target.value)} />
               <div className="flex justify-end">
-                <Button
-                  onClick={() => update.mutate()}
-                  disabled={update.isPending}
-                >
+                <Button onClick={() => update.mutate()} disabled={update.isPending}>
                   Enregistrer
                 </Button>
               </div>
@@ -221,33 +169,11 @@ function LibraryPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Canal</Label>
-              <Select value={planChannel} onValueChange={setPlanChannel}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CHANNELS.map((c) => (
-                    <SelectItem key={c.v} value={c.v}>
-                      {c.l}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label>Date</Label>
-              <Input
-                type="date"
-                value={planDate}
-                onChange={(e) => setPlanDate(e.target.value)}
-              />
+              <Input type="date" value={planDate} onChange={(e) => setPlanDate(e.target.value)} />
             </div>
             <div className="flex justify-end">
-              <Button
-                onClick={() => addCal.mutate()}
-                disabled={addCal.isPending}
-              >
+              <Button onClick={() => addCal.mutate()} disabled={addCal.isPending}>
                 Planifier
               </Button>
             </div>

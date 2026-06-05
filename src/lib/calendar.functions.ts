@@ -11,10 +11,8 @@ type CalRow = {
   created_at: string;
   updated_at: string;
   generated_contents: {
-    facebook_post: string;
-    instagram_post: string;
-    instagram_story: string;
-    reel_idea: string;
+    content_type: string;
+    content_text: string;
     promotions: { product_name: string } | null;
   } | null;
 };
@@ -25,7 +23,7 @@ export const listCalendarFn = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("calendar_posts")
       .select(
-        "*, generated_contents(facebook_post,instagram_post,instagram_story,reel_idea,promotions(product_name))",
+        "*, generated_contents(content_type,content_text,promotions(product_name))",
       )
       .eq("user_id", context.userId)
       .order("scheduled_date", { ascending: true });
@@ -34,12 +32,9 @@ export const listCalendarFn = createServerFn({ method: "GET" })
       const row = r as unknown as CalRow;
       return {
         ...row,
-        facebook_post: row.generated_contents?.facebook_post ?? null,
-        instagram_post: row.generated_contents?.instagram_post ?? null,
-        instagram_story: row.generated_contents?.instagram_story ?? null,
-        reel_idea: row.generated_contents?.reel_idea ?? null,
-        promo_name:
-          row.generated_contents?.promotions?.product_name ?? null,
+        content_text: row.generated_contents?.content_text ?? null,
+        content_type: row.generated_contents?.content_type ?? null,
+        promo_name: row.generated_contents?.promotions?.product_name ?? null,
       };
     });
   });
