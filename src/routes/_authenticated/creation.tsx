@@ -6,6 +6,7 @@ import { toPng } from "html-to-image";
 import {
   Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus, Save,
   Sparkles, Tag as TagIcon, Trash2, Type, Upload, Image as ImageIcon,
+  Shapes, Copy, RotateCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import {
   listVisualTemplatesFn, saveVisualFn, uploadVisualImageFn,
@@ -24,6 +26,10 @@ import { listPromotionsFn } from "@/lib/promotions.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
+import {
+  GRAPHIC_ELEMENTS, ELEMENT_CATEGORIES, getElementDef, renderElementSvg,
+  type ElementCategory,
+} from "@/lib/graphic-elements";
 
 export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
@@ -62,11 +68,26 @@ type Block = {
   padding?: number;               // for badge bg
 };
 
+type GraphicEl = {
+  id: string;
+  key: string;            // element library key
+  category: ElementCategory;
+  x: number; y: number;   // % of canvas (top-left)
+  width: number;          // % of canvas width
+  height: number;         // % of canvas width (square reference)
+  rotation: number;       // degrees
+  color: string;
+  strokeWidth: number;    // for stroke-based elements
+  opacity: number;        // 0..1
+  secondary?: string;     // optional fill for outlined shapes
+};
+
 type Config = {
   bgImage?: string | null;
   bgColor?: string;
   logoUrl?: string | null;
   blocks: Block[];
+  elements?: GraphicEl[];
 };
 
 const ROLE_LABEL: Record<BlockRole, string> = {
@@ -107,12 +128,14 @@ function CreationPage() {
   const [format, setFormat] = useState<FormatKey>("ig_square");
   const [config, setConfig] = useState<Config>({ bgImage: null, bgColor: "#1f2937", logoUrl: null, blocks: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [promotionId, setPromotionId] = useState<string | null>(null);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
+  const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
 
   const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
   const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
@@ -153,6 +176,8 @@ function CreationPage() {
   );
 
   const selected = config.blocks.find((b) => b.id === selectedId) ?? null;
+  const elements = config.elements ?? [];
+  const selectedElement = elements.find((e) => e.id === selectedElementId) ?? null;
 
   function updateBlock(id: string, patch: Partial<Block>) {
     setConfig((c) => ({ ...c, blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
@@ -160,6 +185,45 @@ function CreationPage() {
   function deleteBlock(id: string) {
     setConfig((c) => ({ ...c, blocks: c.blocks.filter((b) => b.id !== id) }));
     if (selectedId === id) setSelectedId(null);
+  }
+
+  // ---------- Graphic elements ----------
+  function updateElement(id: string, patch: Partial<GraphicEl>) {
+    setConfig((c) => ({ ...c, elements: (c.elements ?? []).map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+  }
+  function deleteElement(id: string) {
+    setConfig((c) => ({ ...c, elements: (c.elements ?? []).filter((e) => e.id !== id) }));
+    if (selectedElementId === id) setSelectedElementId(null);
+  }
+  function duplicateElement(id: string) {
+    setConfig((c) => {
+      const src = (c.elements ?? []).find((e) => e.id === id);
+      if (!src) return c;
+      const copy = { ...src, id: uid(), x: Math.min(95, src.x + 5), y: Math.min(95, src.y + 5) };
+      return { ...c, elements: [...(c.elements ?? []), copy] };
+    });
+  }
+  function addElement(key: string) {
+    const def = getElementDef(key);
+    if (!def) return;
+    const ratio = def.defaultRatio ?? 1;
+    const w = 25;
+    const el: GraphicEl = {
+      id: uid(),
+      key,
+      category: def.category,
+      x: 35, y: 35,
+      width: w,
+      height: w / ratio,
+      rotation: 0,
+      color: def.defaultColor,
+      strokeWidth: def.defaultStroke,
+      opacity: 1,
+      secondary: def.defaultSecondary,
+    };
+    setConfig((c) => ({ ...c, elements: [...(c.elements ?? []), el] }));
+    setSelectedId(null);
+    setSelectedElementId(el.id);
   }
   function addBlock(role: BlockRole) {
     const fTitle = brand?.font_primary ?? "Montserrat";
@@ -187,6 +251,7 @@ function CreationPage() {
   function onPointerDownBlock(e: React.PointerEvent, b: Block) {
     e.stopPropagation();
     setSelectedId(b.id);
+    setSelectedElementId(null);
     const wrap = canvasWrapRef.current;
     if (!wrap) return;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -204,6 +269,62 @@ function CreationPage() {
       try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
     }
     dragRef.current = null;
+  }
+
+  // ---------- Element pointer (move / resize / rotate) ----------
+  function onPointerDownElement(e: React.PointerEvent, el: GraphicEl, mode: "move" | "resize" | "rotate") {
+    e.stopPropagation();
+    setSelectedId(null);
+    setSelectedElementId(el.id);
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + (el.x + el.width / 2) * rect.width / 100;
+    const cy = rect.top + (el.y + (el.height * rect.width / rect.height) / 2) * rect.height / 100;
+    elDragRef.current = {
+      id: el.id, mode, startX: e.clientX, startY: e.clientY,
+      bx: el.x, by: el.y, bw: el.width, bh: el.height, brot: el.rotation, rect, cx, cy,
+    };
+  }
+  function onPointerMoveCanvas(e: React.PointerEvent) {
+    // block drag
+    const d = dragRef.current;
+    if (d) {
+      const dx = ((e.clientX - d.startX) / d.rect.width) * 100;
+      const dy = ((e.clientY - d.startY) / d.rect.height) * 100;
+      updateBlock(d.id, { x: Math.max(0, Math.min(100, d.bx + dx)), y: Math.max(0, Math.min(100, d.by + dy)) });
+      return;
+    }
+    // element drag
+    const ed = elDragRef.current;
+    if (!ed) return;
+    if (ed.mode === "move") {
+      const dx = ((e.clientX - ed.startX) / ed.rect.width) * 100;
+      const dy = ((e.clientY - ed.startY) / ed.rect.height) * 100;
+      updateElement(ed.id, {
+        x: Math.max(-10, Math.min(100, ed.bx + dx)),
+        y: Math.max(-10, Math.min(100, ed.by + dy)),
+      });
+    } else if (ed.mode === "resize") {
+      const dx = ((e.clientX - ed.startX) / ed.rect.width) * 100;
+      const newW = Math.max(3, Math.min(120, ed.bw + dx));
+      const ratio = ed.bw > 0 ? ed.bh / ed.bw : 1;
+      updateElement(ed.id, { width: newW, height: newW * ratio });
+    } else if (ed.mode === "rotate") {
+      const angle = (Math.atan2(e.clientY - ed.cy, e.clientX - ed.cx) * 180) / Math.PI + 90;
+      updateElement(ed.id, { rotation: Math.round(angle) });
+    }
+  }
+  function onPointerUpCanvas(e: React.PointerEvent) {
+    if (dragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      dragRef.current = null;
+    }
+    if (elDragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      elDragRef.current = null;
+    }
   }
 
   function applyTemplate(t: (typeof templates)[number]) {
@@ -236,6 +357,7 @@ function CreationPage() {
         bgImage: cfg.bgImage ?? c.bgImage,
         logoUrl: brand?.logo_url ?? c.logoUrl ?? cfg.logoUrl ?? null,
         blocks: enriched,
+        elements: cfg.elements ?? [],
       }));
     } else {
       // Legacy template -> rebuild blocks from old-shape config
@@ -448,9 +570,9 @@ function CreationPage() {
           <CardContent className="flex items-center justify-center p-4">
             <div
               ref={canvasWrapRef}
-              onPointerMove={onPointerMoveBlock}
-              onPointerUp={onPointerUpBlock}
-              onClick={() => setSelectedId(null)}
+              onPointerMove={onPointerMoveCanvas}
+              onPointerUp={onPointerUpCanvas}
+              onClick={() => { setSelectedId(null); setSelectedElementId(null); }}
               className="relative overflow-hidden rounded-md border shadow-sm"
               style={{
                 width: previewWidth,
@@ -503,6 +625,62 @@ function CreationPage() {
                   </div>
                 );
               })}
+              {elements.map((el) => {
+                const wPx = (el.width / 100) * previewWidth;
+                const hPx = (el.height / 100) * previewWidth;
+                const svg = renderElementSvg(el.key, {
+                  color: el.color, stroke: el.strokeWidth, secondary: el.secondary,
+                  width: wPx, height: hPx, opacity: el.opacity, rotation: 0,
+                });
+                const isSel = selectedElementId === el.id;
+                return (
+                  <div
+                    key={el.id}
+                    onPointerDown={(e) => onPointerDownElement(e, el, "move")}
+                    onClick={(e) => { e.stopPropagation(); setSelectedId(null); setSelectedElementId(el.id); }}
+                    className={cn("absolute cursor-move select-none", isSel && "outline outline-2 outline-primary/80")}
+                    style={{
+                      left: `${el.x}%`,
+                      top: `${el.y}%`,
+                      width: wPx,
+                      height: hPx,
+                      transform: `rotate(${el.rotation}deg)`,
+                      transformOrigin: "center",
+                      opacity: el.opacity,
+                    }}
+                    dangerouslySetInnerHTML={{ __html: svg }}
+                  />
+                );
+              })}
+              {selectedElement && (() => {
+                const el = selectedElement;
+                const wPx = (el.width / 100) * previewWidth;
+                const hPx = (el.height / 100) * previewWidth;
+                return (
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      left: `${el.x}%`,
+                      top: `${el.y}%`,
+                      width: wPx,
+                      height: hPx,
+                      transform: `rotate(${el.rotation}deg)`,
+                      transformOrigin: "center",
+                    }}
+                  >
+                    {/* resize handle (bottom-right) */}
+                    <div
+                      onPointerDown={(e) => onPointerDownElement(e, el, "resize")}
+                      className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-nwse-resize rounded-sm border bg-primary"
+                    />
+                    {/* rotate handle (top) */}
+                    <div
+                      onPointerDown={(e) => onPointerDownElement(e, el, "rotate")}
+                      className="pointer-events-auto absolute left-1/2 -top-5 -translate-x-1/2 h-3 w-3 cursor-grab rounded-full border bg-primary"
+                    />
+                  </div>
+                );
+              })()}
               {config.logoUrl && (
                 <img
                   src={config.logoUrl}
@@ -524,8 +702,9 @@ function CreationPage() {
         <Card>
           <CardContent className="p-3">
             <Tabs defaultValue="props">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="props"><Type className="h-3.5 w-3.5" /> Bloc</TabsTrigger>
+                <TabsTrigger value="elements"><Shapes className="h-3.5 w-3.5" /> Éléments</TabsTrigger>
                 <TabsTrigger value="templates"><Sparkles className="h-3.5 w-3.5" /> Modèles</TabsTrigger>
                 <TabsTrigger value="link"><TagIcon className="h-3.5 w-3.5" /> Promo</TabsTrigger>
               </TabsList>
@@ -669,6 +848,98 @@ function CreationPage() {
                   )}
                 </ScrollArea>
               </TabsContent>
+
+              <TabsContent value="elements">
+                <ScrollArea className="h-[560px] pr-2">
+                  {selectedElement ? (
+                    <div className="space-y-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium">{getElementDef(selectedElement.key)?.name ?? "Élément"}</p>
+                        <div className="flex gap-1">
+                          <Button variant="outline" size="sm" onClick={() => duplicateElement(selectedElement.id)}>
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => deleteElement(selectedElement.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Couleur</Label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={selectedElement.color}
+                            onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })}
+                            className="h-9 w-12 cursor-pointer rounded border" />
+                          <Input value={selectedElement.color}
+                            onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Épaisseur du trait ({selectedElement.strokeWidth})</Label>
+                        <Slider value={[selectedElement.strokeWidth]} min={0} max={20} step={0.5}
+                          onValueChange={(v) => updateElement(selectedElement.id, { strokeWidth: v[0] })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Opacité ({Math.round(selectedElement.opacity * 100)}%)</Label>
+                        <Slider value={[selectedElement.opacity * 100]} min={10} max={100} step={1}
+                          onValueChange={(v) => updateElement(selectedElement.id, { opacity: v[0] / 100 })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs flex items-center gap-1"><RotateCw className="h-3 w-3" /> Rotation ({selectedElement.rotation}°)</Label>
+                        <Slider value={[selectedElement.rotation]} min={-180} max={180} step={1}
+                          onValueChange={(v) => updateElement(selectedElement.id, { rotation: v[0] })} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="mb-1 block text-xs">Largeur (%)</Label>
+                          <Input type="number" value={Math.round(selectedElement.width)}
+                            onChange={(e) => {
+                              const w = Math.max(3, Math.min(120, Number(e.target.value) || 10));
+                              const ratio = selectedElement.width > 0 ? selectedElement.height / selectedElement.width : 1;
+                              updateElement(selectedElement.id, { width: w, height: w * ratio });
+                            }} />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-xs">Hauteur (%)</Label>
+                          <Input type="number" value={Math.round(selectedElement.height)}
+                            onChange={(e) => updateElement(selectedElement.id, { height: Math.max(3, Math.min(120, Number(e.target.value) || 10)) })} />
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedElementId(null)}>
+                        Retour à la bibliothèque
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 py-2">
+                      {ELEMENT_CATEGORIES.map((cat) => (
+                        <div key={cat.key}>
+                          <p className="mb-2 text-xs font-semibold text-muted-foreground">{cat.label}</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {GRAPHIC_ELEMENTS.filter((e) => e.category === cat.key).map((el) => {
+                              const svg = renderElementSvg(el.key, {
+                                color: el.defaultColor, stroke: el.defaultStroke,
+                                secondary: el.defaultSecondary, width: 60, height: 60, opacity: 1, rotation: 0,
+                              });
+                              return (
+                                <button
+                                  key={el.key}
+                                  type="button"
+                                  title={el.name}
+                                  onClick={() => addElement(el.key)}
+                                  className="flex aspect-square items-center justify-center rounded-md border bg-muted/30 p-1 transition hover:border-primary hover:bg-accent"
+                                  dangerouslySetInnerHTML={{ __html: svg }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+
+
 
               <TabsContent value="templates">
                 <ScrollArea className="h-[560px] pr-2">
