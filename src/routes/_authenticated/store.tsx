@@ -195,11 +195,7 @@ function StorePage() {
       setUploadingFont(false);
     }
   }
-      toast.success("Identité visuelle enregistrée.");
-      qc.invalidateQueries({ queryKey: ["my-brand"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+
 
   async function uploadLogo(file: File) {
     if (!file.type.startsWith("image/")) {
