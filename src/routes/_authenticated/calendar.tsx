@@ -78,7 +78,7 @@ function CalendarPage() {
         data: {
           id: v.post.id,
           platforms: v.post.platforms as ("facebook" | "instagram")[],
-          post_type: v.post.post_type as "post" | "story" | "reel",
+          post_type: (v.post.post_type === "story" ? "story" : "post") as "post" | "story",
           caption: v.post.caption,
           media_url: v.post.media_url,
           media_type: v.post.media_type,
