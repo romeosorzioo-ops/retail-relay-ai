@@ -1,1 +1,7 @@
 project_id = "vrzsvtukfkqishlajyvj"
+
+[auth]
+enable_signup = true
+
+[auth.email]
+enable_confirmations = false
