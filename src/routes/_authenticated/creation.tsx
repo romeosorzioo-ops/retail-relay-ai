@@ -263,7 +263,7 @@ function CreationPage() {
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
 
   const search = Route.useSearch();
-  const navigate = Route.useNavigate();
+  const navigate = useNavigate();
   const [catalogPromoId, setCatalogPromoId] = useState<string | null>(null);
   const [catalogMode, setCatalogMode] = useState<"catalog_visual" | "field_photo" | null>(null);
 
