@@ -104,7 +104,7 @@ export const generateContentFn = createServerFn({ method: "POST" })
     const { createLovableAiGatewayProvider } = await import(
       "@/lib/ai-gateway.server"
     );
-    const { generateText, Output } = await import("ai");
+    const { generateObject } = await import("ai");
     const gateway = createLovableAiGatewayProvider(key);
 
     const sys = `Tu es un expert en marketing local pour les magasins de grande distribution alimentaire en France.
