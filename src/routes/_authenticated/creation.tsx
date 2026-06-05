@@ -93,6 +93,27 @@ function CreationPage() {
     queryKey: ["promotions"],
     queryFn: () => listPromotionsFn(),
   });
+  const { data: brand } = useQuery({
+    queryKey: ["my-brand"],
+    queryFn: () => getMyBrandProfileFn(),
+  });
+
+  // Pre-fill brand identity into the visual when brand profile loads
+  useEffect(() => {
+    if (!brand) return;
+    setConfig((c) => ({
+      ...c,
+      primaryColor: c.primaryColor === "#E11D48" && brand.primary_color
+        ? brand.primary_color
+        : c.primaryColor,
+      secondaryColor: c.secondaryColor ?? brand.secondary_color ?? undefined,
+      fontFamily: c.fontFamily ?? brand.font_family ?? undefined,
+      slogan: c.slogan ?? brand.slogan ?? undefined,
+      logoUrl: c.logoUrl ?? brand.logo_url ?? null,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand]);
+
 
   const dims = FORMATS[format];
 
