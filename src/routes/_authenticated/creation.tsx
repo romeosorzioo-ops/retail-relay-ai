@@ -623,6 +623,62 @@ function CreationPage() {
                   </div>
                 );
               })}
+              {elements.map((el) => {
+                const wPx = (el.width / 100) * previewWidth;
+                const hPx = (el.height / 100) * previewWidth;
+                const svg = renderElementSvg(el.key, {
+                  color: el.color, stroke: el.strokeWidth, secondary: el.secondary,
+                  width: wPx, height: hPx, opacity: el.opacity, rotation: 0,
+                });
+                const isSel = selectedElementId === el.id;
+                return (
+                  <div
+                    key={el.id}
+                    onPointerDown={(e) => onPointerDownElement(e, el, "move")}
+                    onClick={(e) => { e.stopPropagation(); setSelectedId(null); setSelectedElementId(el.id); }}
+                    className={cn("absolute cursor-move select-none", isSel && "outline outline-2 outline-primary/80")}
+                    style={{
+                      left: `${el.x}%`,
+                      top: `${el.y}%`,
+                      width: wPx,
+                      height: hPx,
+                      transform: `rotate(${el.rotation}deg)`,
+                      transformOrigin: "center",
+                      opacity: el.opacity,
+                    }}
+                    dangerouslySetInnerHTML={{ __html: svg }}
+                  />
+                );
+              })}
+              {selectedElement && (() => {
+                const el = selectedElement;
+                const wPx = (el.width / 100) * previewWidth;
+                const hPx = (el.height / 100) * previewWidth;
+                return (
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      left: `${el.x}%`,
+                      top: `${el.y}%`,
+                      width: wPx,
+                      height: hPx,
+                      transform: `rotate(${el.rotation}deg)`,
+                      transformOrigin: "center",
+                    }}
+                  >
+                    {/* resize handle (bottom-right) */}
+                    <div
+                      onPointerDown={(e) => onPointerDownElement(e, el, "resize")}
+                      className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-nwse-resize rounded-sm border bg-primary"
+                    />
+                    {/* rotate handle (top) */}
+                    <div
+                      onPointerDown={(e) => onPointerDownElement(e, el, "rotate")}
+                      className="pointer-events-auto absolute left-1/2 -top-5 -translate-x-1/2 h-3 w-3 cursor-grab rounded-full border bg-primary"
+                    />
+                  </div>
+                );
+              })()}
               {config.logoUrl && (
                 <img
                   src={config.logoUrl}
