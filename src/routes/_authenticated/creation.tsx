@@ -68,11 +68,26 @@ type Block = {
   padding?: number;               // for badge bg
 };
 
+type GraphicEl = {
+  id: string;
+  key: string;            // element library key
+  category: ElementCategory;
+  x: number; y: number;   // % of canvas (top-left)
+  width: number;          // % of canvas width
+  height: number;         // % of canvas width (square reference)
+  rotation: number;       // degrees
+  color: string;
+  strokeWidth: number;    // for stroke-based elements
+  opacity: number;        // 0..1
+  secondary?: string;     // optional fill for outlined shapes
+};
+
 type Config = {
   bgImage?: string | null;
   bgColor?: string;
   logoUrl?: string | null;
   blocks: Block[];
+  elements?: GraphicEl[];
 };
 
 const ROLE_LABEL: Record<BlockRole, string> = {
