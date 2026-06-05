@@ -432,13 +432,31 @@ function PromotionsPage() {
                       {p.start_date ?? "—"} → {p.end_date ?? "—"}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => del.mutate(p.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={gen.isPending}
+                          onClick={() => {
+                            setGenPromoName(p.product_name);
+                            gen.mutate(p.id);
+                          }}
+                        >
+                          {gen.isPending && gen.variables === p.id ? (
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="mr-1 h-3.5 w-3.5" />
+                          )}
+                          Générer mes contenus
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => del.mutate(p.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -447,6 +465,14 @@ function PromotionsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <GeneratedContentDialog
+        open={genOpen}
+        onOpenChange={setGenOpen}
+        promoName={genPromoName}
+        content={genResult}
+        onUpdated={(r) => setGenResult(r)}
+      />
     </div>
   );
 }
