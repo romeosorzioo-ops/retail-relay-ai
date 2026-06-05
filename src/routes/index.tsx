@@ -5,17 +5,17 @@ import { Sparkles, Calendar, Store } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KomTonMag AI — Contenus social-media pour magasins" },
+      { title: "Komaag — Contenus social-media pour magasins" },
       {
         name: "description",
         content:
-          "Transformez vos promotions en posts Facebook, Instagram, stories et idées de Reels prêts à publier. Pour Super U, Intermarché, Carrefour Market, Spar.",
+          "Komaag transforme vos promotions et la vie de votre magasin en contenus prêts à publier. Pour Super U, Intermarché, Carrefour Market, Spar.",
       },
-      { property: "og:title", content: "KomTonMag AI" },
+      { property: "og:title", content: "Komaag" },
       {
         property: "og:description",
         content:
-          "Le SaaS qui transforme vos promos en contenus réseaux sociaux pour la grande distribution alimentaire.",
+          "Komaag transforme vos promotions et la vie de votre magasin en contenus prêts à publier.",
       },
     ],
   }),
@@ -31,7 +31,7 @@ function Landing() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
               K
             </div>
-            <span className="font-semibold">KomTonMag AI</span>
+            <span className="font-semibold">Komaag</span>
           </div>
           <div className="flex items-center gap-2">
             <Link to="/auth">
@@ -55,9 +55,9 @@ function Landing() {
           <span className="text-primary">En 30 secondes.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-          KomTonMag AI transforme vos promotions et la vie de votre magasin en
-          contenus prêts à publier sur Facebook, Instagram et Reels. Pensé pour
-          Super U, Intermarché, Carrefour Market, Spar…
+          Komaag transforme vos promotions et la vie de votre magasin en
+          contenus prêts à publier. Pensé pour Super U, Intermarché, Carrefour
+          Market, Spar…
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link to="/auth">
@@ -102,7 +102,7 @@ function Landing() {
 
       <footer className="border-t">
         <div className="mx-auto max-w-6xl px-6 py-6 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} KomTonMag AI — Tous droits réservés.
+          © {new Date().getFullYear()} Komaag — Tous droits réservés.
         </div>
       </footer>
     </div>

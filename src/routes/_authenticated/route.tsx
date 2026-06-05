@@ -64,7 +64,7 @@ function AuthedLayout() {
         <div className="flex flex-1 flex-col">
           <header className="flex h-12 items-center gap-2 border-b bg-background px-4">
             <SidebarTrigger />
-            <span className="text-sm text-muted-foreground">KomTonMag AI</span>
+            <span className="text-sm text-muted-foreground">Komaag</span>
           </header>
           <main className="flex-1 bg-muted/20">
             <Outlet />
