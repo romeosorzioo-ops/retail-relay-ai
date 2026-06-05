@@ -199,14 +199,7 @@ function DraggablePost({
         zIndex: 50,
       }
     : undefined;
-  const text =
-    post.channel === "facebook_post"
-      ? post.facebook_post
-      : post.channel === "instagram_post"
-        ? post.instagram_post
-        : post.channel === "instagram_story"
-          ? post.instagram_story
-          : post.reel_idea;
+  const text = post.content_text ?? "";
   return (
     <div
       ref={setNodeRef}

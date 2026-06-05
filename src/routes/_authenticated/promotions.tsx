@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +28,14 @@ import {
   deletePromotionFn,
   listPromotionsFn,
 } from "@/lib/promotions.functions";
-import { generateContentFn, updateContentFn } from "@/lib/content.functions";
+import {
+  deleteContentFn,
+  generateContentFn,
+  listContentsByPromotionFn,
+  updateContentFn,
+  type ContentType,
+} from "@/lib/content.functions";
+import { addCalendarPostFn } from "@/lib/calendar.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -49,6 +58,8 @@ import {
   Facebook,
   Instagram,
   Film,
+  CalendarPlus,
+  ListVideo,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/promotions")({
@@ -65,7 +76,17 @@ const CATEGORIES = [
 ];
 
 const ACCEPTED = ["image/png", "image/jpeg", "application/pdf"];
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_SIZE = 10 * 1024 * 1024;
+
+const TYPE_META: Record<
+  ContentType,
+  { label: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  facebook_post: { label: "Post Facebook", icon: Facebook },
+  instagram_post: { label: "Post Instagram", icon: Instagram },
+  instagram_story: { label: "Story Instagram", icon: Instagram },
+  reel_idea: { label: "Idée de Reel", icon: Film },
+};
 
 type Uploaded = { url: string; type: string; name: string };
 
@@ -107,7 +128,7 @@ function FileDropzone({
     } catch (e: any) {
       const message = e?.message ?? "";
       if (message.toLowerCase().includes("bucket")) {
-        toast.error("Le stockage promotion-files est indisponible. Réessayez dans un instant.");
+        toast.error("Le stockage promotion-files est indisponible.");
       } else {
         toast.error(message || "Échec de l'import du fichier.");
       }
@@ -121,11 +142,7 @@ function FileDropzone({
     return (
       <div className="flex items-center gap-3 rounded-md border p-3">
         {isImage ? (
-          <img
-            src={value.url}
-            alt={value.name}
-            className="h-16 w-16 rounded object-cover"
-          />
+          <img src={value.url} alt={value.name} className="h-16 w-16 rounded object-cover" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded bg-muted">
             <FileText className="h-8 w-8 text-muted-foreground" />
@@ -133,16 +150,9 @@ function FileDropzone({
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{value.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {isImage ? "Image" : "PDF"}
-          </p>
+          <p className="text-xs text-muted-foreground">{isImage ? "Image" : "PDF"}</p>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => onChange(null)}
-        >
+        <Button type="button" variant="ghost" size="icon" onClick={() => onChange(null)}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -183,12 +193,8 @@ function FileDropzone({
       ) : (
         <UploadCloud className="mb-2 h-6 w-6 text-muted-foreground" />
       )}
-      <p className="text-sm font-medium">
-        Glissez-déposez un fichier ou cliquez pour parcourir
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        PNG, JPG, JPEG ou PDF · 10 Mo max
-      </p>
+      <p className="text-sm font-medium">Glissez-déposez un fichier ou cliquez pour parcourir</p>
+      <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, JPEG ou PDF · 10 Mo max</p>
     </div>
   );
 }
@@ -241,18 +247,16 @@ function PromotionsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["promotions"] }),
   });
 
-  const [genResult, setGenResult] = useState<any>(null);
-  const [genOpen, setGenOpen] = useState(false);
-  const [genPromoName, setGenPromoName] = useState<string>("");
+  const [viewPromo, setViewPromo] = useState<{ id: string; name: string } | null>(null);
 
   const gen = useMutation({
-    mutationFn: (id: string) =>
-      generateContentFn({ data: { promotion_id: id } }),
-    onSuccess: (r) => {
-      setGenResult(r);
-      setGenOpen(true);
+    mutationFn: (id: string) => generateContentFn({ data: { promotion_id: id } }),
+    onSuccess: (_r, id) => {
       qc.invalidateQueries({ queryKey: ["contents"] });
+      qc.invalidateQueries({ queryKey: ["promotion-contents", id] });
       toast.success("Contenus générés !");
+      const promo = promos.find((p: any) => p.id === id);
+      setViewPromo({ id, name: promo?.product_name ?? "" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -262,9 +266,7 @@ function PromotionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Promotions</h1>
-          <p className="text-sm text-muted-foreground">
-            Gérez vos offres en cours.
-          </p>
+          <p className="text-sm text-muted-foreground">Gérez vos offres en cours.</p>
         </div>
         <Button onClick={() => setOpen((o) => !o)}>
           <Plus className="mr-1 h-4 w-4" /> Ajouter
@@ -281,9 +283,7 @@ function PromotionsPage() {
               <Label>Nom du produit</Label>
               <Input
                 value={form.product_name}
-                onChange={(e) =>
-                  setForm({ ...form, product_name: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, product_name: e.target.value })}
               />
             </div>
             <div>
@@ -301,9 +301,7 @@ function PromotionsPage() {
                 type="number"
                 step="0.01"
                 value={form.old_price}
-                onChange={(e) =>
-                  setForm({ ...form, old_price: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, old_price: e.target.value })}
               />
             </div>
             <div>
@@ -311,9 +309,7 @@ function PromotionsPage() {
               <Input
                 type="date"
                 value={form.start_date}
-                onChange={(e) =>
-                  setForm({ ...form, start_date: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
               />
             </div>
             <div>
@@ -326,10 +322,7 @@ function PromotionsPage() {
             </div>
             <div>
               <Label>Catégorie</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
-              >
+              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -379,10 +372,7 @@ function PromotionsPage() {
             <TableBody>
               {promos.length === 0 && (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-10 text-center text-sm text-muted-foreground"
-                  >
+                  <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                     Aucune promotion. Ajoutez votre première offre.
                   </TableCell>
                 </TableRow>
@@ -391,9 +381,7 @@ function PromotionsPage() {
                 const isImage = p.file_type?.startsWith("image/");
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      {p.product_name}
-                    </TableCell>
+                    <TableCell className="font-medium">{p.product_name}</TableCell>
                     <TableCell>
                       {p.price ? `${p.price} €` : "—"}
                       {p.old_price && (
@@ -420,9 +408,7 @@ function PromotionsPage() {
                           ) : (
                             <FileText className="h-4 w-4" />
                           )}
-                          <span className="max-w-[140px] truncate">
-                            {p.file_name ?? "Voir"}
-                          </span>
+                          <span className="max-w-[140px] truncate">{p.file_name ?? "Voir"}</span>
                         </a>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -432,28 +418,29 @@ function PromotionsPage() {
                       {p.start_date ?? "—"} → {p.end_date ?? "—"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex flex-wrap items-center justify-end gap-1">
                         <Button
                           variant="outline"
                           size="sm"
                           disabled={gen.isPending}
-                          onClick={() => {
-                            setGenPromoName(p.product_name);
-                            gen.mutate(p.id);
-                          }}
+                          onClick={() => gen.mutate(p.id)}
                         >
                           {gen.isPending && gen.variables === p.id ? (
                             <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <Sparkles className="mr-1 h-3.5 w-3.5" />
                           )}
-                          Générer mes contenus
+                          Générer
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => del.mutate(p.id)}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewPromo({ id: p.id, name: p.product_name })}
                         >
+                          <ListVideo className="mr-1 h-3.5 w-3.5" />
+                          Voir les contenus générés
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => del.mutate(p.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -466,167 +453,205 @@ function PromotionsPage() {
         </CardContent>
       </Card>
 
-      <GeneratedContentDialog
-        open={genOpen}
-        onOpenChange={setGenOpen}
-        promoName={genPromoName}
-        content={genResult}
-        onUpdated={(r) => setGenResult(r)}
+      <PromotionContentsDialog
+        promotion={viewPromo}
+        onClose={() => setViewPromo(null)}
       />
     </div>
   );
 }
 
-type GeneratedContent = {
-  id: string;
-  facebook_post: string;
-  instagram_post: string;
-  instagram_story: string;
-  reel_idea: string;
-};
-
-function GeneratedContentDialog({
-  open,
-  onOpenChange,
-  promoName,
-  content,
-  onUpdated,
+function PromotionContentsDialog({
+  promotion,
+  onClose,
 }: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  promoName: string;
-  content: GeneratedContent | null;
-  onUpdated: (r: GeneratedContent) => void;
+  promotion: { id: string; name: string } | null;
+  onClose: () => void;
 }) {
+  const qc = useQueryClient();
+  const promoId = promotion?.id ?? "";
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["promotion-contents", promoId],
+    queryFn: () => listContentsByPromotionFn({ data: { promotion_id: promoId } }),
+    enabled: !!promotion,
+  });
+
+  // Group rows by generation (created_at second granularity)
+  const groups = groupByGeneration(rows);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={!!promotion} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Contenus générés — {promoName}</DialogTitle>
+          <DialogTitle>Contenus générés — {promotion?.name}</DialogTitle>
         </DialogHeader>
-        {content && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(
-              [
-                { icon: Facebook, label: "Post Facebook", field: "facebook_post" },
-                { icon: Instagram, label: "Post Instagram", field: "instagram_post" },
-                { icon: Instagram, label: "Story Instagram", field: "instagram_story" },
-                { icon: Film, label: "Idée de Reel", field: "reel_idea" },
-              ] as const
-            ).map((b) => (
-              <ContentCard
-                key={b.field}
-                icon={b.icon}
-                label={b.label}
-                value={content[b.field]}
-                onSave={async (v) => {
-                  const updated = await updateContentFn({
-                    data: {
-                      id: content.id,
-                      facebook_post:
-                        b.field === "facebook_post" ? v : content.facebook_post,
-                      instagram_post:
-                        b.field === "instagram_post" ? v : content.instagram_post,
-                      instagram_story:
-                        b.field === "instagram_story" ? v : content.instagram_story,
-                      reel_idea:
-                        b.field === "reel_idea" ? v : content.reel_idea,
-                    },
-                  });
-                  onUpdated(updated as GeneratedContent);
-                }}
-              />
-            ))}
-          </div>
+        {isLoading && (
+          <p className="py-6 text-center text-sm text-muted-foreground">Chargement…</p>
         )}
+        {!isLoading && groups.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Aucun contenu généré pour cette promotion.
+          </p>
+        )}
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <div key={g.key} className="space-y-3">
+              <div className="flex items-center justify-between border-b pb-2">
+                <p className="text-sm font-medium">
+                  Génération du{" "}
+                  {format(new Date(g.createdAt), "d MMM yyyy à HH:mm", { locale: fr })}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {g.items.map((it: any) => (
+                  <ContentItemCard
+                    key={it.id}
+                    item={it}
+                    onChanged={() => {
+                      qc.invalidateQueries({ queryKey: ["promotion-contents", promoId] });
+                      qc.invalidateQueries({ queryKey: ["contents"] });
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-function ContentCard({
-  icon: Icon,
-  label,
-  value,
-  onSave,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  onSave: (v: string) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const [saving, setSaving] = useState(false);
+function groupByGeneration(rows: any[]) {
+  // Group rows whose created_at falls within the same minute as one "generation"
+  const map = new Map<string, { key: string; createdAt: string; items: any[] }>();
+  for (const r of rows) {
+    const key = r.created_at.slice(0, 16); // YYYY-MM-DDTHH:MM
+    const existing = map.get(key);
+    if (existing) existing.items.push(r);
+    else map.set(key, { key, createdAt: r.created_at, items: [r] });
+  }
+  const order: ContentType[] = ["facebook_post", "instagram_post", "instagram_story", "reel_idea"];
+  return Array.from(map.values())
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .map((g) => ({
+      ...g,
+      items: g.items.sort(
+        (a, b) => order.indexOf(a.content_type) - order.indexOf(b.content_type),
+      ),
+    }));
+}
 
-  // sync when value changes externally
-  if (!editing && draft !== value) setDraft(value);
+function ContentItemCard({
+  item,
+  onChanged,
+}: {
+  item: { id: string; content_type: ContentType; content_text: string };
+  onChanged: () => void;
+}) {
+  const meta = TYPE_META[item.content_type] ?? TYPE_META.facebook_post;
+  const Icon = meta.icon;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(item.content_text);
+  const [saving, setSaving] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planDate, setPlanDate] = useState(format(new Date(), "yyyy-MM-dd"));
+
+  if (!editing && draft !== item.content_text) setDraft(item.content_text);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await updateContentFn({ data: { id: item.id, content_text: draft } });
+      toast.success("Sauvegardé.");
+      setEditing(false);
+      onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur de sauvegarde.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Supprimer ce contenu ?")) return;
+    try {
+      await deleteContentFn({ data: { id: item.id } });
+      toast.success("Supprimé.");
+      onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur.");
+    }
+  }
+
+  async function addToCalendar() {
+    try {
+      await addCalendarPostFn({
+        data: {
+          generated_content_id: item.id,
+          channel: item.content_type,
+          scheduled_date: planDate,
+        },
+      });
+      toast.success("Ajouté au calendrier.");
+      setPlanOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur.");
+    }
+  }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="flex items-center gap-2 text-base">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
           <Icon className="h-4 w-4 text-primary" />
-          {label}
+          {meta.label}
         </CardTitle>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
             title="Copier"
             onClick={() => {
-              navigator.clipboard.writeText(editing ? draft : value);
+              navigator.clipboard.writeText(editing ? draft : item.content_text);
               toast.success("Copié.");
             }}
           >
             <Copy className="h-4 w-4" />
           </Button>
           {editing ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Sauvegarder"
-              disabled={saving}
-              onClick={async () => {
-                setSaving(true);
-                try {
-                  await onSave(draft);
-                  toast.success("Sauvegardé.");
-                  setEditing(false);
-                } catch (e: any) {
-                  toast.error(e?.message ?? "Erreur de sauvegarde.");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
+            <Button variant="ghost" size="icon" title="Sauvegarder" disabled={saving} onClick={save}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             </Button>
           ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Modifier"
-              onClick={() => setEditing(true)}
-            >
+            <Button variant="ghost" size="icon" title="Modifier" onClick={() => setEditing(true)}>
               <Pencil className="h-4 w-4" />
             </Button>
           )}
+          <Button variant="ghost" size="icon" title="Ajouter au calendrier" onClick={() => setPlanOpen((o) => !o)}>
+            <CalendarPlus className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="Supprimer" onClick={remove}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
         {editing ? (
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={8}
-          />
+          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={8} />
         ) : (
-          <p className="whitespace-pre-wrap text-sm">{value}</p>
+          <p className="whitespace-pre-wrap text-sm">{item.content_text}</p>
+        )}
+        {planOpen && (
+          <div className="flex items-end gap-2 rounded-md border bg-muted/30 p-2">
+            <div className="flex-1">
+              <Label className="text-xs">Date</Label>
+              <Input type="date" value={planDate} onChange={(e) => setPlanDate(e.target.value)} />
+            </div>
+            <Button size="sm" onClick={addToCalendar}>
+              Planifier
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
