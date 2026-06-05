@@ -624,11 +624,22 @@ async function renderCanvas(
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fillRect(0, h - bandH, w, bandH);
 
+  const font = cfg.fontFamily ?? "Inter";
+
+  // Slogan (small, above main text)
+  if (cfg.slogan) {
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.textBaseline = "top";
+    ctx.font = `500 ${36 * scale}px "${font}", system-ui, sans-serif`;
+    ctx.fillText(cfg.slogan, pad, pad);
+  }
+
   // Main text (top-left)
   ctx.fillStyle = "#ffffff";
   ctx.textBaseline = "top";
-  ctx.font = `900 ${110 * scale}px "Inter", system-ui, sans-serif`;
-  wrapText(ctx, (cfg.mainText ?? "").toUpperCase(), pad, pad, w - pad * 2, 110 * scale);
+  ctx.font = `900 ${110 * scale}px "${font}", system-ui, sans-serif`;
+  const mainTop = cfg.slogan ? pad + 56 * scale : pad;
+  wrapText(ctx, (cfg.mainText ?? "").toUpperCase(), pad, mainTop, w - pad * 2, 110 * scale);
 
   // Badge (top-right circle)
   if (cfg.badge?.text) {
