@@ -63,6 +63,7 @@ export type EditingPost = {
   scheduled_at?: string;
   promotion_id?: string | null;
   generated_content_id?: string | null;
+  format?: string | null;
 } | null;
 
 const ACCEPT = "image/jpeg,image/png,image/jpg,video/mp4,video/quicktime";
