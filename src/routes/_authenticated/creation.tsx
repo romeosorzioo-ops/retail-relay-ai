@@ -165,7 +165,7 @@ function buildFieldPreset(
           { id: uid(), role: "custom", text: "Produit en rayon", x: 5, y: 80, width: 70, fontFamily: fText, fontSize: 48, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 6 },
         ],
         elements: [
-          { id: uid(), key: "arrow_curved", category: "arrows", x: 45, y: 30, width: 30, height: 30, rotation: 25, color: accent, strokeWidth: 8, opacity: 1 },
+          { id: uid(), key: "arrow_curved_modern", category: "arrow", x: 45, y: 30, width: 30, height: 30, rotation: 25, color: accent, strokeWidth: 8, opacity: 1 },
         ],
       };
     case "arrival_badge":
