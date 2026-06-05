@@ -24,7 +24,6 @@ import { toast } from "sonner";
 import {
   createPromotionFn,
   deletePromotionFn,
-  ensurePromotionFilesBucketFn,
   listPromotionsFn,
 } from "@/lib/promotions.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,7 +69,6 @@ function FileDropzone({
     }
     setUploading(true);
     try {
-      await ensurePromotionFilesBucketFn();
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user) throw new Error("Non authentifié");
       const ext = file.name.split(".").pop() ?? "bin";
