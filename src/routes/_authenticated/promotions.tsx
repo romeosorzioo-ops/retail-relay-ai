@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import {
   createPromotionFn,
   deletePromotionFn,
+  ensurePromotionFilesBucketFn,
   listPromotionsFn,
 } from "@/lib/promotions.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +70,7 @@ function FileDropzone({
     }
     setUploading(true);
     try {
+      await ensurePromotionFilesBucketFn();
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user) throw new Error("Non authentifié");
       const ext = file.name.split(".").pop() ?? "bin";
@@ -83,7 +85,12 @@ function FileDropzone({
       onChange({ url: pub.publicUrl, type: file.type, name: file.name });
       toast.success("Fichier importé.");
     } catch (e: any) {
-      toast.error(e.message || "Échec de l'import.");
+      const message = e?.message ?? "";
+      if (message.toLowerCase().includes("bucket")) {
+        toast.error("Le stockage promotion-files est indisponible. Réessayez dans un instant.");
+      } else {
+        toast.error(message || "Échec de l'import du fichier.");
+      }
     } finally {
       setUploading(false);
     }
