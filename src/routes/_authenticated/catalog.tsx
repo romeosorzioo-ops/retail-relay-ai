@@ -88,9 +88,10 @@ function confidenceBadge(c?: number | null) {
 
 function PromoCard({
   p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
-  onRecrop, onReplace, onClearImage, onCreateCatalog, onCreateField,
+  onRecrop, onReplace, onClearImage, onCreateCatalog, onCreateField, onPreview,
 }: any) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const thumb = p.thumbnail_url ?? p.product_image_url ?? null;
   return (
     <div
       className={cn(
@@ -100,15 +101,24 @@ function PromoCard({
       )}
     >
       <div className="flex gap-3">
-        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-muted">
-          {p.product_image_url ? (
-            <img src={p.product_image_url} alt="" className="h-full w-full object-cover" />
+        <button
+          type="button"
+          onClick={() => thumb ? onPreview(thumb, p.product_name) : fileRef.current?.click()}
+          title={thumb ? "Agrandir la miniature" : "Ajouter une miniature"}
+          className={cn(
+            "relative h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-muted",
+            thumb ? "cursor-zoom-in" : "cursor-pointer hover:bg-muted/70",
+          )}
+        >
+          {thumb ? (
+            <img src={thumb} alt={p.product_name} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-              <ImageIcon className="h-6 w-6" />
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+              <ImageIcon className="h-5 w-5" />
+              <span className="text-[9px] leading-tight px-1 text-center">Ajouter</span>
             </div>
           )}
-        </div>
+        </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2 flex-1 min-w-0">
