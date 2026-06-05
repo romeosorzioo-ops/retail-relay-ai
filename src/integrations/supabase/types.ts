@@ -240,6 +240,57 @@ export type Database = {
           },
         ]
       }
+      scheduled_posts: {
+        Row: {
+          caption: string
+          created_at: string
+          generated_content_id: string | null
+          id: string
+          media_type: string | null
+          media_url: string | null
+          platforms: string[]
+          post_type: string
+          promotion_id: string | null
+          scheduled_at: string
+          status: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string
+          created_at?: string
+          generated_content_id?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          platforms?: string[]
+          post_type?: string
+          promotion_id?: string | null
+          scheduled_at: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string
+          created_at?: string
+          generated_content_id?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          platforms?: string[]
+          post_type?: string
+          promotion_id?: string | null
+          scheduled_at?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stores: {
         Row: {
           banner: string
