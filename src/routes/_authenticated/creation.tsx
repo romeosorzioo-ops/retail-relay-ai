@@ -2,186 +2,284 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { toPng } from "html-to-image";
 import {
-  Download,
-  Image as ImageIcon,
-  Loader2,
-  Save,
-  Sparkles,
-  Tag as TagIcon,
-  Upload,
+  Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus, Save,
+  Sparkles, Tag as TagIcon, Trash2, Type, Upload, Image as ImageIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
-  listVisualTemplatesFn,
-  saveVisualFn,
-  uploadVisualImageFn,
+  listVisualTemplatesFn, saveVisualFn, uploadVisualImageFn,
 } from "@/lib/visuals.functions";
 import { listPromotionsFn } from "@/lib/promotions.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
+import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
+import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
 
 export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
 });
 
 type FormatKey = "ig_square" | "story" | "fb_post";
-
-const FORMATS: Record<
-  FormatKey,
-  { label: string; w: number; h: number; previewW: number }
-> = {
+const FORMATS: Record<FormatKey, { label: string; w: number; h: number; previewW: number }> = {
   ig_square: { label: "Post Instagram 1:1", w: 1080, h: 1080, previewW: 420 },
-  story: { label: "Story / Reel 9:16", w: 1080, h: 1920, previewW: 280 },
-  fb_post: { label: "Post Facebook", w: 1200, h: 630, previewW: 480 },
+  story:     { label: "Story / Reel 9:16",  w: 1080, h: 1920, previewW: 260 },
+  fb_post:   { label: "Post Facebook",       w: 1200, h: 630,  previewW: 480 },
 };
 
-const ICON_BADGES = ["-10%", "-20%", "-30%", "-50%", "PRIX CHOC", "NOUVEAU", "LOCAL", "WEEK-END"];
+type BlockRole = "title" | "subtitle" | "price_main" | "price_old" | "badge" | "custom";
+type Block = {
+  id: string;
+  role: BlockRole;
+  text: string;
+  x: number; y: number;          // % of canvas
+  width: number;                  // % of canvas
+  fontFamily: string;
+  fontSize: number;               // in canvas px (relative to 1080 base)
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strikethrough: boolean;
+  align: "left" | "center" | "right";
+  strokeColor?: string;
+  strokeWidth?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowX?: number;
+  shadowY?: number;
+  bgColor?: string;               // for badge
+  rounded?: number;               // for badge bg
+  padding?: number;               // for badge bg
+};
 
 type Config = {
-  layout?: "banner" | "split" | "centered" | string;
-  primaryColor?: string;
-  secondaryColor?: string;
-  fontFamily?: string;
-  slogan?: string;
-  mainText?: string;
-  productName?: string;
-  price?: string;
-  oldPrice?: string;
-  badge?: { text?: string; color?: string };
   bgImage?: string | null;
+  bgColor?: string;
   logoUrl?: string | null;
+  blocks: Block[];
 };
+
+const ROLE_LABEL: Record<BlockRole, string> = {
+  title: "Titre",
+  subtitle: "Sous-titre",
+  price_main: "Prix principal",
+  price_old: "Prix barré",
+  badge: "Badge",
+  custom: "Texte libre",
+};
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+function defaultBlocks(brand: {
+  font_primary?: string | null;
+  font_secondary?: string | null;
+  font_price?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  slogan?: string | null;
+} | null): Block[] {
+  const fTitle = brand?.font_primary ?? "Montserrat";
+  const fText = brand?.font_secondary ?? "Inter";
+  const fPrice = brand?.font_price ?? "Bebas Neue";
+  const primary = brand?.primary_color ?? "#E11D48";
+  return [
+    { id: uid(), role: "title", text: "PRIX CHOC", x: 5, y: 5, width: 70, fontFamily: fTitle, fontSize: 110, color: "#ffffff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.4)", shadowBlur: 8, shadowX: 0, shadowY: 2 },
+    { id: uid(), role: "subtitle", text: brand?.slogan ?? "Le goût du local", x: 5, y: 18, width: 70, fontFamily: fText, fontSize: 36, color: "#ffffff", bold: false, italic: false, underline: false, strikethrough: false, align: "left" },
+    { id: uid(), role: "custom", text: "Nom du produit", x: 5, y: 70, width: 90, fontFamily: fText, fontSize: 64, color: "#ffffff", bold: true, italic: false, underline: false, strikethrough: false, align: "left" },
+    { id: uid(), role: "price_old", text: "4,29 €", x: 5, y: 82, width: 20, fontFamily: fText, fontSize: 48, color: "#cccccc", bold: false, italic: false, underline: false, strikethrough: true, align: "left" },
+    { id: uid(), role: "price_main", text: "2,99 €", x: 5, y: 86, width: 50, fontFamily: fPrice, fontSize: 160, color: primary, bold: true, italic: false, underline: false, strikethrough: false, align: "left" },
+    { id: uid(), role: "badge", text: "-30%", x: 75, y: 5, width: 20, fontFamily: fTitle, fontSize: 56, color: "#111111", bold: true, italic: false, underline: false, strikethrough: false, align: "center", bgColor: "#FACC15", rounded: 999, padding: 18 },
+  ];
+}
 
 function CreationPage() {
   const qc = useQueryClient();
   const [format, setFormat] = useState<FormatKey>("ig_square");
-  const [config, setConfig] = useState<Config>({
-    layout: "banner",
-    primaryColor: "#E11D48",
-    mainText: "PRIX CHOC",
-    productName: "Nom du produit",
-    price: "2,99",
-    oldPrice: "4,29",
-    badge: { text: "-30%", color: "#FACC15" },
-    bgImage: null,
-    logoUrl: null,
-  });
+  const [config, setConfig] = useState<Config>({ bgImage: null, bgColor: "#1f2937", logoUrl: null, blocks: [] });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [promotionId, setPromotionId] = useState<string | null>(null);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
 
-  const { data: templates = [] } = useQuery({
-    queryKey: ["visual-templates"],
-    queryFn: () => listVisualTemplatesFn(),
-  });
-  const { data: promotions = [] } = useQuery({
-    queryKey: ["promotions"],
-    queryFn: () => listPromotionsFn(),
-  });
-  const { data: brand } = useQuery({
-    queryKey: ["my-brand"],
-    queryFn: () => getMyBrandProfileFn(),
-  });
+  const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
+  const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
+  const { data: brand } = useQuery({ queryKey: ["my-brand"], queryFn: () => getMyBrandProfileFn() });
+  const { data: brandFonts = [] } = useQuery({ queryKey: ["my-brand-fonts"], queryFn: () => listBrandFontsFn() });
 
-  // Pre-fill brand identity into the visual when brand profile loads
+  // Register every uploaded font in this page
+  useEffect(() => { brandFonts.forEach((f) => registerCustomFont(f.name, f.url)); }, [brandFonts]);
+
+  // Initialise blocks from brand profile when first available
+  const initRef = useRef(false);
   useEffect(() => {
+    if (initRef.current) return;
     if (!brand) return;
-    const b = brand as typeof brand & {
-      custom_font_url?: string | null;
-      custom_font_name?: string | null;
-    };
-    // Register custom font so canvas can render it
-    if (b.custom_font_url && b.custom_font_name && typeof window !== "undefined") {
-      try {
-        const ff = new FontFace(b.custom_font_name, `url(${b.custom_font_url})`);
-        ff.load()
-          .then((loaded) => {
-            (document as Document).fonts.add(loaded);
-            // Force re-render of canvas once font is ready
-            setConfig((c) => ({ ...c }));
-          })
-          .catch(() => {});
-      } catch {
-        /* noop */
-      }
-    }
+    initRef.current = true;
+    const b = brand as Parameters<typeof defaultBlocks>[0];
     setConfig((c) => ({
       ...c,
-      primaryColor: c.primaryColor === "#E11D48" && brand.primary_color
-        ? brand.primary_color
-        : c.primaryColor,
-      secondaryColor: c.secondaryColor ?? brand.secondary_color ?? undefined,
-      fontFamily: c.fontFamily ?? brand.font_family ?? undefined,
-      slogan: c.slogan ?? brand.slogan ?? undefined,
-      logoUrl: c.logoUrl ?? brand.logo_url ?? null,
+      bgColor: b?.primary_color ?? c.bgColor,
+      logoUrl: c.logoUrl ?? (brand?.logo_url ?? null),
+      blocks: c.blocks.length ? c.blocks : defaultBlocks(b),
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand]);
 
-
+  // Default blocks immediately so canvas isn't blank if brand never loads
+  useEffect(() => {
+    setConfig((c) => (c.blocks.length === 0 ? { ...c, blocks: defaultBlocks(null) } : c));
+  }, []);
 
   const dims = FORMATS[format];
+  const previewWidth = dims.previewW;
+  const previewHeight = Math.round((dims.h / dims.w) * previewWidth);
+  const scale = previewWidth / dims.w;
 
-  // Render to canvas whenever config or format changes
-  useEffect(() => {
-    void renderCanvas(canvasRef.current, dims.w, dims.h, config);
-  }, [config, dims.w, dims.h]);
+  const allFontNames = useMemo(
+    () => [...FONT_LIBRARY.map((f) => f.name), ...brandFonts.map((f) => f.name)],
+    [brandFonts],
+  );
+
+  const selected = config.blocks.find((b) => b.id === selectedId) ?? null;
+
+  function updateBlock(id: string, patch: Partial<Block>) {
+    setConfig((c) => ({ ...c, blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
+  }
+  function deleteBlock(id: string) {
+    setConfig((c) => ({ ...c, blocks: c.blocks.filter((b) => b.id !== id) }));
+    if (selectedId === id) setSelectedId(null);
+  }
+  function addBlock(role: BlockRole) {
+    const fTitle = brand?.font_primary ?? "Montserrat";
+    const fText = brand?.font_secondary ?? "Inter";
+    const fPrice = brand?.font_price ?? "Bebas Neue";
+    const primary = brand?.primary_color ?? "#E11D48";
+    const presets: Record<BlockRole, Partial<Block>> = {
+      title:      { text: "TITRE", fontFamily: fTitle, fontSize: 110, color: "#ffffff", bold: true },
+      subtitle:   { text: "Sous-titre", fontFamily: fText, fontSize: 40, color: "#ffffff" },
+      price_main: { text: "9,99 €", fontFamily: fPrice, fontSize: 160, color: primary, bold: true },
+      price_old:  { text: "12,99 €", fontFamily: fText, fontSize: 48, color: "#999999", strikethrough: true },
+      badge:      { text: "-30%", fontFamily: fTitle, fontSize: 56, color: "#111111", bold: true, bgColor: "#FACC15", rounded: 999, padding: 18, align: "center", width: 20 },
+      custom:     { text: "Texte", fontFamily: fText, fontSize: 48, color: "#ffffff" },
+    };
+    const base: Block = {
+      id: uid(), role, text: "", x: 10, y: 40, width: 60, fontFamily: fText, fontSize: 48,
+      color: "#ffffff", bold: false, italic: false, underline: false, strikethrough: false, align: "left",
+      ...presets[role],
+    } as Block;
+    setConfig((c) => ({ ...c, blocks: [...c.blocks, base] }));
+    setSelectedId(base.id);
+  }
+
+  // Drag a block on the canvas (% coords)
+  function onPointerDownBlock(e: React.PointerEvent, b: Block) {
+    e.stopPropagation();
+    setSelectedId(b.id);
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { id: b.id, startX: e.clientX, startY: e.clientY, bx: b.x, by: b.y, rect: wrap.getBoundingClientRect() };
+  }
+  function onPointerMoveBlock(e: React.PointerEvent) {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = ((e.clientX - d.startX) / d.rect.width) * 100;
+    const dy = ((e.clientY - d.startY) / d.rect.height) * 100;
+    updateBlock(d.id, { x: Math.max(0, Math.min(100, d.bx + dx)), y: Math.max(0, Math.min(100, d.by + dy)) });
+  }
+  function onPointerUpBlock(e: React.PointerEvent) {
+    if (dragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    }
+    dragRef.current = null;
+  }
 
   function applyTemplate(t: (typeof templates)[number]) {
     setTemplateId(t.id);
-    const cfg = (t.config_json ?? {}) as Config;
-    setConfig((prev) => ({
-      ...prev,
-      ...cfg,
-      // Brand identity always wins over template defaults
-      primaryColor: brand?.primary_color ?? cfg.primaryColor ?? prev.primaryColor,
-      secondaryColor:
-        brand?.secondary_color ?? cfg.secondaryColor ?? prev.secondaryColor,
-      fontFamily: brand?.font_family ?? cfg.fontFamily ?? prev.fontFamily,
-      slogan: brand?.slogan ?? cfg.slogan ?? prev.slogan,
-      logoUrl: brand?.logo_url ?? prev.logoUrl ?? cfg.logoUrl ?? null,
-    }));
-    if (t.format === "ig_square" || t.format === "story" || t.format === "fb_post") {
-      setFormat(t.format);
+    const cfg = (t.config_json ?? {}) as Partial<Config> & {
+      // legacy fields (for old templates)
+      primaryColor?: string; mainText?: string; productName?: string;
+      price?: string; oldPrice?: string; badge?: { text?: string; color?: string };
+      slogan?: string; fontFamily?: string;
+    };
+    if (t.format === "ig_square" || t.format === "story" || t.format === "fb_post") setFormat(t.format);
+    if (Array.isArray(cfg.blocks) && cfg.blocks.length) {
+      // New-style template
+      const fTitle = brand?.font_primary;
+      const fText = brand?.font_secondary;
+      const fPrice = brand?.font_price;
+      const primary = brand?.primary_color;
+      const enriched = cfg.blocks.map((b) => {
+        const out = { ...b };
+        // Brand identity overrides template font choices when role matches
+        if (fTitle && (b.role === "title" || b.role === "subtitle")) out.fontFamily = fTitle;
+        else if (fPrice && b.role === "price_main") out.fontFamily = fPrice;
+        else if (fText && b.role === "price_old") out.fontFamily = fText;
+        if (primary && b.role === "price_main") out.color = primary;
+        return out;
+      });
+      setConfig((c) => ({
+        ...c,
+        bgColor: cfg.bgColor ?? c.bgColor,
+        bgImage: cfg.bgImage ?? c.bgImage,
+        logoUrl: brand?.logo_url ?? c.logoUrl ?? cfg.logoUrl ?? null,
+        blocks: enriched,
+      }));
+    } else {
+      // Legacy template -> rebuild blocks from old-shape config
+      const legacy = defaultBlocks(brand as Parameters<typeof defaultBlocks>[0]);
+      const setRole = (role: BlockRole, text?: string) => {
+        const idx = legacy.findIndex((b) => b.role === role);
+        if (idx >= 0 && text != null) legacy[idx] = { ...legacy[idx], text };
+      };
+      setRole("title", cfg.mainText);
+      setRole("custom", cfg.productName);
+      setRole("price_main", cfg.price ? `${cfg.price} €` : undefined);
+      setRole("price_old", cfg.oldPrice ? `${cfg.oldPrice} €` : undefined);
+      setRole("badge", cfg.badge?.text);
+      setRole("subtitle", cfg.slogan ?? brand?.slogan ?? undefined);
+      setConfig((c) => ({
+        ...c,
+        bgColor: cfg.primaryColor ?? c.bgColor,
+        logoUrl: brand?.logo_url ?? c.logoUrl ?? null,
+        blocks: legacy,
+      }));
     }
   }
-
 
   function applyPromotion(id: string) {
     setPromotionId(id);
     const p = promotions.find((x) => x.id === id);
     if (!p) return;
-    setConfig((c) => ({
-      ...c,
-      productName: p.product_name ?? c.productName,
-      price: p.price != null ? String(p.price).replace(".", ",") : c.price,
-      oldPrice:
-        p.old_price != null ? String(p.old_price).replace(".", ",") : c.oldPrice,
-      bgImage:
-        p.file_type?.startsWith("image/") && p.file_url ? p.file_url : c.bgImage,
-    }));
+    setConfig((c) => {
+      const blocks = c.blocks.map((b) => {
+        if (b.role === "custom" && p.product_name) return { ...b, text: p.product_name };
+        if (b.role === "price_main" && p.price != null) return { ...b, text: `${String(p.price).replace(".", ",")} €` };
+        if (b.role === "price_old" && p.old_price != null) return { ...b, text: `${String(p.old_price).replace(".", ",")} €` };
+        return b;
+      });
+      return {
+        ...c,
+        bgImage: p.file_type?.startsWith("image/") && p.file_url ? p.file_url : c.bgImage,
+        blocks,
+      };
+    });
   }
 
   async function uploadImage(file: File, target: "bg" | "logo") {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Image uniquement (jpg, png)");
-      return;
-    }
+    if (!file.type.startsWith("image/")) { toast.error("Image uniquement (jpg, png)"); return; }
     const setter = target === "bg" ? setUploadingBg : setUploadingLogo;
     setter(true);
     try {
@@ -189,60 +287,54 @@ function CreationPage() {
       let binary = "";
       const bytes = new Uint8Array(buf);
       const chunk = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      }
+      for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
       const data_base64 = btoa(binary);
-      const res = await uploadVisualImageFn({
-        data: { file_name: file.name, file_type: file.type, data_base64 },
-      });
-      setConfig((c) =>
-        target === "bg" ? { ...c, bgImage: res.url } : { ...c, logoUrl: res.url },
-      );
+      const res = await uploadVisualImageFn({ data: { file_name: file.name, file_type: file.type, data_base64 } });
+      setConfig((c) => target === "bg" ? { ...c, bgImage: res.url } : { ...c, logoUrl: res.url });
       toast.success("Image ajoutée");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setter(false);
-    }
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setter(false); }
   }
 
-  function downloadPng() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
+  async function exportPng(): Promise<{ blob: Blob; dataUrl: string } | null> {
+    const node = canvasWrapRef.current;
+    if (!node) return null;
+    const dataUrl = await toPng(node, {
+      cacheBust: true,
+      pixelRatio: dims.w / previewWidth,
+      width: previewWidth,
+      height: previewHeight,
+      backgroundColor: "#ffffff",
+    });
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return { blob, dataUrl };
+  }
+
+  async function downloadPng() {
+    try {
+      const r = await exportPng();
+      if (!r) return;
       const a = document.createElement("a");
-      a.href = url;
+      a.href = r.dataUrl;
       a.download = `komaag-${format}-${Date.now()}.png`;
       a.click();
-      URL.revokeObjectURL(url);
-    }, "image/png");
+    } catch (e) { toast.error((e as Error).message); }
   }
 
   const save = useMutation({
     mutationFn: async () => {
-      // Upload PNG first
-      const blob = await new Promise<Blob | null>((r) =>
-        canvasRef.current?.toBlob((b) => r(b), "image/png"),
-      );
+      const r = await exportPng();
       let image_url: string | null = null;
-      if (blob) {
-        const buf = await blob.arrayBuffer();
+      if (r) {
+        const buf = await r.blob.arrayBuffer();
         let binary = "";
         const bytes = new Uint8Array(buf);
         const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        }
+        for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
         const data_base64 = btoa(binary);
         const res = await uploadVisualImageFn({
-          data: {
-            file_name: `visual-${Date.now()}.png`,
-            file_type: "image/png",
-            data_base64,
-          },
+          data: { file_name: `visual-${Date.now()}.png`, file_type: "image/png", data_base64 },
         });
         image_url = res.url;
       }
@@ -252,7 +344,7 @@ function CreationPage() {
           promotion_id: promotionId,
           format,
           image_url,
-          config_json: config,
+          config_json: config as unknown as Record<string, unknown>,
         },
       });
     },
@@ -263,238 +355,91 @@ function CreationPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const previewWidth = dims.previewW;
-  const previewHeight = Math.round((dims.h / dims.w) * previewWidth);
-
-  const templatesByFormat = useMemo(
-    () => templates.filter((t) => t.format === format || true),
-    [templates, format],
-  );
-
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Création</h1>
-          <p className="text-sm text-muted-foreground">
-            Composez un visuel social-media en quelques clics.
-          </p>
+          <p className="text-sm text-muted-foreground">Composez un visuel social-media en quelques clics.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={downloadPng}>
-            <Download className="h-4 w-4" /> PNG
-          </Button>
+          <Button variant="outline" onClick={downloadPng}><Download className="h-4 w-4" /> PNG</Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
+            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Enregistrer
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr_280px]">
-        {/* LEFT — settings */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px]">
+        {/* LEFT — canvas / format / background / add blocks */}
         <Card>
           <CardContent className="space-y-4 p-4">
             <div>
               <Label className="mb-1 block text-xs">Format</Label>
               <Select value={format} onValueChange={(v) => setFormat(v as FormatKey)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(FORMATS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>
-                      {v.label}
-                    </SelectItem>
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="mb-1 block text-xs">Texte principal</Label>
-              <Input
-                value={config.mainText ?? ""}
-                onChange={(e) => setConfig({ ...config, mainText: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label className="mb-1 block text-xs">Nom du produit</Label>
-              <Input
-                value={config.productName ?? ""}
-                onChange={(e) =>
-                  setConfig({ ...config, productName: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="mb-1 block text-xs">Prix</Label>
-                <Input
-                  value={config.price ?? ""}
-                  onChange={(e) => setConfig({ ...config, price: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs">Ancien prix</Label>
-                <Input
-                  value={config.oldPrice ?? ""}
-                  onChange={(e) =>
-                    setConfig({ ...config, oldPrice: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-1 block text-xs">Couleur principale</Label>
+              <Label className="mb-1 block text-xs">Couleur de fond</Label>
               <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={config.primaryColor ?? "#E11D48"}
-                  onChange={(e) =>
-                    setConfig({ ...config, primaryColor: e.target.value })
-                  }
-                  className="h-9 w-12 cursor-pointer rounded border"
-                />
-                <Input
-                  value={config.primaryColor ?? ""}
-                  onChange={(e) =>
-                    setConfig({ ...config, primaryColor: e.target.value })
-                  }
-                />
+                <input type="color" value={config.bgColor ?? "#1f2937"}
+                  onChange={(e) => setConfig((c) => ({ ...c, bgColor: e.target.value }))}
+                  className="h-9 w-12 cursor-pointer rounded border" />
+                <Input value={config.bgColor ?? ""}
+                  onChange={(e) => setConfig((c) => ({ ...c, bgColor: e.target.value }))} />
               </div>
             </div>
 
-            <div>
-              <Label className="mb-1 block text-xs">Couleur secondaire</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={config.secondaryColor ?? "#1f2937"}
-                  onChange={(e) =>
-                    setConfig({ ...config, secondaryColor: e.target.value })
-                  }
-                  className="h-9 w-12 cursor-pointer rounded border"
-                />
-                <Input
-                  value={config.secondaryColor ?? ""}
-                  onChange={(e) =>
-                    setConfig({ ...config, secondaryColor: e.target.value })
-                  }
-                />
-              </div>
-            </div>
+            <UploadField label="Image de fond" uploading={uploadingBg} currentUrl={config.bgImage ?? null}
+              onClear={() => setConfig((c) => ({ ...c, bgImage: null }))} onFile={(f) => uploadImage(f, "bg")} />
+            <UploadField label="Logo" uploading={uploadingLogo} currentUrl={config.logoUrl ?? null}
+              onClear={() => setConfig((c) => ({ ...c, logoUrl: null }))} onFile={(f) => uploadImage(f, "logo")} />
 
             <div>
-              <Label className="mb-1 block text-xs">Slogan</Label>
-              <Input
-                value={config.slogan ?? ""}
-                placeholder="Slogan de votre magasin"
-                onChange={(e) => setConfig({ ...config, slogan: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label className="mb-1 block text-xs">Police</Label>
-              {(() => {
-                const FONTS = [
-                  "Inter",
-                  "Roboto",
-                  "Poppins",
-                  "Montserrat",
-                  "Playfair Display",
-                  "Lora",
-                ];
-                const b = (brand ?? {}) as {
-                  custom_font_name?: string | null;
-                };
-                const customName = b.custom_font_name ?? null;
-                const options = [
-                  ...FONTS,
-                  ...(customName && !FONTS.includes(customName)
-                    ? [customName]
-                    : []),
-                ];
-                const current = config.fontFamily ?? "Inter";
-                return (
-                  <Select
-                    value={options.includes(current) ? current : "Inter"}
-                    onValueChange={(v) =>
-                      setConfig({ ...config, fontFamily: v })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {options.map((f) => (
-                        <SelectItem key={f} value={f}>
-                          {f}
-                          {f === customName ? " (importée)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                );
-              })()}
-            </div>
-
-            <div>
-              <Label className="mb-1 block text-xs">Badge promo</Label>
-              <div className="flex flex-wrap gap-1">
-                {ICON_BADGES.map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() =>
-                      setConfig({
-                        ...config,
-                        badge: { ...(config.badge ?? {}), text: b },
-                      })
-                    }
-                    className={cn(
-                      "rounded border px-2 py-0.5 text-[11px] transition",
-                      config.badge?.text === b
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "hover:bg-accent",
-                    )}
-                  >
-                    {b}
-                  </button>
+              <Label className="mb-1 block text-xs">Ajouter un bloc</Label>
+              <div className="grid grid-cols-2 gap-1">
+                {(Object.keys(ROLE_LABEL) as BlockRole[]).map((r) => (
+                  <Button key={r} variant="outline" size="sm" onClick={() => addBlock(r)}>
+                    <Plus className="h-3 w-3" /> {ROLE_LABEL[r]}
+                  </Button>
                 ))}
               </div>
-              <Input
-                className="mt-2"
-                placeholder="Texte du badge"
-                value={config.badge?.text ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    badge: { ...(config.badge ?? {}), text: e.target.value },
-                  })
-                }
-              />
             </div>
 
-            <UploadField
-              label="Image de fond"
-              uploading={uploadingBg}
-              currentUrl={config.bgImage ?? null}
-              onClear={() => setConfig({ ...config, bgImage: null })}
-              onFile={(f) => uploadImage(f, "bg")}
-            />
-            <UploadField
-              label="Logo magasin"
-              uploading={uploadingLogo}
-              currentUrl={config.logoUrl ?? null}
-              onClear={() => setConfig({ ...config, logoUrl: null })}
-              onFile={(f) => uploadImage(f, "logo")}
-            />
+            <div>
+              <Label className="mb-1 block text-xs">Blocs</Label>
+              <ul className="space-y-1">
+                {config.blocks.map((b) => (
+                  <li key={b.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(b.id)}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded border px-2 py-1 text-left text-xs",
+                        selectedId === b.id ? "border-primary bg-accent" : "hover:bg-accent",
+                      )}
+                    >
+                      <span className="truncate">
+                        <Type className="mr-1 inline h-3 w-3" />
+                        {ROLE_LABEL[b.role]} — {b.text || "(vide)"}
+                      </span>
+                      <Trash2
+                        className="h-3 w-3 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); deleteBlock(b.id); }}
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </CardContent>
         </Card>
 
@@ -502,50 +447,243 @@ function CreationPage() {
         <Card>
           <CardContent className="flex items-center justify-center p-4">
             <div
-              className="overflow-hidden rounded-md border shadow-sm"
-              style={{ width: previewWidth, height: previewHeight }}
+              ref={canvasWrapRef}
+              onPointerMove={onPointerMoveBlock}
+              onPointerUp={onPointerUpBlock}
+              onClick={() => setSelectedId(null)}
+              className="relative overflow-hidden rounded-md border shadow-sm"
+              style={{
+                width: previewWidth,
+                height: previewHeight,
+                background: config.bgColor ?? "#1f2937",
+                backgroundImage: config.bgImage ? `linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.3)), url(${config.bgImage})` : undefined,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
             >
-              <canvas
-                ref={canvasRef}
-                width={dims.w}
-                height={dims.h}
-                style={{ width: previewWidth, height: previewHeight }}
-              />
+              {config.blocks.map((b) => {
+                const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
+                  ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
+                  : undefined;
+                const stroke = b.strokeColor && b.strokeWidth
+                  ? `${b.strokeWidth * scale}px ${b.strokeColor}`
+                  : undefined;
+                const decorations = [
+                  b.underline ? "underline" : "",
+                  b.strikethrough ? "line-through" : "",
+                ].filter(Boolean).join(" ");
+                return (
+                  <div
+                    key={b.id}
+                    onPointerDown={(e) => onPointerDownBlock(e, b)}
+                    onClick={(e) => { e.stopPropagation(); setSelectedId(b.id); }}
+                    className={cn("absolute cursor-move select-none", selectedId === b.id && "outline outline-2 outline-primary/80")}
+                    style={{
+                      left: `${b.x}%`,
+                      top: `${b.y}%`,
+                      width: `${b.width}%`,
+                      fontFamily: `"${b.fontFamily}", system-ui, sans-serif`,
+                      fontSize: `${b.fontSize * scale}px`,
+                      color: b.color,
+                      fontWeight: b.bold ? 900 : 400,
+                      fontStyle: b.italic ? "italic" : "normal",
+                      textDecoration: decorations || undefined,
+                      textAlign: b.align,
+                      lineHeight: 1.1,
+                      textShadow,
+                      WebkitTextStroke: stroke,
+                      background: b.bgColor,
+                      borderRadius: b.rounded != null ? `${b.rounded}px` : undefined,
+                      padding: b.padding != null ? `${b.padding * scale}px ${(b.padding ?? 0) * 1.5 * scale}px` : undefined,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {b.text || " "}
+                  </div>
+                );
+              })}
+              {config.logoUrl && (
+                <img
+                  src={config.logoUrl}
+                  alt="Logo"
+                  className="absolute"
+                  style={{
+                    right: `${20 * scale}px`,
+                    bottom: `${20 * scale}px`,
+                    width: `${160 * scale}px`,
+                    objectFit: "contain",
+                  }}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* RIGHT — templates / promo / library */}
+        {/* RIGHT — block properties + templates */}
         <Card>
           <CardContent className="p-3">
-            <Tabs defaultValue="templates">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="templates">
-                  <Sparkles className="h-3.5 w-3.5" /> Modèles
-                </TabsTrigger>
-                <TabsTrigger value="link">
-                  <TagIcon className="h-3.5 w-3.5" /> Promo
-                </TabsTrigger>
+            <Tabs defaultValue="props">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="props"><Type className="h-3.5 w-3.5" /> Bloc</TabsTrigger>
+                <TabsTrigger value="templates"><Sparkles className="h-3.5 w-3.5" /> Modèles</TabsTrigger>
+                <TabsTrigger value="link"><TagIcon className="h-3.5 w-3.5" /> Promo</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="props">
+                <ScrollArea className="h-[560px] pr-2">
+                  {!selected ? (
+                    <p className="px-1 py-4 text-xs text-muted-foreground">
+                      Sélectionnez un bloc dans le canvas ou la liste pour modifier ses propriétés.
+                    </p>
+                  ) : (
+                    <div className="space-y-3 py-2">
+                      <div>
+                        <Label className="mb-1 block text-xs">Rôle</Label>
+                        <Select value={selected.role} onValueChange={(v) => updateBlock(selected.id, { role: v as BlockRole })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(Object.keys(ROLE_LABEL) as BlockRole[]).map((r) => (
+                              <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Texte</Label>
+                        <Input value={selected.text} onChange={(e) => updateBlock(selected.id, { text: e.target.value })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Police</Label>
+                        <Select value={allFontNames.includes(selected.fontFamily) ? selected.fontFamily : "Inter"}
+                          onValueChange={(v) => updateBlock(selected.id, { fontFamily: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {FONT_LIBRARY.map((f) => (
+                              <SelectItem key={f.name} value={f.name}>
+                                <span style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}>{f.name}</span>
+                              </SelectItem>
+                            ))}
+                            {brandFonts.map((f) => (
+                              <SelectItem key={f.id} value={f.name}>
+                                <span style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}>
+                                  {f.name} (importée)
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="mb-1 block text-xs">Taille</Label>
+                          <Input type="number" value={selected.fontSize}
+                            onChange={(e) => updateBlock(selected.id, { fontSize: Number(e.target.value) || 12 })} />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-xs">Largeur (%)</Label>
+                          <Input type="number" value={selected.width}
+                            onChange={(e) => updateBlock(selected.id, { width: Math.max(5, Math.min(100, Number(e.target.value) || 60)) })} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Couleur</Label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={selected.color}
+                            onChange={(e) => updateBlock(selected.id, { color: e.target.value })}
+                            className="h-9 w-12 cursor-pointer rounded border" />
+                          <Input value={selected.color}
+                            onChange={(e) => updateBlock(selected.id, { color: e.target.value })} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Style</Label>
+                        <div className="flex flex-wrap gap-1">
+                          <Toggle on={selected.bold} onClick={() => updateBlock(selected.id, { bold: !selected.bold })}><Bold className="h-3.5 w-3.5" /></Toggle>
+                          <Toggle on={selected.italic} onClick={() => updateBlock(selected.id, { italic: !selected.italic })}><Italic className="h-3.5 w-3.5" /></Toggle>
+                          <Toggle on={selected.underline} onClick={() => updateBlock(selected.id, { underline: !selected.underline })}><Underline className="h-3.5 w-3.5" /></Toggle>
+                          <Toggle on={selected.strikethrough} onClick={() => updateBlock(selected.id, { strikethrough: !selected.strikethrough })}><Strikethrough className="h-3.5 w-3.5" /></Toggle>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Alignement</Label>
+                        <Select value={selected.align} onValueChange={(v) => updateBlock(selected.id, { align: v as Block["align"] })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="left">Gauche</SelectItem>
+                            <SelectItem value="center">Centre</SelectItem>
+                            <SelectItem value="right">Droite</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="mb-1 block text-xs">Contour</Label>
+                          <input type="color" value={selected.strokeColor ?? "#000000"}
+                            onChange={(e) => updateBlock(selected.id, { strokeColor: e.target.value })}
+                            className="h-9 w-full cursor-pointer rounded border" />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-xs">Épaisseur</Label>
+                          <Input type="number" value={selected.strokeWidth ?? 0}
+                            onChange={(e) => updateBlock(selected.id, { strokeWidth: Number(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="mb-1 block text-xs">Ombre</Label>
+                          <input type="color" value={selected.shadowColor?.startsWith("#") ? selected.shadowColor : "#000000"}
+                            onChange={(e) => updateBlock(selected.id, { shadowColor: e.target.value })}
+                            className="h-9 w-full cursor-pointer rounded border" />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-xs">Flou ombre</Label>
+                          <Input type="number" value={selected.shadowBlur ?? 0}
+                            onChange={(e) => updateBlock(selected.id, { shadowBlur: Number(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      {(selected.role === "badge") && (
+                        <div className="rounded-md border p-2">
+                          <Label className="mb-1 block text-xs">Fond du badge</Label>
+                          <input type="color" value={selected.bgColor ?? "#FACC15"}
+                            onChange={(e) => updateBlock(selected.id, { bgColor: e.target.value })}
+                            className="h-9 w-full cursor-pointer rounded border" />
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="mb-1 block text-xs">Rayon</Label>
+                              <Input type="number" value={selected.rounded ?? 0}
+                                onChange={(e) => updateBlock(selected.id, { rounded: Number(e.target.value) || 0 })} />
+                            </div>
+                            <div>
+                              <Label className="mb-1 block text-xs">Padding</Label>
+                              <Input type="number" value={selected.padding ?? 0}
+                                onChange={(e) => updateBlock(selected.id, { padding: Number(e.target.value) || 0 })} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <Button variant="destructive" size="sm" onClick={() => deleteBlock(selected.id)}>
+                        <Trash2 className="h-3.5 w-3.5" /> Supprimer le bloc
+                      </Button>
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+
               <TabsContent value="templates">
-                <ScrollArea className="h-[520px] pr-2">
+                <ScrollArea className="h-[560px] pr-2">
                   <div className="grid grid-cols-2 gap-2">
-                    {templatesByFormat.map((t) => {
-                      const cfg = t.config_json as unknown as Config;
+                    {templates.map((t) => {
+                      const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
                       return (
-                        <button
-                          key={t.id}
-                          onClick={() => applyTemplate(t)}
+                        <button key={t.id} onClick={() => applyTemplate(t)}
                           className={cn(
                             "group flex flex-col gap-1 rounded-md border p-2 text-left transition hover:border-primary",
                             templateId === t.id && "border-primary",
-                          )}
-                        >
-                          <div
-                            className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
-                            style={{ background: cfg.primaryColor ?? "#444" }}
-                          >
-                            {cfg.mainText ?? t.name}
+                          )}>
+                          <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
+                            style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
+                            {t.name}
                           </div>
                           <span className="truncate text-[11px]">{t.name}</span>
                         </button>
@@ -554,30 +692,19 @@ function CreationPage() {
                   </div>
                 </ScrollArea>
               </TabsContent>
+
               <TabsContent value="link" className="space-y-3">
                 <div>
-                  <Label className="mb-1 block text-xs">
-                    Pré-remplir depuis une promotion
-                  </Label>
-                  <Select
-                    value={promotionId ?? ""}
-                    onValueChange={(v) => applyPromotion(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choisir une promo" />
-                    </SelectTrigger>
+                  <Label className="mb-1 block text-xs">Pré-remplir depuis une promotion</Label>
+                  <Select value={promotionId ?? ""} onValueChange={(v) => applyPromotion(v)}>
+                    <SelectTrigger><SelectValue placeholder="Choisir une promo" /></SelectTrigger>
                     <SelectContent>
-                      {promotions.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.product_name}
-                        </SelectItem>
-                      ))}
+                      {promotions.map((p) => <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Lier ce visuel à une promotion permet de le retrouver dans la
-                  bibliothèque et de le programmer depuis le calendrier.
+                  Lier ce visuel à une promotion permet de le retrouver dans la bibliothèque et de le programmer depuis le calendrier.
                 </p>
               </TabsContent>
             </Tabs>
@@ -588,18 +715,23 @@ function CreationPage() {
   );
 }
 
+function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded border transition",
+        on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+      )}>
+      {children}
+    </button>
+  );
+}
+
 function UploadField({
-  label,
-  uploading,
-  currentUrl,
-  onClear,
-  onFile,
+  label, uploading, currentUrl, onClear, onFile,
 }: {
-  label: string;
-  uploading: boolean;
-  currentUrl: string | null;
-  onClear: () => void;
-  onFile: (f: File) => void;
+  label: string; uploading: boolean; currentUrl: string | null;
+  onClear: () => void; onFile: (f: File) => void;
 }) {
   return (
     <div>
@@ -608,232 +740,17 @@ function UploadField({
         {currentUrl ? (
           <>
             <img src={currentUrl} alt="" className="h-10 w-10 rounded object-cover" />
-            <Button size="sm" variant="outline" onClick={onClear}>
-              Retirer
-            </Button>
+            <Button size="sm" variant="outline" onClick={onClear}>Retirer</Button>
           </>
         ) : (
           <label className="flex cursor-pointer items-center gap-1 rounded-md border bg-background px-3 py-1.5 text-xs hover:bg-accent">
-            {uploading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Upload className="h-3.5 w-3.5" />
-            )}
-            Charger une image
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onFile(f);
-              }}
-            />
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            <ImageIcon className="h-3.5 w-3.5" /> Charger
+            <input type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
           </label>
         )}
       </div>
     </div>
   );
-}
-
-// ---------- Canvas renderer ----------
-
-const imageCache = new Map<string, HTMLImageElement>();
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  const cached = imageCache.get(url);
-  if (cached?.complete && cached.naturalWidth > 0) return Promise.resolve(cached);
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      imageCache.set(url, img);
-      resolve(img);
-    };
-    img.onerror = () => reject(new Error("Image error"));
-    img.src = url;
-  });
-}
-
-function drawCover(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-) {
-  const ir = img.naturalWidth / img.naturalHeight;
-  const tr = w / h;
-  let sx = 0,
-    sy = 0,
-    sw = img.naturalWidth,
-    sh = img.naturalHeight;
-  if (ir > tr) {
-    sw = sh * tr;
-    sx = (img.naturalWidth - sw) / 2;
-  } else {
-    sh = sw / tr;
-    sy = (img.naturalHeight - sh) / 2;
-  }
-  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-}
-
-async function renderCanvas(
-  canvas: HTMLCanvasElement | null,
-  w: number,
-  h: number,
-  cfg: Config,
-) {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Background
-  if (cfg.bgImage) {
-    try {
-      const img = await loadImage(cfg.bgImage);
-      drawCover(ctx, img, 0, 0, w, h);
-      ctx.fillStyle = "rgba(0,0,0,0.35)";
-      ctx.fillRect(0, 0, w, h);
-    } catch {
-      ctx.fillStyle = cfg.primaryColor ?? "#444";
-      ctx.fillRect(0, 0, w, h);
-    }
-  } else {
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, cfg.primaryColor ?? "#444");
-    grad.addColorStop(1, shade(cfg.primaryColor ?? "#444", -30));
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-  }
-
-  const scale = Math.min(w, h) / 1080;
-  const pad = 60 * scale;
-
-  // Bottom banner band
-  const bandH = h * 0.32;
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.fillRect(0, h - bandH, w, bandH);
-
-  const font = cfg.fontFamily ?? "Inter";
-
-  // Slogan (small, above main text)
-  if (cfg.slogan) {
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.textBaseline = "top";
-    ctx.font = `500 ${36 * scale}px "${font}", system-ui, sans-serif`;
-    ctx.fillText(cfg.slogan, pad, pad);
-  }
-
-  // Main text (top-left)
-  ctx.fillStyle = "#ffffff";
-  ctx.textBaseline = "top";
-  ctx.font = `900 ${110 * scale}px "${font}", system-ui, sans-serif`;
-  const mainTop = cfg.slogan ? pad + 56 * scale : pad;
-  wrapText(ctx, (cfg.mainText ?? "").toUpperCase(), pad, mainTop, w - pad * 2, 110 * scale);
-
-  // Badge (top-right circle)
-  if (cfg.badge?.text) {
-    const r = 130 * scale;
-    const cx = w - pad - r;
-    const cy = pad + r;
-    ctx.fillStyle = cfg.badge.color ?? "#FACC15";
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#111";
-    ctx.font = `900 ${52 * scale}px "${font}", system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(cfg.badge.text, cx, cy);
-    ctx.textAlign = "start";
-    ctx.textBaseline = "top";
-  }
-
-  // Product name (band)
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `700 ${64 * scale}px "${font}", system-ui, sans-serif`;
-  wrapText(
-    ctx,
-    cfg.productName ?? "",
-    pad,
-    h - bandH + pad * 0.4,
-    w - pad * 2,
-    72 * scale,
-  );
-
-  // Price
-  if (cfg.price) {
-    ctx.fillStyle = cfg.primaryColor ?? "#E11D48";
-    ctx.font = `900 ${160 * scale}px "${font}", system-ui, sans-serif`;
-    const priceText = `${cfg.price} €`;
-    ctx.fillText(priceText, pad, h - bandH + bandH * 0.45);
-
-    if (cfg.oldPrice) {
-      ctx.fillStyle = "#ddd";
-      ctx.font = `600 ${56 * scale}px "${font}", system-ui, sans-serif`;
-      const priceWidth = ctx.measureText(priceText).width;
-      const oldX = pad + priceWidth + 24 * scale;
-      const oldY = h - bandH + bandH * 0.55;
-      const oldText = `${cfg.oldPrice} €`;
-      ctx.fillText(oldText, oldX, oldY);
-      const tw = ctx.measureText(oldText).width;
-      ctx.strokeStyle = "#ddd";
-      ctx.lineWidth = 4 * scale;
-      ctx.beginPath();
-      ctx.moveTo(oldX, oldY + 32 * scale);
-      ctx.lineTo(oldX + tw, oldY + 32 * scale);
-      ctx.stroke();
-    }
-  }
-
-  // Logo bottom right
-  if (cfg.logoUrl) {
-    try {
-      const logo = await loadImage(cfg.logoUrl);
-      const lw = 160 * scale;
-      const lh = (logo.naturalHeight / logo.naturalWidth) * lw;
-      ctx.drawImage(logo, w - pad - lw, h - pad - lh, lw, lh);
-    } catch {
-      // ignore
-    }
-  }
-}
-
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-) {
-  const words = text.split(/\s+/);
-  let line = "";
-  let yy = y;
-  for (const w of words) {
-    const test = line ? line + " " + w : w;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, yy);
-      line = w;
-      yy += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, yy);
-}
-
-function shade(hex: string, percent: number): string {
-  const num = parseInt(hex.replace("#", ""), 16);
-  let r = (num >> 16) + percent;
-  let g = ((num >> 8) & 0x00ff) + percent;
-  let b = (num & 0x0000ff) + percent;
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
