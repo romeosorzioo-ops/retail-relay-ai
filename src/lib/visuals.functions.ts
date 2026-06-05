@@ -72,7 +72,7 @@ export const saveVisualFn = createServerFn({ method: "POST" })
         promotion_id: data.promotion_id ?? null,
         format: data.format,
         image_url: data.image_url ?? null,
-        config_json: data.config_json as unknown as Record<string, unknown>,
+        config_json: data.config_json as never,
       })
       .select("*")
       .single();
