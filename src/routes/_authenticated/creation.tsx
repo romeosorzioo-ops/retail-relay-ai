@@ -351,6 +351,35 @@ function CreationPage() {
             </div>
 
             <div>
+              <Label className="mb-1 block text-xs">Couleur secondaire</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={config.secondaryColor ?? "#1f2937"}
+                  onChange={(e) =>
+                    setConfig({ ...config, secondaryColor: e.target.value })
+                  }
+                  className="h-9 w-12 cursor-pointer rounded border"
+                />
+                <Input
+                  value={config.secondaryColor ?? ""}
+                  onChange={(e) =>
+                    setConfig({ ...config, secondaryColor: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-1 block text-xs">Slogan</Label>
+              <Input
+                value={config.slogan ?? ""}
+                placeholder="Slogan de votre magasin"
+                onChange={(e) => setConfig({ ...config, slogan: e.target.value })}
+              />
+            </div>
+
+            <div>
               <Label className="mb-1 block text-xs">Badge promo</Label>
               <div className="flex flex-wrap gap-1">
                 {ICON_BADGES.map((b) => (
