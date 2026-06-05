@@ -124,6 +124,117 @@ function defaultBlocks(brand: {
   ];
 }
 
+// ---------- Field-photo presets ----------
+type FieldPresetKey =
+  | "employee_price" | "shelf_arrow" | "arrival_badge"
+  | "local_producer" | "weekend_offer";
+
+const FIELD_PRESETS: { key: FieldPresetKey; label: string; emoji: string }[] = [
+  { key: "employee_price", label: "Employé + prix promo", emoji: "👤" },
+  { key: "shelf_arrow",    label: "Produit rayon + flèche", emoji: "➡️" },
+  { key: "arrival_badge",  label: "Arrivage + badge",      emoji: "📦" },
+  { key: "local_producer", label: "Producteur local",      emoji: "🌿" },
+  { key: "weekend_offer",  label: "Offre week-end",        emoji: "🎉" },
+];
+
+function buildFieldPreset(
+  key: FieldPresetKey,
+  brand: Parameters<typeof defaultBlocks>[0],
+): { blocks: Block[]; elements: GraphicEl[] } {
+  const fTitle = brand?.font_primary ?? "Montserrat";
+  const fText = brand?.font_secondary ?? "Inter";
+  const fPrice = brand?.font_price ?? "Bebas Neue";
+  const primary = brand?.primary_color ?? "#E11D48";
+  const accent = brand?.secondary_color ?? "#FACC15";
+
+  switch (key) {
+    case "employee_price":
+      return {
+        blocks: [
+          { id: uid(), role: "badge", text: "PRIX CHOC", x: 5, y: 5, width: 35, fontFamily: fTitle, fontSize: 52, color: "#111", bold: true, italic: false, underline: false, strikethrough: false, align: "center", bgColor: accent, rounded: 999, padding: 14 },
+          { id: uid(), role: "custom", text: "Nom du produit", x: 5, y: 68, width: 90, fontFamily: fText, fontSize: 64, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 8 },
+          { id: uid(), role: "price_old", text: "4,29 €", x: 5, y: 80, width: 20, fontFamily: fText, fontSize: 44, color: "#eee", bold: false, italic: false, underline: false, strikethrough: true, align: "left" },
+          { id: uid(), role: "price_main", text: "2,99 €", x: 5, y: 84, width: 50, fontFamily: fPrice, fontSize: 160, color: primary, bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.4)", shadowBlur: 8 },
+        ],
+        elements: [],
+      };
+    case "shelf_arrow":
+      return {
+        blocks: [
+          { id: uid(), role: "title", text: "À NE PAS RATER", x: 5, y: 5, width: 70, fontFamily: fTitle, fontSize: 80, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 8 },
+          { id: uid(), role: "custom", text: "Produit en rayon", x: 5, y: 80, width: 70, fontFamily: fText, fontSize: 48, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 6 },
+        ],
+        elements: [
+          { id: uid(), key: "arrow_curved", category: "arrows", x: 45, y: 30, width: 30, height: 30, rotation: 25, color: accent, strokeWidth: 8, opacity: 1 },
+        ],
+      };
+    case "arrival_badge":
+      return {
+        blocks: [
+          { id: uid(), role: "badge", text: "ARRIVAGE", x: 60, y: 5, width: 35, fontFamily: fTitle, fontSize: 56, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "center", bgColor: primary, rounded: 999, padding: 16 },
+          { id: uid(), role: "title", text: "FRAÎCHEUR DU JOUR", x: 5, y: 72, width: 90, fontFamily: fTitle, fontSize: 72, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 8 },
+          { id: uid(), role: "subtitle", text: "Disponible dès maintenant", x: 5, y: 86, width: 90, fontFamily: fText, fontSize: 36, color: "#fff", bold: false, italic: false, underline: false, strikethrough: false, align: "left" },
+        ],
+        elements: [],
+      };
+    case "local_producer":
+      return {
+        blocks: [
+          { id: uid(), role: "badge", text: "PRODUIT LOCAL", x: 5, y: 5, width: 45, fontFamily: fTitle, fontSize: 44, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "center", bgColor: "#16a34a", rounded: 999, padding: 14 },
+          { id: uid(), role: "title", text: "NOM DU PRODUCTEUR", x: 5, y: 72, width: 90, fontFamily: fTitle, fontSize: 64, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 8 },
+          { id: uid(), role: "subtitle", text: "Producteur partenaire", x: 5, y: 86, width: 90, fontFamily: fText, fontSize: 32, color: "#fff", bold: false, italic: true, underline: false, strikethrough: false, align: "left" },
+        ],
+        elements: [],
+      };
+    case "weekend_offer":
+      return {
+        blocks: [
+          { id: uid(), role: "badge", text: "OFFRE WEEK-END", x: 5, y: 5, width: 55, fontFamily: fTitle, fontSize: 48, color: "#111", bold: true, italic: false, underline: false, strikethrough: false, align: "center", bgColor: accent, rounded: 999, padding: 14 },
+          { id: uid(), role: "custom", text: "Nom du produit", x: 5, y: 68, width: 90, fontFamily: fText, fontSize: 60, color: "#fff", bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.5)", shadowBlur: 8 },
+          { id: uid(), role: "price_main", text: "9,99 €", x: 5, y: 80, width: 50, fontFamily: fPrice, fontSize: 150, color: primary, bold: true, italic: false, underline: false, strikethrough: false, align: "left", shadowColor: "rgba(0,0,0,.4)", shadowBlur: 8 },
+        ],
+        elements: [],
+      };
+  }
+}
+
+// Crop an image via canvas to a target aspect-ratio. Returns a PNG Blob.
+async function cropImageToBlob(
+  srcUrl: string,
+  box: CropBox,
+  targetW: number,
+  targetH: number,
+): Promise<Blob> {
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const sx = box.x * img.naturalWidth;
+      const sy = box.y * img.naturalHeight;
+      const sw = box.width * img.naturalWidth;
+      const sh = box.height * img.naturalHeight;
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas indisponible"));
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Export image échoué"))), "image/jpeg", 0.92);
+    };
+    img.onerror = () => reject(new Error("Chargement image impossible"));
+    img.src = srcUrl;
+  });
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  let bin = "";
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  return btoa(bin);
+}
+
 function CreationPage() {
   const qc = useQueryClient();
   const [format, setFormat] = useState<FormatKey>("ig_square");
