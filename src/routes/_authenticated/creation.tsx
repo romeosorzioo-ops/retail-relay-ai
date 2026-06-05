@@ -251,6 +251,7 @@ function CreationPage() {
   function onPointerDownBlock(e: React.PointerEvent, b: Block) {
     e.stopPropagation();
     setSelectedId(b.id);
+    setSelectedElementId(null);
     const wrap = canvasWrapRef.current;
     if (!wrap) return;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
