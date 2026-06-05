@@ -1534,6 +1534,42 @@ function CreationPage() {
         initial={{ x: 0.05, y: 0.05, width: 0.9, height: 0.9 }}
         onConfirm={handleCropConfirm}
       />
+      </>
+      )}
+
+      <ScheduleItemModal
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        item={currentItem ? {
+          id: currentItem.id,
+          recommended_platform: currentItem.recommended_platform,
+          recommended_date: currentItem.recommended_date,
+          recommended_time: currentItem.recommended_time,
+          generated_caption: currentItem.generated_caption,
+          final_visual_url: currentItem.final_visual_url,
+          promo_price: currentItem.promo_price,
+        } : null}
+        onScheduled={() => { setActiveTab("queue"); }}
+      />
+
+      <Dialog open={postValidateOpen} onOpenChange={setPostValidateOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Visuel validé
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Que voulez-vous faire ensuite ?</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setPostValidateOpen(false); setActiveTab("queue"); }}>
+              Retour à la file
+            </Button>
+            <Button onClick={() => { setPostValidateOpen(false); setScheduleOpen(true); }}>
+              <CalendarPlus className="h-4 w-4" /> Programmer maintenant
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
