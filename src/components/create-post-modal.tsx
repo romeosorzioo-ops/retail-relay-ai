@@ -92,6 +92,7 @@ export function CreatePostModal({
     "facebook",
   );
   const [genContentId, setGenContentId] = useState<string | null>(null);
+  const [formatKey, setFormatKey] = useState<string>("ig_square");
   const dropRef = useRef<HTMLDivElement>(null);
 
   const { data: generated = [] } = useQuery({
