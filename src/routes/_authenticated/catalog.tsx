@@ -902,7 +902,23 @@ function CatalogPage() {
           }
         }}
       />
+
+      {selectedCount > 0 && (
+        <button
+          onClick={() => buildCampaignMut.mutate()}
+          disabled={buildCampaignMut.isPending}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:scale-[1.02] hover:shadow-xl disabled:opacity-70"
+        >
+          {buildCampaignMut.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Wand2 className="h-4 w-4" />
+          )}
+          Générer ma campagne ({selectedCount})
+        </button>
+      )}
     </div>
   );
+}
 }
 
