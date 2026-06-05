@@ -535,6 +535,41 @@ function CreationPage() {
     finally { setter(false); }
   }
 
+  async function uploadFieldPhoto(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Image uniquement (jpg, png)"); return; }
+    setUploadingField(true);
+    try {
+      const data_base64 = await blobToBase64(file);
+      const res = await uploadVisualImageFn({ data: { file_name: file.name, file_type: file.type, data_base64 } });
+      setSourceImageUrl(res.url);
+      setSourceType("field_photo");
+      setCropSrc(res.url);
+      setCropOpen(true);
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setUploadingField(false); }
+  }
+
+  async function handleCropConfirm(box: CropBox) {
+    if (!cropSrc) return;
+    try {
+      const blob = await cropImageToBlob(cropSrc, box, dims.w, dims.h);
+      const data_base64 = await blobToBase64(blob);
+      const res = await uploadVisualImageFn({
+        data: { file_name: `field-${Date.now()}.jpg`, file_type: "image/jpeg", data_base64 },
+      });
+      setConfig((c) => ({ ...c, bgImage: res.url }));
+      toast.success("Photo recadrée");
+    } catch (e) { toast.error((e as Error).message); }
+  }
+
+  function applyFieldPreset(key: FieldPresetKey) {
+    const { blocks, elements } = buildFieldPreset(key, brand as Parameters<typeof defaultBlocks>[0]);
+    setConfig((c) => ({ ...c, blocks, elements }));
+    setSelectedId(null);
+    setSelectedElementId(null);
+    toast.success("Preset appliqué");
+  }
+
   async function exportPng(): Promise<{ blob: Blob; dataUrl: string } | null> {
     const node = canvasWrapRef.current;
     if (!node) return null;
