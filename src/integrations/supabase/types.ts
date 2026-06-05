@@ -256,14 +256,67 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_pages: {
+        Row: {
+          analyzed_at: string | null
+          catalog_import_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          notes: string | null
+          page_number: number
+          promotions_count: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analyzed_at?: string | null
+          catalog_import_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notes?: string | null
+          page_number: number
+          promotions_count?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analyzed_at?: string | null
+          catalog_import_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notes?: string | null
+          page_number?: number
+          promotions_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_pages_catalog_import_id_fkey"
+            columns: ["catalog_import_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_promotions: {
         Row: {
           catalog_import_id: string
           category: string | null
+          confidence: number | null
           created_at: string
+          detection_source: string
           discount_percent: number | null
           end_date: string | null
           id: string
+          missing_fields: Json | null
           old_price: number | null
           page_number: number | null
           product_name: string
@@ -279,10 +332,13 @@ export type Database = {
         Insert: {
           catalog_import_id: string
           category?: string | null
+          confidence?: number | null
           created_at?: string
+          detection_source?: string
           discount_percent?: number | null
           end_date?: string | null
           id?: string
+          missing_fields?: Json | null
           old_price?: number | null
           page_number?: number | null
           product_name: string
@@ -298,10 +354,13 @@ export type Database = {
         Update: {
           catalog_import_id?: string
           category?: string | null
+          confidence?: number | null
           created_at?: string
+          detection_source?: string
           discount_percent?: number | null
           end_date?: string | null
           id?: string
+          missing_fields?: Json | null
           old_price?: number | null
           page_number?: number | null
           product_name?: string
