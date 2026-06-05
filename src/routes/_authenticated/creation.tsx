@@ -618,6 +618,8 @@ function CreationPage() {
           promotion_id: promotionId,
           format,
           image_url,
+          source_type: sourceType,
+          source_image_url: sourceImageUrl,
           config_json: config as unknown as Record<string, unknown>,
         },
       });
