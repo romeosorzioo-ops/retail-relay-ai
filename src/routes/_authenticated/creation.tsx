@@ -701,8 +701,9 @@ function CreationPage() {
         <Card>
           <CardContent className="p-3">
             <Tabs defaultValue="props">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="props"><Type className="h-3.5 w-3.5" /> Bloc</TabsTrigger>
+                <TabsTrigger value="elements"><Shapes className="h-3.5 w-3.5" /> Éléments</TabsTrigger>
                 <TabsTrigger value="templates"><Sparkles className="h-3.5 w-3.5" /> Modèles</TabsTrigger>
                 <TabsTrigger value="link"><TagIcon className="h-3.5 w-3.5" /> Promo</TabsTrigger>
               </TabsList>
