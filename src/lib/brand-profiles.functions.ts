@@ -44,6 +44,8 @@ export const upsertBrandProfileFn = createServerFn({ method: "POST" })
       font_family: data.font_family ?? null,
       slogan: data.slogan ?? null,
       communication_style: data.communication_style ?? null,
+      custom_font_url: data.custom_font_url ?? null,
+      custom_font_name: data.custom_font_name ?? null,
     };
     const existing = await context.supabase
       .from("brand_profiles")
