@@ -38,6 +38,7 @@ import {
   CreatePostModal,
   type EditingPost,
 } from "@/components/create-post-modal";
+import { formatShortLabel } from "@/lib/post-formats";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: CalendarPage,
