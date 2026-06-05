@@ -651,7 +651,7 @@ async function renderCanvas(
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#111";
-    ctx.font = `900 ${52 * scale}px "Inter", system-ui, sans-serif`;
+    ctx.font = `900 ${52 * scale}px "${font}", system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(cfg.badge.text, cx, cy);
@@ -661,7 +661,7 @@ async function renderCanvas(
 
   // Product name (band)
   ctx.fillStyle = "#ffffff";
-  ctx.font = `700 ${64 * scale}px "Inter", system-ui, sans-serif`;
+  ctx.font = `700 ${64 * scale}px "${font}", system-ui, sans-serif`;
   wrapText(
     ctx,
     cfg.productName ?? "",
@@ -674,13 +674,13 @@ async function renderCanvas(
   // Price
   if (cfg.price) {
     ctx.fillStyle = cfg.primaryColor ?? "#E11D48";
-    ctx.font = `900 ${160 * scale}px "Inter", system-ui, sans-serif`;
+    ctx.font = `900 ${160 * scale}px "${font}", system-ui, sans-serif`;
     const priceText = `${cfg.price} €`;
     ctx.fillText(priceText, pad, h - bandH + bandH * 0.45);
 
     if (cfg.oldPrice) {
       ctx.fillStyle = "#ddd";
-      ctx.font = `600 ${56 * scale}px "Inter", system-ui, sans-serif`;
+      ctx.font = `600 ${56 * scale}px "${font}", system-ui, sans-serif`;
       const priceWidth = ctx.measureText(priceText).width;
       const oldX = pad + priceWidth + 24 * scale;
       const oldY = h - bandH + bandH * 0.55;
