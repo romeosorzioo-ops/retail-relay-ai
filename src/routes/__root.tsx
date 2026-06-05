@@ -86,6 +86,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Komaag" },
+      { name: "twitter:description", content: "Komaag transforme vos promotions et la vie de votre magasin en contenus prêts à publier." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ff59b818-94c0-43d9-b1b7-eef848d8f1ec/id-preview-85efe1f3--e66b8103-1520-4e6a-99e7-84e62f7ac2d6.lovable.app-1780673323431.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ff59b818-94c0-43d9-b1b7-eef848d8f1ec/id-preview-85efe1f3--e66b8103-1520-4e6a-99e7-84e62f7ac2d6.lovable.app-1780673323431.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
