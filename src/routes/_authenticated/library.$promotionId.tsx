@@ -44,7 +44,6 @@ const TYPE_META: Record<
   facebook_post: { label: "Facebook", icon: Facebook },
   instagram_post: { label: "Instagram", icon: Instagram },
   instagram_story: { label: "Story", icon: Instagram },
-  reel_idea: { label: "Reel", icon: Film },
 };
 
 function PromotionDetail() {
@@ -71,7 +70,6 @@ function PromotionDetail() {
     facebook_post: [],
     instagram_post: [],
     instagram_story: [],
-    reel_idea: [],
   };
   for (const r of rows as any[]) {
     if (byType[r.content_type as ContentType]) byType[r.content_type as ContentType].push(r);

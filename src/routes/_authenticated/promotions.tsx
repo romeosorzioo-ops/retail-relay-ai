@@ -85,7 +85,6 @@ const TYPE_META: Record<
   facebook_post: { label: "Post Facebook", icon: Facebook },
   instagram_post: { label: "Post Instagram", icon: Instagram },
   instagram_story: { label: "Story Instagram", icon: Instagram },
-  reel_idea: { label: "Idée de Reel", icon: Film },
 };
 
 type Uploaded = { url: string; type: string; name: string };
@@ -531,7 +530,7 @@ function groupByGeneration(rows: any[]) {
     if (existing) existing.items.push(r);
     else map.set(key, { key, createdAt: r.created_at, items: [r] });
   }
-  const order: ContentType[] = ["facebook_post", "instagram_post", "instagram_story", "reel_idea"];
+  const order: ContentType[] = ["facebook_post", "instagram_post", "instagram_story"];
   return Array.from(map.values())
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .map((g) => ({
