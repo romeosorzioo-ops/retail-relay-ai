@@ -1212,6 +1212,18 @@ function CreationPage() {
                   style={{ objectFit: "fill", objectPosition: "top left" }}
                 />
               )}
+              {showCropDebug && config.lastCrop && (
+                <div className="pointer-events-none absolute right-1 top-1 z-50 rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow">
+                  <div>crop_x: {config.lastCrop.x.toFixed(4)}</div>
+                  <div>crop_y: {config.lastCrop.y.toFixed(4)}</div>
+                  <div>crop_w: {config.lastCrop.width.toFixed(4)}</div>
+                  <div>crop_h: {config.lastCrop.height.toFixed(4)}</div>
+                  <div>zoom: ×{config.lastCrop.zoom.toFixed(2)}</div>
+                  <div>rotation: {config.lastCrop.rotation}°</div>
+                  <div>src: {config.lastCrop.naturalW}×{config.lastCrop.naturalH}</div>
+                  <div>out: {config.lastCrop.targetW}×{config.lastCrop.targetH}</div>
+                </div>
+              )}
               {config.blocks.map((b) => {
                 const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
                   ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
