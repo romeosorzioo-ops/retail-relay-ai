@@ -22,10 +22,12 @@ import {
   deleteCatalogPromotionFn, savePageImageFn, setPromotionImageFn,
   clearPromotionImageFn, setPromotionCreationModeFn,
 } from "@/lib/catalog.functions";
+import { createCampaignFromSelectionFn } from "@/lib/campaigns.functions";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import {
   renderPdfPageToCanvas, canvasToBase64, cropImageUrl,
 } from "@/lib/pdf-browser";
+import { CampaignStepper } from "@/components/campaign-stepper";
 
 
 export const Route = createFileRoute("/_authenticated/catalog")({
