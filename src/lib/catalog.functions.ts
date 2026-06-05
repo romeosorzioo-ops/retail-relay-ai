@@ -1,8 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  MAX_IMAGE_BYTES,
+  assertAllowedMime,
+  assertBase64SizeWithin,
+} from "@/lib/upload-validation";
 
 const MAX_SIZE = 30 * 1024 * 1024;
+
+/**
+ * Guard against SSRF: catalog imports are uploaded through our own server fn
+ * which writes them to the `promotion-files` Supabase bucket, so the file URL
+ * must always live under that bucket. Reject anything else before fetching.
+ */
+function assertOwnedStorageUrl(fileUrl: string): void {
+  const projectRef =
+    process.env.SUPABASE_PROJECT_ID ??
+    (process.env.SUPABASE_URL ?? "")
+      .replace(/^https?:\/\//, "")
+      .split(".")[0];
+  if (!projectRef) {
+    throw new Error("Configuration Supabase manquante.");
+  }
+  const allowedPrefix = `https://${projectRef}.supabase.co/storage/v1/object/public/promotion-files/`;
+  if (!fileUrl.startsWith(allowedPrefix)) {
+    throw new Error("URL de fichier invalide.");
+  }
+}
 
 export const listCatalogImportsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -332,6 +358,7 @@ export const analyzeCatalogFn = createServerFn({ method: "POST" })
       .eq("id", imp.id);
 
     try {
+      assertOwnedStorageUrl(imp.file_url);
       const fileRes = await fetch(imp.file_url);
       if (!fileRes.ok) throw new Error("Téléchargement du PDF impossible.");
       const pdfBuffer = new Uint8Array(await fileRes.arrayBuffer());
@@ -419,6 +446,7 @@ export const reanalyzeCatalogPageFn = createServerFn({ method: "POST" })
     if (!imp) throw new Error("Catalogue introuvable.");
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY manquant.");
+    assertOwnedStorageUrl(imp.file_url);
     const fileRes = await fetch(imp.file_url);
     if (!fileRes.ok) throw new Error("Téléchargement du PDF impossible.");
     const pdfBuffer = new Uint8Array(await fileRes.arrayBuffer());
@@ -743,9 +771,14 @@ async function uploadDataUrlToStorage(opts: {
   dataBase64: string;
   contentType: string;
 }) {
+  assertAllowedMime(opts.contentType, ALLOWED_IMAGE_MIME_TYPES);
+  assertBase64SizeWithin(opts.dataBase64, MAX_IMAGE_BYTES);
   const ext = opts.contentType.includes("png") ? "png" : "jpg";
   const path = `${opts.userId}/catalog-product-images/${opts.importId}/${opts.kind}-${opts.refId}-${Date.now()}.${ext}`;
   const buffer = Buffer.from(opts.dataBase64, "base64");
+  if (buffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("Le fichier dépasse la taille maximale autorisée.");
+  }
   const { error } = await opts.supabase.storage
     .from("promotion-files")
     .upload(path, buffer, { contentType: opts.contentType, upsert: false });
