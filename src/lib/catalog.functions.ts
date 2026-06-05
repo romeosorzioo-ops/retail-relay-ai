@@ -879,6 +879,7 @@ export const setPromotionImageFn = createServerFn({ method: "POST" })
       .from("catalog_promotions")
       .update({
         product_image_url: url,
+        thumbnail_url: url,
         crop_coordinates: data.crop_coordinates ?? null,
       })
       .eq("id", promo.id)
@@ -895,7 +896,7 @@ export const clearPromotionImageFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("catalog_promotions")
-      .update({ product_image_url: null, crop_coordinates: null })
+      .update({ product_image_url: null, thumbnail_url: null, crop_coordinates: null })
       .eq("id", data.promotion_id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);

@@ -81,6 +81,7 @@ export const createCampaignFromSelectionFn = createServerFn({ method: "POST" })
       start_date: p.start_date,
       end_date: p.end_date,
       source_image_url: p.product_image_url,
+      thumbnail_url: p.thumbnail_url ?? p.product_image_url ?? null,
       creation_mode: p.creation_mode ?? null,
       status: "to_create" as const,
       recommended_platform: "facebook",
