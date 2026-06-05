@@ -21,7 +21,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { logoutFn } from "@/lib/auth.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 const items = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
@@ -81,7 +81,7 @@ export function AppSidebar({ userName }: { userName?: string }) {
             variant="ghost"
             size="icon"
             onClick={async () => {
-              await logoutFn();
+              await supabase.auth.signOut();
               navigate({ to: "/auth" });
             }}
             title="Déconnexion"

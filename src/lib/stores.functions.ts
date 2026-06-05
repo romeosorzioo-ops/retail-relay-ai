@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const storeSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -11,28 +12,25 @@ const storeSchema = z.object({
   strong_departments: z.array(z.string()).default([]),
 });
 
-export const getMyStoreFn = createServerFn({ method: "GET" }).handler(
-  async () => {
+export const getMyStoreFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
     const { pool } = await import("@/lib/lovable/database");
-    const { requireUser } = await import("@/lib/auth.server");
-    const user = await requireUser();
     const { rows } = await pool.query(
       "SELECT * FROM stores WHERE user_id=$1 ORDER BY created_at ASC LIMIT 1",
-      [user.id],
+      [context.userId],
     );
     return rows[0] ?? null;
-  },
-);
+  });
 
 export const upsertStoreFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => storeSchema.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { pool } = await import("@/lib/lovable/database");
-    const { requireUser } = await import("@/lib/auth.server");
-    const user = await requireUser();
     const existing = await pool.query(
       "SELECT id FROM stores WHERE user_id=$1 LIMIT 1",
-      [user.id],
+      [context.userId],
     );
     if (existing.rowCount && existing.rowCount > 0) {
       const id = existing.rows[0].id;
@@ -56,7 +54,7 @@ export const upsertStoreFn = createServerFn({ method: "POST" })
       `INSERT INTO stores (user_id, name, banner, city, description, tone, frequency, strong_departments)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [
-        user.id,
+        context.userId,
         data.name,
         data.banner,
         data.city ?? null,
