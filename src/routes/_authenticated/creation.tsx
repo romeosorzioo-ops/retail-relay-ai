@@ -400,6 +400,51 @@ function CreationPage() {
             </div>
 
             <div>
+              <Label className="mb-1 block text-xs">Police</Label>
+              {(() => {
+                const FONTS = [
+                  "Inter",
+                  "Roboto",
+                  "Poppins",
+                  "Montserrat",
+                  "Playfair Display",
+                  "Lora",
+                ];
+                const b = (brand ?? {}) as {
+                  custom_font_name?: string | null;
+                };
+                const customName = b.custom_font_name ?? null;
+                const options = [
+                  ...FONTS,
+                  ...(customName && !FONTS.includes(customName)
+                    ? [customName]
+                    : []),
+                ];
+                const current = config.fontFamily ?? "Inter";
+                return (
+                  <Select
+                    value={options.includes(current) ? current : "Inter"}
+                    onValueChange={(v) =>
+                      setConfig({ ...config, fontFamily: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}
+                          {f === customName ? " (importée)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
+            </div>
+
+            <div>
               <Label className="mb-1 block text-xs">Badge promo</Label>
               <div className="flex flex-wrap gap-1">
                 {ICON_BADGES.map((b) => (
