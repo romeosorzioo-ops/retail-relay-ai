@@ -568,9 +568,9 @@ function CreationPage() {
           <CardContent className="flex items-center justify-center p-4">
             <div
               ref={canvasWrapRef}
-              onPointerMove={onPointerMoveBlock}
-              onPointerUp={onPointerUpBlock}
-              onClick={() => setSelectedId(null)}
+              onPointerMove={onPointerMoveCanvas}
+              onPointerUp={onPointerUpCanvas}
+              onClick={() => { setSelectedId(null); setSelectedElementId(null); }}
               className="relative overflow-hidden rounded-md border shadow-sm"
               style={{
                 width: previewWidth,
