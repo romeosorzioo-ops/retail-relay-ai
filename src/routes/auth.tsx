@@ -10,7 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Connexion — KomTonMag AI" }] }),
+  head: () => ({ meta: [{ title: "Connexion — Komaag" }] }),
   component: AuthPage,
 });
 
@@ -91,7 +91,7 @@ function AuthPage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
             K
           </div>
-          <span className="font-semibold">KomTonMag AI</span>
+          <span className="font-semibold">Komaag</span>
         </Link>
         <Card>
           <CardHeader>

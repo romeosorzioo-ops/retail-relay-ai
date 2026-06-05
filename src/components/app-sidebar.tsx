@@ -45,7 +45,7 @@ export function AppSidebar({ userName }: { userName?: string }) {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold leading-none">
-              KomTonMag AI
+              Komaag
             </span>
             <span className="text-[10px] text-muted-foreground">
               Contenus social-media
