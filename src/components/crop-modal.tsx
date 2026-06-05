@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 export type CropBox = { x: number; y: number; width: number; height: number };
 
 export function CropModal({
-  open, onOpenChange, imageUrl, initial, onConfirm, title,
+  open, onOpenChange, imageUrl, initial, onConfirm, title, aspectRatio,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -14,6 +14,7 @@ export function CropModal({
   initial?: CropBox | null;
   onConfirm: (crop: CropBox) => Promise<void> | void;
   title?: string;
+  aspectRatio?: string;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<CropBox>(
