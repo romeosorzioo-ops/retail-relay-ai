@@ -16,6 +16,7 @@ const baseSchema = z.object({
   promotion_id: z.string().uuid().nullable().optional(),
   generated_content_id: z.string().uuid().nullable().optional(),
   status: z.enum(STATUSES).optional(),
+  format: z.string().min(1).max(32).nullable().optional(),
 });
 
 export const listScheduledPostsFn = createServerFn({ method: "GET" })
