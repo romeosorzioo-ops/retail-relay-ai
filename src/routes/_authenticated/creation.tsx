@@ -31,6 +31,7 @@ import {
   uploadVisualImageFn,
 } from "@/lib/visuals.functions";
 import { listPromotionsFn } from "@/lib/promotions.functions";
+import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 
 export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
