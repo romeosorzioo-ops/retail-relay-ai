@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import {
   listVisualTemplatesFn, saveVisualFn, uploadVisualImageFn,
 } from "@/lib/visuals.functions";
 import { listPromotionsFn } from "@/lib/promotions.functions";
+import { getCatalogPromotionFn, setPromotionCreationModeFn } from "@/lib/catalog.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
@@ -33,6 +34,13 @@ import {
 } from "@/lib/graphic-elements";
 
 export const Route = createFileRoute("/_authenticated/creation")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    cp: typeof s.cp === "string" ? s.cp : undefined,
+    mode:
+      s.mode === "catalog_visual" || s.mode === "field_photo"
+        ? (s.mode as "catalog_visual" | "field_photo")
+        : undefined,
+  }),
   component: CreationPage,
 });
 
@@ -254,10 +262,20 @@ function CreationPage() {
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
 
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const [catalogPromoId, setCatalogPromoId] = useState<string | null>(null);
+  const [catalogMode, setCatalogMode] = useState<"catalog_visual" | "field_photo" | null>(null);
+
   const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
   const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
   const { data: brand } = useQuery({ queryKey: ["my-brand"], queryFn: () => getMyBrandProfileFn() });
   const { data: brandFonts = [] } = useQuery({ queryKey: ["my-brand-fonts"], queryFn: () => listBrandFontsFn() });
+  const { data: catalogPromo } = useQuery({
+    queryKey: ["catalog-promo", search.cp],
+    queryFn: () => getCatalogPromotionFn({ data: { id: search.cp as string } }),
+    enabled: !!search.cp,
+  });
 
   // Register every uploaded font in this page
   useEffect(() => { brandFonts.forEach((f) => registerCustomFont(f.name, f.url)); }, [brandFonts]);
@@ -281,6 +299,67 @@ function CreationPage() {
   useEffect(() => {
     setConfig((c) => (c.blocks.length === 0 ? { ...c, blocks: defaultBlocks(null) } : c));
   }, []);
+
+  // ---------- Catalog promotion bridge ----------
+  function applyCatalogPromoBlocks(p: any) {
+    setConfig((c) => {
+      const blocks = c.blocks.map((b) => {
+        if (b.role === "custom" && p.product_name) return { ...b, text: p.product_name };
+        if (b.role === "price_main" && p.promo_price != null)
+          return { ...b, text: `${String(p.promo_price).replace(".", ",")} €` };
+        if (b.role === "price_old" && p.old_price != null)
+          return { ...b, text: `${String(p.old_price).replace(".", ",")} €` };
+        if (b.role === "badge" && p.discount_percent != null)
+          return { ...b, text: `-${p.discount_percent}%` };
+        return b;
+      });
+      return { ...c, blocks };
+    });
+  }
+
+  function switchCatalogMode(mode: "catalog_visual" | "field_photo") {
+    if (!catalogPromo) return;
+    setCatalogMode(mode);
+    if (mode === "catalog_visual") {
+      setSourceType("catalog");
+      setSourceImageUrl(catalogPromo.product_image_url ?? null);
+      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url ?? c.bgImage }));
+    } else {
+      setSourceType("field_photo");
+      setSourceImageUrl(null);
+      setConfig((c) => ({ ...c, bgImage: null }));
+      toast.info("Importez une photo terrain pour ce visuel.");
+    }
+    setPromotionCreationModeFn({
+      data: { promotion_id: catalogPromo.id, creation_mode: mode },
+    }).catch(() => {});
+    navigate({ to: "/creation", search: { cp: catalogPromo.id, mode } as never, replace: true });
+  }
+
+  // Apply catalog promo when loaded
+  const catalogAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!catalogPromo) return;
+    const key = `${catalogPromo.id}:${search.mode ?? catalogPromo.creation_mode ?? "catalog_visual"}`;
+    if (catalogAppliedRef.current === key) return;
+    catalogAppliedRef.current = key;
+    setCatalogPromoId(catalogPromo.id);
+    const mode =
+      (search.mode as "catalog_visual" | "field_photo" | undefined) ??
+      (catalogPromo.creation_mode as "catalog_visual" | "field_photo" | null) ??
+      "catalog_visual";
+    setCatalogMode(mode);
+    applyCatalogPromoBlocks(catalogPromo);
+    if (mode === "catalog_visual" && catalogPromo.product_image_url) {
+      setSourceType("catalog");
+      setSourceImageUrl(catalogPromo.product_image_url);
+      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url }));
+    } else if (mode === "field_photo") {
+      setSourceType("field_photo");
+    }
+  }, [catalogPromo, search.mode]);
+
+
 
   const dims = FORMATS[format];
   const previewWidth = dims.previewW;
@@ -646,6 +725,44 @@ function CreationPage() {
           </Button>
         </div>
       </div>
+
+      {catalogPromo && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-primary/5 p-3">
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-xs text-muted-foreground">Promo catalogue</p>
+            <p className="text-sm font-semibold">
+              {catalogPromo.product_name}
+              {catalogPromo.promo_price != null && (
+                <span className="ml-2 text-primary">
+                  {String(catalogPromo.promo_price).replace(".", ",")} €
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="inline-flex rounded-md border bg-background p-0.5">
+            <Button
+              size="sm"
+              variant={catalogMode === "catalog_visual" ? "default" : "ghost"}
+              className="h-7 text-xs gap-1"
+              onClick={() => switchCatalogMode("catalog_visual")}
+              disabled={!catalogPromo.product_image_url}
+              title={catalogPromo.product_image_url ? "Visuel catalogue" : "Aucun visuel extrait"}
+            >
+              <ImageIcon className="h-3 w-3" /> Visuel catalogue
+            </Button>
+            <Button
+              size="sm"
+              variant={catalogMode === "field_photo" ? "default" : "ghost"}
+              className="h-7 text-xs gap-1"
+              onClick={() => switchCatalogMode("field_photo")}
+            >
+              <Camera className="h-3 w-3" /> Photo terrain
+            </Button>
+          </div>
+        </div>
+      )}
+
+
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px]">
         {/* LEFT — canvas / format / background / add blocks */}

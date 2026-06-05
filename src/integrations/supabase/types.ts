@@ -318,6 +318,7 @@ export type Database = {
           category: string | null
           confidence: number | null
           created_at: string
+          creation_mode: string | null
           crop_coordinates: Json | null
           detection_source: string
           discount_percent: number | null
@@ -343,6 +344,7 @@ export type Database = {
           category?: string | null
           confidence?: number | null
           created_at?: string
+          creation_mode?: string | null
           crop_coordinates?: Json | null
           detection_source?: string
           discount_percent?: number | null
@@ -368,6 +370,7 @@ export type Database = {
           category?: string | null
           confidence?: number | null
           created_at?: string
+          creation_mode?: string | null
           crop_coordinates?: Json | null
           detection_source?: string
           discount_percent?: number | null

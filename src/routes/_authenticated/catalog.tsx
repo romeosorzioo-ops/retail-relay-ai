@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import {
   Upload, Loader2, FileText, Trash2, Sparkles, CalendarPlus,
   Wand2, Filter as FilterIcon, Pencil, Check, X, RefreshCw, Plus,
   AlertTriangle, ShieldCheck, HelpCircle, Image as ImageIcon, Crop, Replace,
+  Camera, Layout,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   generateCampaignFn, listCampaignRecommendationsFn, addCampaignToCalendarFn,
   listCatalogPagesFn, reanalyzeCatalogPageFn, addCatalogPromotionFn,
   deleteCatalogPromotionFn, savePageImageFn, setPromotionImageFn,
-  clearPromotionImageFn,
+  clearPromotionImageFn, setPromotionCreationModeFn,
 } from "@/lib/catalog.functions";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import {
@@ -85,7 +86,7 @@ function confidenceBadge(c?: number | null) {
 
 function PromoCard({
   p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
-  onRecrop, onReplace, onClearImage,
+  onRecrop, onReplace, onClearImage, onCreateCatalog, onCreateField,
 }: any) {
   const fileRef = useRef<HTMLInputElement>(null);
   return (
@@ -180,8 +181,31 @@ function PromoCard({
           )}
         </div>
       </div>
+      {!isEdit && (
+        <div className="mt-3 grid grid-cols-2 gap-1">
+          <Button
+            size="sm"
+            variant={p.creation_mode === "catalog_visual" ? "default" : "outline"}
+            className="h-8 text-[11px] gap-1"
+            onClick={onCreateCatalog}
+            title="Créer avec le visuel catalogue"
+          >
+            <Layout className="h-3 w-3" /> Visuel catalogue
+          </Button>
+          <Button
+            size="sm"
+            variant={p.creation_mode === "field_photo" ? "default" : "outline"}
+            className="h-8 text-[11px] gap-1"
+            onClick={onCreateField}
+            title="Créer avec une photo terrain"
+          >
+            <Camera className="h-3 w-3" /> Photo terrain
+          </Button>
+        </div>
+      )}
 
-      <div className="mt-3 flex flex-wrap justify-end gap-1">
+      <div className="mt-2 flex flex-wrap justify-end gap-1">
+
         {!isEdit && (
           <>
             <Button size="sm" variant="ghost" onClick={onRecrop} title="Recadrer depuis la page">
@@ -219,6 +243,7 @@ function PromoCard({
 
 function CatalogPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -352,6 +377,25 @@ function CatalogPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const setModeMut = useMutation({
+    mutationFn: (v: { id: string; mode: "catalog_visual" | "field_photo" }) =>
+      setPromotionCreationModeFn({ data: { promotion_id: v.id, creation_mode: v.mode } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+  });
+
+  function startCreation(p: any, mode: "catalog_visual" | "field_photo") {
+    if (mode === "catalog_visual" && !p.product_image_url) {
+      toast.error("Aucun visuel catalogue extrait. Utilisez Recadrer ou Remplacer d'abord.");
+      return;
+    }
+    setModeMut.mutate({ id: p.id, mode });
+    navigate({
+      to: "/creation",
+      search: { cp: p.id, mode } as never,
+    });
+  }
+
 
 
   const genMut = useMutation({
@@ -743,6 +787,8 @@ function CatalogPage() {
                           onRecrop={() => handleRecrop(p)}
                           onReplace={(f: File) => handleReplace(p, f)}
                           onClearImage={() => clearImgMut.mutate(p.id)}
+                          onCreateCatalog={() => startCreation(p, "catalog_visual")}
+                          onCreateField={() => startCreation(p, "field_photo")}
                         />
 
                       ))}
