@@ -48,6 +48,7 @@ import {
   uploadPostMediaFn,
 } from "@/lib/scheduled-posts.functions";
 import { listContentsFn } from "@/lib/content.functions";
+import { POST_FORMAT_LIST, getPostFormat } from "@/lib/post-formats";
 
 type Platform = "facebook" | "instagram" | "tiktok";
 type PostType = "post" | "story" | "reel";
