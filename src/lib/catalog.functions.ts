@@ -49,6 +49,17 @@ export const uploadCatalogFn = createServerFn({ method: "POST" })
     const { data: pub } = context.supabase.storage
       .from("promotion-files")
       .getPublicUrl(path);
+
+    // Determine page count
+    let pageCount = 0;
+    try {
+      const { PDFDocument } = await import("pdf-lib");
+      const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
+      pageCount = pdf.getPageCount();
+    } catch {
+      pageCount = 0;
+    }
+
     const { data: row, error } = await context.supabase
       .from("catalog_imports")
       .insert({
@@ -57,6 +68,7 @@ export const uploadCatalogFn = createServerFn({ method: "POST" })
         file_url: pub.publicUrl,
         file_name: data.file_name,
         file_size: buffer.byteLength,
+        page_count: pageCount,
         status: "uploaded",
       })
       .select("*")
@@ -89,7 +101,24 @@ export const listCatalogPromotionsFn = createServerFn({ method: "POST" })
       .select("*")
       .eq("catalog_import_id", data.catalog_import_id)
       .eq("user_id", context.userId)
+      .order("page_number", { ascending: true, nullsFirst: false })
       .order("social_score", { ascending: false, nullsFirst: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const listCatalogPagesFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("catalog_pages")
+      .select("*")
+      .eq("catalog_import_id", data.catalog_import_id)
+      .eq("user_id", context.userId)
+      .order("page_number", { ascending: true });
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
@@ -102,12 +131,14 @@ const promoExtractedSchema = z.object({
   category: z.string().max(120).nullable().optional(),
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
-  page_number: z.number().int().nullable().optional(),
   social_score: z.number().int().min(0).max(100).nullable().optional(),
+  confidence: z.number().int().min(0).max(100).nullable().optional(),
   recommendation_reason: z.string().max(500).nullable().optional(),
+  missing_fields: z.array(z.string().max(60)).max(20).nullable().optional(),
 });
-const promosArraySchema = z.object({
+const pageAnalysisSchema = z.object({
   promotions: z.array(promoExtractedSchema).max(200),
+  notes: z.string().max(800).nullable().optional(),
 });
 
 function parseJsonLoose(text: string) {
@@ -116,6 +147,153 @@ function parseJsonLoose(text: string) {
   const candidate =
     fenced?.[1] ?? t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1);
   return JSON.parse(candidate);
+}
+
+async function extractSinglePagePdf(
+  fullPdf: Uint8Array,
+  pageIndex: number,
+): Promise<Uint8Array> {
+  const { PDFDocument } = await import("pdf-lib");
+  const src = await PDFDocument.load(fullPdf, { ignoreEncryption: true });
+  const out = await PDFDocument.create();
+  const [copied] = await out.copyPages(src, [pageIndex]);
+  out.addPage(copied);
+  return await out.save();
+}
+
+async function analyzeSinglePage(args: {
+  context: any;
+  imp: any;
+  pageNumber: number; // 1-indexed
+  fullPdf: Uint8Array;
+  store: any;
+  apiKey: string;
+}) {
+  const { context, imp, pageNumber, fullPdf, store, apiKey } = args;
+
+  // mark page as analyzing
+  await context.supabase
+    .from("catalog_pages")
+    .upsert(
+      {
+        catalog_import_id: imp.id,
+        user_id: context.userId,
+        page_number: pageNumber,
+        status: "analyzing",
+        error_message: null,
+      },
+      { onConflict: "catalog_import_id,page_number" },
+    );
+
+  try {
+    const pageBuf = await extractSinglePagePdf(fullPdf, pageNumber - 1);
+
+    const { createLovableAiGatewayProvider } = await import(
+      "@/lib/ai-gateway.server"
+    );
+    const { generateText } = await import("ai");
+    const gateway = createLovableAiGatewayProvider(apiKey);
+
+    const sys = `Tu es un expert en analyse de catalogues promotionnels GMS (grande distribution) en France. Tu analyses UNE seule page d'un catalogue à la fois et tu cherches de manière EXHAUSTIVE toutes les promotions visibles, même si le prix est écrit en gros, le nom produit petit, l'ancien prix barré, ou la remise est dans un badge. Plusieurs produits peuvent être sur la même page. Tu réponds UNIQUEMENT en JSON valide.`;
+    const prompt = `Analyse UNIQUEMENT cette page (page ${pageNumber}) du catalogue${store ? ` du magasin ${store.name} (${store.banner ?? "-"})` : ""}.
+
+Extrais TOUTES les promotions visibles sans en oublier. Pour chacune, renvoie:
+- product_name (texte, obligatoire)
+- promo_price (nombre en euros, ou null)
+- old_price (nombre en euros barré, ou null)
+- discount_percent (entier, ou null)
+- category (court: "Fruits et légumes", "Boucherie", "Épicerie", "Crèmerie", "Boissons", "Surgelés", "Hygiène", "Local", "Saisonnier", "Autre")
+- start_date / end_date (YYYY-MM-DD ou null)
+- social_score (0-100): pertinence réseaux sociaux (frais local, promo forte, saisonnier, marque connue)
+- confidence (0-100): à quel point tu es certain de cette détection
+- recommendation_reason (1 phrase courte)
+- missing_fields: liste des champs que tu n'as PAS pu lire avec certitude (ex: ["old_price","end_date"])
+
+Ajoute aussi un champ "notes" (string) listant brièvement les zones de la page que tu n'as pas pu analyser ou qui sont ambiguës.
+
+Format strict:
+{ "promotions": [ { ... }, ... ], "notes": "..." }
+Pas de markdown, pas de texte autour.`;
+
+    const { text } = await generateText({
+      model: gateway("google/gemini-3-flash-preview"),
+      system: sys,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "file",
+              data: pageBuf,
+              mediaType: "application/pdf",
+            },
+          ],
+        },
+      ],
+    });
+
+    const parsed = pageAnalysisSchema.parse(parseJsonLoose(text));
+
+    // remove existing AI promos for this page
+    await context.supabase
+      .from("catalog_promotions")
+      .delete()
+      .eq("catalog_import_id", imp.id)
+      .eq("user_id", context.userId)
+      .eq("page_number", pageNumber)
+      .eq("detection_source", "ai");
+
+    const rows = parsed.promotions.map((p) => ({
+      catalog_import_id: imp.id,
+      user_id: context.userId,
+      store_id: imp.store_id,
+      product_name: p.product_name,
+      promo_price: p.promo_price ?? null,
+      old_price: p.old_price ?? null,
+      discount_percent: p.discount_percent ?? null,
+      category: p.category ?? null,
+      start_date: p.start_date ?? null,
+      end_date: p.end_date ?? null,
+      page_number: pageNumber,
+      social_score: p.social_score ?? null,
+      confidence: p.confidence ?? null,
+      recommendation_reason: p.recommendation_reason ?? null,
+      missing_fields: p.missing_fields ?? null,
+      detection_source: "ai",
+      selected: false,
+    }));
+    if (rows.length > 0) {
+      const { error: insErr } = await context.supabase
+        .from("catalog_promotions")
+        .insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
+
+    await context.supabase
+      .from("catalog_pages")
+      .update({
+        status: "analyzed",
+        promotions_count: rows.length,
+        notes: parsed.notes ?? null,
+        analyzed_at: new Date().toISOString(),
+        error_message: null,
+      })
+      .eq("catalog_import_id", imp.id)
+      .eq("page_number", pageNumber)
+      .eq("user_id", context.userId);
+
+    return { count: rows.length };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Analyse de page échouée";
+    await context.supabase
+      .from("catalog_pages")
+      .update({ status: "failed", error_message: msg })
+      .eq("catalog_import_id", imp.id)
+      .eq("page_number", pageNumber)
+      .eq("user_id", context.userId);
+    throw e;
+  }
 }
 
 export const analyzeCatalogFn = createServerFn({ method: "POST" })
@@ -146,11 +324,27 @@ export const analyzeCatalogFn = createServerFn({ method: "POST" })
       if (!fileRes.ok) throw new Error("Téléchargement du PDF impossible.");
       const pdfBuffer = new Uint8Array(await fileRes.arrayBuffer());
 
-      const { createLovableAiGatewayProvider } = await import(
-        "@/lib/ai-gateway.server"
-      );
-      const { generateText } = await import("ai");
-      const gateway = createLovableAiGatewayProvider(key);
+      const { PDFDocument } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+      const pageCount = pdfDoc.getPageCount();
+
+      await context.supabase
+        .from("catalog_imports")
+        .update({ page_count: pageCount })
+        .eq("id", imp.id);
+
+      // reset previous AI promos and pages
+      await context.supabase
+        .from("catalog_promotions")
+        .delete()
+        .eq("catalog_import_id", imp.id)
+        .eq("user_id", context.userId)
+        .eq("detection_source", "ai");
+      await context.supabase
+        .from("catalog_pages")
+        .delete()
+        .eq("catalog_import_id", imp.id)
+        .eq("user_id", context.userId);
 
       const storeRes = await context.supabase
         .from("stores")
@@ -160,78 +354,21 @@ export const analyzeCatalogFn = createServerFn({ method: "POST" })
         .maybeSingle();
       const store = storeRes.data;
 
-      const sys = `Tu es un expert en analyse de catalogues promotionnels GMS (grande distribution) en France. Tu extrais les promotions de manière exhaustive depuis le PDF fourni. Tu réponds UNIQUEMENT en JSON valide.`;
-      const prompt = `Analyse ce catalogue promotionnel${store ? ` du magasin ${store.name} (${store.banner})` : ""} et extrais TOUTES les promotions visibles.
-
-Pour chaque promotion, renvoie:
-- product_name (texte, obligatoire)
-- promo_price (nombre en euros, ou null)
-- old_price (nombre en euros, ou null)
-- discount_percent (entier, ou null)
-- category (texte court: "Fruits et légumes", "Boucherie", "Épicerie", "Crèmerie", "Boissons", "Surgelés", "Hygiène", "Local", "Saisonnier", "Autre")
-- start_date (YYYY-MM-DD ou null)
-- end_date (YYYY-MM-DD ou null)
-- page_number (entier ou null)
-- social_score (entier 0-100): pertinence pour les réseaux sociaux. Score élevé pour: produits frais locaux, promos fortes (>30%), produits saisonniers, marques connues, prix choc, coups de cœur.
-- recommendation_reason (1 phrase courte expliquant le score)
-
-Réponds avec un JSON strict de la forme:
-{ "promotions": [ { ... }, { ... } ] }
-Pas de markdown, pas de texte autour.`;
-
-      const { text } = await generateText({
-        model: gateway("google/gemini-3-flash-preview"),
-        system: sys,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              {
-                type: "file",
-                data: pdfBuffer,
-                mediaType: "application/pdf",
-              },
-            ],
-          },
-        ],
-      });
-
-      let parsed: z.infer<typeof promosArraySchema>;
-      try {
-        parsed = promosArraySchema.parse(parseJsonLoose(text));
-      } catch {
-        throw new Error("Réponse IA illisible. Réessayez.");
-      }
-
-      await context.supabase
-        .from("catalog_promotions")
-        .delete()
-        .eq("catalog_import_id", imp.id)
-        .eq("user_id", context.userId);
-
-      const storeId = imp.store_id;
-      const rows = parsed.promotions.map((p) => ({
-        catalog_import_id: imp.id,
-        user_id: context.userId,
-        store_id: storeId,
-        product_name: p.product_name,
-        promo_price: p.promo_price ?? null,
-        old_price: p.old_price ?? null,
-        discount_percent: p.discount_percent ?? null,
-        category: p.category ?? null,
-        start_date: p.start_date ?? null,
-        end_date: p.end_date ?? null,
-        page_number: p.page_number ?? null,
-        social_score: p.social_score ?? null,
-        recommendation_reason: p.recommendation_reason ?? null,
-        selected: false,
-      }));
-      if (rows.length > 0) {
-        const { error: insErr } = await context.supabase
-          .from("catalog_promotions")
-          .insert(rows);
-        if (insErr) throw new Error(insErr.message);
+      let total = 0;
+      for (let i = 1; i <= pageCount; i++) {
+        try {
+          const r = await analyzeSinglePage({
+            context,
+            imp,
+            pageNumber: i,
+            fullPdf: pdfBuffer,
+            store,
+            apiKey: key,
+          });
+          total += r.count;
+        } catch {
+          // continue to next page
+        }
       }
 
       await context.supabase
@@ -239,7 +376,7 @@ Pas de markdown, pas de texte autour.`;
         .update({ status: "analyzed" })
         .eq("id", imp.id);
 
-      return { ok: true, count: rows.length };
+      return { ok: true, count: total, pages: pageCount };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Analyse échouée";
       await context.supabase
@@ -248,6 +385,46 @@ Pas de markdown, pas de texte autour.`;
         .eq("id", imp.id);
       throw new Error(msg);
     }
+  });
+
+export const reanalyzeCatalogPageFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        catalog_import_id: z.string().uuid(),
+        page_number: z.number().int().min(1).max(500),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: imp } = await context.supabase
+      .from("catalog_imports")
+      .select("*")
+      .eq("id", data.catalog_import_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!imp) throw new Error("Catalogue introuvable.");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("LOVABLE_API_KEY manquant.");
+    const fileRes = await fetch(imp.file_url);
+    if (!fileRes.ok) throw new Error("Téléchargement du PDF impossible.");
+    const pdfBuffer = new Uint8Array(await fileRes.arrayBuffer());
+    const storeRes = await context.supabase
+      .from("stores")
+      .select("name, banner, city")
+      .eq("user_id", context.userId)
+      .limit(1)
+      .maybeSingle();
+    const r = await analyzeSinglePage({
+      context,
+      imp,
+      pageNumber: data.page_number,
+      fullPdf: pdfBuffer,
+      store: storeRes.data,
+      apiKey: key,
+    });
+    return { ok: true, count: r.count };
   });
 
 export const updateCatalogPromotionFn = createServerFn({ method: "POST" })
@@ -278,6 +455,68 @@ export const updateCatalogPromotionFn = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+export const addCatalogPromotionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        catalog_import_id: z.string().uuid(),
+        page_number: z.number().int().min(1).max(500).nullable().optional(),
+        product_name: z.string().min(1).max(300),
+        promo_price: z.number().nullable().optional(),
+        old_price: z.number().nullable().optional(),
+        discount_percent: z.number().nullable().optional(),
+        category: z.string().max(120).nullable().optional(),
+        start_date: z.string().nullable().optional(),
+        end_date: z.string().nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: imp } = await context.supabase
+      .from("catalog_imports")
+      .select("id, store_id")
+      .eq("id", data.catalog_import_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!imp) throw new Error("Catalogue introuvable.");
+    const { data: row, error } = await context.supabase
+      .from("catalog_promotions")
+      .insert({
+        catalog_import_id: imp.id,
+        user_id: context.userId,
+        store_id: imp.store_id,
+        page_number: data.page_number ?? null,
+        product_name: data.product_name,
+        promo_price: data.promo_price ?? null,
+        old_price: data.old_price ?? null,
+        discount_percent: data.discount_percent ?? null,
+        category: data.category ?? null,
+        start_date: data.start_date ?? null,
+        end_date: data.end_date ?? null,
+        detection_source: "manual",
+        confidence: 100,
+        selected: false,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const deleteCatalogPromotionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("catalog_promotions")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const campaignSchema = z.object({
