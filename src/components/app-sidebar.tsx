@@ -9,6 +9,7 @@ import {
   LogOut,
   Plug,
   Palette,
+  FileUp,
 } from "lucide-react";
 import {
   Sidebar,
