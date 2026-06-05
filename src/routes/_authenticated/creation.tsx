@@ -53,6 +53,9 @@ const ICON_BADGES = ["-10%", "-20%", "-30%", "-50%", "PRIX CHOC", "NOUVEAU", "LO
 type Config = {
   layout?: "banner" | "split" | "centered" | string;
   primaryColor?: string;
+  secondaryColor?: string;
+  fontFamily?: string;
+  slogan?: string;
   mainText?: string;
   productName?: string;
   price?: string;
