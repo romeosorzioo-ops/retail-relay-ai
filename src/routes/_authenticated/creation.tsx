@@ -300,6 +300,67 @@ function CreationPage() {
     setConfig((c) => (c.blocks.length === 0 ? { ...c, blocks: defaultBlocks(null) } : c));
   }, []);
 
+  // ---------- Catalog promotion bridge ----------
+  function applyCatalogPromoBlocks(p: any) {
+    setConfig((c) => {
+      const blocks = c.blocks.map((b) => {
+        if (b.role === "custom" && p.product_name) return { ...b, text: p.product_name };
+        if (b.role === "price_main" && p.promo_price != null)
+          return { ...b, text: `${String(p.promo_price).replace(".", ",")} €` };
+        if (b.role === "price_old" && p.old_price != null)
+          return { ...b, text: `${String(p.old_price).replace(".", ",")} €` };
+        if (b.role === "badge" && p.discount_percent != null)
+          return { ...b, text: `-${p.discount_percent}%` };
+        return b;
+      });
+      return { ...c, blocks };
+    });
+  }
+
+  function switchCatalogMode(mode: "catalog_visual" | "field_photo") {
+    if (!catalogPromo) return;
+    setCatalogMode(mode);
+    if (mode === "catalog_visual") {
+      setSourceType("catalog");
+      setSourceImageUrl(catalogPromo.product_image_url ?? null);
+      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url ?? c.bgImage }));
+    } else {
+      setSourceType("field_photo");
+      setSourceImageUrl(null);
+      setConfig((c) => ({ ...c, bgImage: null }));
+      toast.info("Importez une photo terrain pour ce visuel.");
+    }
+    setPromotionCreationModeFn({
+      data: { promotion_id: catalogPromo.id, creation_mode: mode },
+    }).catch(() => {});
+    navigate({ search: { cp: catalogPromo.id, mode } as never, replace: true });
+  }
+
+  // Apply catalog promo when loaded
+  const catalogAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!catalogPromo) return;
+    const key = `${catalogPromo.id}:${search.mode ?? catalogPromo.creation_mode ?? "catalog_visual"}`;
+    if (catalogAppliedRef.current === key) return;
+    catalogAppliedRef.current = key;
+    setCatalogPromoId(catalogPromo.id);
+    const mode =
+      (search.mode as "catalog_visual" | "field_photo" | undefined) ??
+      (catalogPromo.creation_mode as "catalog_visual" | "field_photo" | null) ??
+      "catalog_visual";
+    setCatalogMode(mode);
+    applyCatalogPromoBlocks(catalogPromo);
+    if (mode === "catalog_visual" && catalogPromo.product_image_url) {
+      setSourceType("catalog");
+      setSourceImageUrl(catalogPromo.product_image_url);
+      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url }));
+    } else if (mode === "field_photo") {
+      setSourceType("field_photo");
+    }
+  }, [catalogPromo, search.mode]);
+
+
+
   const dims = FORMATS[format];
   const previewWidth = dims.previewW;
   const previewHeight = Math.round((dims.h / dims.w) * previewWidth);
