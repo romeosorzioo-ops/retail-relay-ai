@@ -362,7 +362,7 @@ function CreationPage() {
         final_visual_url = up.url;
       }
       return updateCampaignItemFn({
-        data: { id: currentItemId, status: "validated", final_visual_url },
+        data: { id: currentItemId, status: "validated", final_visual_url, recommended_format: format },
       });
     },
     onSuccess: () => {
