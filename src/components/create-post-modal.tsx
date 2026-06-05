@@ -111,6 +111,7 @@ export function CreatePostModal({
       setMediaUrl(editing.media_url ?? null);
       setMediaType(editing.media_type ?? null);
       setGenContentId(editing.generated_content_id ?? null);
+      setFormatKey(editing.format ?? "ig_square");
       const d = editing.scheduled_at ? new Date(editing.scheduled_at) : new Date();
       setDate(format(d, "yyyy-MM-dd"));
       setTime(format(d, "HH:mm"));
@@ -122,6 +123,7 @@ export function CreatePostModal({
       setMediaUrl(null);
       setMediaType(null);
       setGenContentId(null);
+      setFormatKey("ig_square");
       setDate(format(d, "yyyy-MM-dd"));
       setTime("10:00");
     }
