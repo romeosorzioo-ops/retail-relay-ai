@@ -4,20 +4,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Upload, Loader2, FileText, Trash2, Sparkles, CalendarPlus,
-  Wand2, Filter as FilterIcon, Pencil, Check, X,
+  Wand2, Filter as FilterIcon, Pencil, Check, X, RefreshCw, Plus,
+  AlertTriangle, ShieldCheck, HelpCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   listCatalogImportsFn, uploadCatalogFn, deleteCatalogImportFn,
   analyzeCatalogFn, listCatalogPromotionsFn, updateCatalogPromotionFn,
   generateCampaignFn, listCampaignRecommendationsFn, addCampaignToCalendarFn,
+  listCatalogPagesFn, reanalyzeCatalogPageFn, addCatalogPromotionFn,
+  deleteCatalogPromotionFn,
 } from "@/lib/catalog.functions";
 
 export const Route = createFileRoute("/_authenticated/catalog")({
@@ -27,12 +28,8 @@ export const Route = createFileRoute("/_authenticated/catalog")({
 const FILTERS = [
   { id: "all", label: "Toutes" },
   { id: "best", label: "Meilleures promos" },
+  { id: "uncertain", label: "Incertaines" },
   { id: "social", label: "Fort potentiel social" },
-  { id: "Fruits et légumes", label: "Fruits et légumes" },
-  { id: "Boucherie", label: "Boucherie" },
-  { id: "Épicerie", label: "Épicerie" },
-  { id: "Local", label: "Local" },
-  { id: "Saisonnier", label: "Saisonnier" },
 ] as const;
 
 function formatSize(n?: number | null) {
@@ -60,9 +57,125 @@ function statusBadge(status: string) {
     analyzing: { label: "Analyse…", cls: "bg-blue-100 text-blue-700" },
     analyzed: { label: "Analysé", cls: "bg-green-100 text-green-700" },
     failed: { label: "Échec", cls: "bg-red-100 text-red-700" },
+    pending: { label: "En attente", cls: "bg-muted text-muted-foreground" },
   };
   const meta = m[status] ?? m.uploaded;
   return <Badge className={meta.cls}>{meta.label}</Badge>;
+}
+
+function confidenceBadge(c?: number | null) {
+  if (c == null) return null;
+  const color =
+    c >= 80 ? "bg-green-100 text-green-700"
+      : c >= 50 ? "bg-amber-100 text-amber-700"
+        : "bg-red-100 text-red-700";
+  const Icon = c >= 80 ? ShieldCheck : c >= 50 ? HelpCircle : AlertTriangle;
+  return (
+    <Badge className={cn(color, "gap-1")}>
+      <Icon className="h-3 w-3" /> {c}%
+    </Badge>
+  );
+}
+
+function PromoCard({
+  p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
+}: any) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-3 transition",
+        p.selected ? "border-primary bg-primary/5" : "",
+        (p.confidence ?? 100) < 50 ? "border-amber-300" : "",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <Checkbox checked={!!p.selected} onCheckedChange={(v) => onToggle(!!v)} />
+          {isEdit ? (
+            <Input
+              className="h-8"
+              value={edit.product_name ?? p.product_name}
+              onChange={(e) => setEdit((s: any) => ({ ...s, product_name: e.target.value }))}
+            />
+          ) : (
+            <p className="text-sm font-semibold leading-tight">{p.product_name}</p>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {confidenceBadge(p.confidence)}
+          {p.detection_source === "manual" && (
+            <Badge variant="outline" className="text-[10px]">Manuel</Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-baseline gap-2 flex-wrap">
+        {isEdit ? (
+          <>
+            <Input type="number" step="0.01" className="h-8 w-20" placeholder="Prix"
+              value={edit.promo_price ?? p.promo_price ?? ""}
+              onChange={(e) => setEdit((s: any) => ({
+                ...s, promo_price: e.target.value === "" ? null : Number(e.target.value),
+              }))}
+            />
+            <Input type="number" step="0.01" className="h-8 w-20" placeholder="Ancien"
+              value={edit.old_price ?? p.old_price ?? ""}
+              onChange={(e) => setEdit((s: any) => ({
+                ...s, old_price: e.target.value === "" ? null : Number(e.target.value),
+              }))}
+            />
+          </>
+        ) : (
+          <>
+            <span className="text-lg font-bold text-primary">
+              {p.promo_price != null ? `${p.promo_price} €` : "—"}
+            </span>
+            {p.old_price != null && (
+              <span className="text-xs text-muted-foreground line-through">{p.old_price} €</span>
+            )}
+            {p.discount_percent != null && (
+              <Badge className="bg-red-100 text-red-700">-{p.discount_percent}%</Badge>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground items-center">
+        {isEdit ? (
+          <Input className="h-7" placeholder="Catégorie"
+            value={edit.category ?? p.category ?? ""}
+            onChange={(e) => setEdit((s: any) => ({ ...s, category: e.target.value }))}
+          />
+        ) : (
+          p.category && <Badge variant="outline">{p.category}</Badge>
+        )}
+      </div>
+
+      {p.missing_fields && Array.isArray(p.missing_fields) && p.missing_fields.length > 0 && !isEdit && (
+        <p className="mt-2 text-xs text-amber-700">
+          Données manquantes : {p.missing_fields.join(", ")}
+        </p>
+      )}
+
+      {p.recommendation_reason && !isEdit && (
+        <p className="mt-2 text-xs italic text-muted-foreground">{p.recommendation_reason}</p>
+      )}
+
+      <div className="mt-3 flex justify-end gap-1">
+        {isEdit ? (
+          <>
+            <Button size="icon" variant="ghost" onClick={onSave}><Check className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={onCancel}><X className="h-4 w-4" /></Button>
+          </>
+        ) : (
+          <>
+            <Button size="icon" variant="ghost" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function CatalogPage() {
@@ -73,6 +186,8 @@ function CatalogPage() {
   const [filter, setFilter] = useState<string>("all");
   const [editId, setEditId] = useState<string | null>(null);
   const [edit, setEdit] = useState<any>({});
+  const [addingOnPage, setAddingOnPage] = useState<number | null>(null);
+  const [newPromo, setNewPromo] = useState<any>({});
 
   const { data: imports = [] } = useQuery({
     queryKey: ["catalog-imports"],
@@ -90,6 +205,17 @@ function CatalogPage() {
     queryKey: ["catalog-promos", currentId],
     queryFn: () => listCatalogPromotionsFn({ data: { catalog_import_id: currentId! } }),
     enabled: !!currentId,
+    refetchInterval: current?.status === "analyzing" ? 3000 : false,
+  });
+
+  const { data: pages = [] } = useQuery({
+    queryKey: ["catalog-pages", currentId],
+    queryFn: () => listCatalogPagesFn({ data: { catalog_import_id: currentId! } }),
+    enabled: !!currentId,
+    refetchInterval: (q) => {
+      const data = (q.state.data ?? []) as any[];
+      return data.some((p) => p.status === "analyzing" || p.status === "pending") ? 2500 : false;
+    },
   });
 
   const { data: recos = [] } = useQuery({
@@ -129,13 +255,43 @@ function CatalogPage() {
     onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["catalog-imports"] });
       qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] });
-      toast.success(`${r.count} promotions détectées.`);
+      qc.invalidateQueries({ queryKey: ["catalog-pages", currentId] });
+      toast.success(`${r.count} promotions détectées sur ${r.pages} page(s).`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reanalyzePageMut = useMutation({
+    mutationFn: (vars: { page_number: number }) =>
+      reanalyzeCatalogPageFn({ data: { catalog_import_id: currentId!, page_number: vars.page_number } }),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] });
+      qc.invalidateQueries({ queryKey: ["catalog-pages", currentId] });
+      toast.success(`Page réanalysée : ${r.count} promo(s).`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const updMut = useMutation({
     mutationFn: (vars: any) => updateCatalogPromotionFn({ data: vars }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addMut = useMutation({
+    mutationFn: (vars: any) =>
+      addCatalogPromotionFn({ data: { ...vars, catalog_import_id: currentId! } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] });
+      setAddingOnPage(null);
+      setNewPromo({});
+      toast.success("Promo ajoutée.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const delPromoMut = useMutation({
+    mutationFn: (id: string) => deleteCatalogPromotionFn({ data: { id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["catalog-promos", currentId] }),
     onError: (e: Error) => toast.error(e.message),
   });
@@ -160,21 +316,48 @@ function CatalogPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = useMemo(() => {
+  const filteredAll = useMemo(() => {
     let list: any[] = [...promos];
     if (filter === "best")
       list = list.filter((p) => (p.discount_percent ?? 0) >= 30 || (p.social_score ?? 0) >= 70);
     else if (filter === "social")
-      list = list.sort((a, b) => (b.social_score ?? 0) - (a.social_score ?? 0)).slice(0, 50);
-    else if (filter !== "all") list = list.filter((p) => p.category === filter);
+      list = list.sort((a, b) => (b.social_score ?? 0) - (a.social_score ?? 0));
+    else if (filter === "uncertain")
+      list = list.filter((p) => (p.confidence ?? 100) < 60 || (p.missing_fields?.length ?? 0) > 0);
     return list;
   }, [promos, filter]);
 
+  const promosByPage = useMemo(() => {
+    const map = new Map<number, any[]>();
+    for (const p of filteredAll) {
+      const k = p.page_number ?? 0;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(p);
+    }
+    return map;
+  }, [filteredAll]);
+
+  const pageList = useMemo(() => {
+    const fromPages = pages.map((p: any) => p.page_number);
+    const fromPromos = Array.from(promosByPage.keys()).filter((k) => k > 0);
+    const set = new Set<number>([...fromPages, ...fromPromos]);
+    return Array.from(set).sort((a, b) => a - b);
+  }, [pages, promosByPage]);
+
+  const pageMeta = (n: number) => pages.find((p: any) => p.page_number === n);
   const selectedCount = promos.filter((p: any) => p.selected).length;
+  const uncertainCount = promos.filter((p: any) =>
+    (p.confidence ?? 100) < 60 || (p.missing_fields?.length ?? 0) > 0).length;
 
   function onPick(files: FileList | null) {
     if (!files || files.length === 0) return;
     uploadMut.mutate(files[0]);
+  }
+
+  function startEdit(p: any) { setEditId(p.id); setEdit({}); }
+  function saveEdit(p: any) {
+    updMut.mutate({ id: p.id, ...edit });
+    setEditId(null); setEdit({});
   }
 
   return (
@@ -182,8 +365,8 @@ function CatalogPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Import catalogue</h1>
         <p className="text-sm text-muted-foreground">
-          Importez votre catalogue mensuel en PDF, Komaag détecte les promos et
-          recommande votre plan social.
+          Importez votre catalogue mensuel en PDF, Komaag détecte les promos page par page
+          et recommande votre plan social.
         </p>
       </div>
 
@@ -193,16 +376,9 @@ function CatalogPage() {
         </CardHeader>
         <CardContent>
           <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDrag(true);
-            }}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
             onDragLeave={() => setDrag(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDrag(false);
-              onPick(e.dataTransfer.files);
-            }}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); onPick(e.dataTransfer.files); }}
             onClick={() => fileRef.current?.click()}
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition",
@@ -214,17 +390,10 @@ function CatalogPage() {
             ) : (
               <Upload className="h-8 w-8 text-muted-foreground" />
             )}
-            <p className="text-sm font-medium">
-              Glissez-déposez votre catalogue PDF ici
-            </p>
+            <p className="text-sm font-medium">Glissez-déposez votre catalogue PDF ici</p>
             <p className="text-xs text-muted-foreground">PDF — 30 Mo max</p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/pdf,.pdf"
-              className="hidden"
-              onChange={(e) => onPick(e.target.files)}
-            />
+            <input ref={fileRef} type="file" accept="application/pdf,.pdf"
+              className="hidden" onChange={(e) => onPick(e.target.files)} />
           </div>
         </CardContent>
       </Card>
@@ -236,9 +405,7 @@ function CatalogPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {imports.map((it: any) => (
-              <div
-                key={it.id}
-                onClick={() => setSelectedId(it.id)}
+              <div key={it.id} onClick={() => setSelectedId(it.id)}
                 className={cn(
                   "flex cursor-pointer items-center gap-3 rounded-md border p-3",
                   currentId === it.id ? "border-primary bg-primary/5" : "",
@@ -248,18 +415,15 @@ function CatalogPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{it.file_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatSize(it.file_size)} • {new Date(it.created_at).toLocaleDateString("fr-FR")}
+                    {formatSize(it.file_size)}
+                    {it.page_count ? ` • ${it.page_count} page(s)` : ""}
+                    {" • "}{new Date(it.created_at).toLocaleDateString("fr-FR")}
                   </p>
                 </div>
                 {statusBadge(it.status)}
-                <Button
-                  size="sm"
-                  variant="outline"
+                <Button size="sm" variant="outline"
                   disabled={it.status === "analyzing" || analyzeMut.isPending}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    analyzeMut.mutate(it.id);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); analyzeMut.mutate(it.id); }}
                 >
                   {it.status === "analyzing" || (analyzeMut.isPending && analyzeMut.variables === it.id) ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -268,9 +432,7 @@ function CatalogPage() {
                   )}
                   Analyser
                 </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
+                <Button size="icon" variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (confirm("Supprimer ce catalogue ?")) delMut.mutate(it.id);
@@ -284,23 +446,23 @@ function CatalogPage() {
         </Card>
       )}
 
-      {currentId && promos.length > 0 && (
+      {currentId && (promos.length > 0 || pages.length > 0) && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">
-              2. Promotions détectées ({promos.length})
-            </CardTitle>
-            <div className="text-sm text-muted-foreground">
-              {selectedCount} sélectionnée(s)
+            <div>
+              <CardTitle className="text-base">
+                2. Promotions détectées ({promos.length})
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedCount} sélectionnée(s) • {uncertainCount} incertaine(s)
+              </p>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <FilterIcon className="h-4 w-4 text-muted-foreground" />
               {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
+                <button key={f.id} onClick={() => setFilter(f.id)}
                   className={cn(
                     "rounded-full border px-3 py-1 text-xs transition",
                     filter === f.id
@@ -313,181 +475,107 @@ function CatalogPage() {
               ))}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((p: any) => {
-                const isEdit = editId === p.id;
+            <div className="space-y-6">
+              {pageList.map((pn) => {
+                const meta = pageMeta(pn);
+                const list = promosByPage.get(pn) ?? [];
+                const isAnalyzing = meta?.status === "analyzing" || meta?.status === "pending";
                 return (
-                  <div
-                    key={p.id}
-                    className={cn(
-                      "rounded-lg border p-3 transition",
-                      p.selected ? "border-primary bg-primary/5" : "",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          checked={!!p.selected}
-                          onCheckedChange={(v) =>
-                            updMut.mutate({ id: p.id, selected: !!v })
-                          }
-                        />
-                        {isEdit ? (
-                          <Input
-                            className="h-8"
-                            value={edit.product_name ?? p.product_name}
-                            onChange={(e) =>
-                              setEdit((s: any) => ({ ...s, product_name: e.target.value }))
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm font-semibold leading-tight">
-                            {p.product_name}
-                          </p>
-                        )}
-                      </div>
-                      {p.social_score != null && (
-                        <Badge variant="secondary" className="shrink-0">
-                          {p.social_score}/100
-                        </Badge>
+                  <div key={pn} className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2 border-b pb-2">
+                      <h3 className="text-sm font-semibold">Page {pn}</h3>
+                      {meta && statusBadge(meta.status)}
+                      <span className="text-xs text-muted-foreground">
+                        {list.length} promo(s)
+                      </span>
+                      {meta?.notes && (
+                        <span className="text-xs text-amber-700 italic">
+                          Zones non analysées : {meta.notes}
+                        </span>
                       )}
-                    </div>
-
-                    <div className="mt-2 flex items-baseline gap-2">
-                      {isEdit ? (
-                        <>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="h-8 w-20"
-                            placeholder="Prix"
-                            value={edit.promo_price ?? p.promo_price ?? ""}
-                            onChange={(e) =>
-                              setEdit((s: any) => ({
-                                ...s,
-                                promo_price: e.target.value === "" ? null : Number(e.target.value),
-                              }))
-                            }
-                          />
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="h-8 w-20"
-                            placeholder="Ancien"
-                            value={edit.old_price ?? p.old_price ?? ""}
-                            onChange={(e) =>
-                              setEdit((s: any) => ({
-                                ...s,
-                                old_price: e.target.value === "" ? null : Number(e.target.value),
-                              }))
-                            }
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-lg font-bold text-primary">
-                            {p.promo_price != null ? `${p.promo_price} €` : "—"}
-                          </span>
-                          {p.old_price != null && (
-                            <span className="text-xs text-muted-foreground line-through">
-                              {p.old_price} €
-                            </span>
+                      {meta?.error_message && (
+                        <span className="text-xs text-red-700">{meta.error_message}</span>
+                      )}
+                      <div className="ml-auto flex gap-1">
+                        <Button size="sm" variant="outline"
+                          disabled={isAnalyzing || reanalyzePageMut.isPending}
+                          onClick={() => reanalyzePageMut.mutate({ page_number: pn })}
+                        >
+                          {isAnalyzing ||
+                            (reanalyzePageMut.isPending && reanalyzePageMut.variables?.page_number === pn) ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="mr-1 h-3 w-3" />
                           )}
-                          {p.discount_percent != null && (
-                            <Badge className="bg-red-100 text-red-700">
-                              -{p.discount_percent}%
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground">
-                      {isEdit ? (
-                        <Input
-                          className="h-7"
-                          placeholder="Catégorie"
-                          value={edit.category ?? p.category ?? ""}
-                          onChange={(e) =>
-                            setEdit((s: any) => ({ ...s, category: e.target.value }))
-                          }
-                        />
-                      ) : (
-                        p.category && <Badge variant="outline">{p.category}</Badge>
-                      )}
-                      {p.page_number != null && <span>p.{p.page_number}</span>}
-                    </div>
-
-                    {isEdit ? (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <Input
-                          type="date"
-                          className="h-8"
-                          value={edit.start_date ?? p.start_date ?? ""}
-                          onChange={(e) =>
-                            setEdit((s: any) => ({ ...s, start_date: e.target.value || null }))
-                          }
-                        />
-                        <Input
-                          type="date"
-                          className="h-8"
-                          value={edit.end_date ?? p.end_date ?? ""}
-                          onChange={(e) =>
-                            setEdit((s: any) => ({ ...s, end_date: e.target.value || null }))
-                          }
-                        />
+                          Ré-analyser
+                        </Button>
+                        <Button size="sm" variant="outline"
+                          onClick={() => {
+                            setAddingOnPage(pn);
+                            setNewPromo({ page_number: pn });
+                          }}
+                        >
+                          <Plus className="mr-1 h-3 w-3" /> Ajouter
+                        </Button>
                       </div>
-                    ) : (
-                      (p.start_date || p.end_date) && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {p.start_date ?? "—"} → {p.end_date ?? "—"}
-                        </p>
-                      )
+                    </div>
+
+                    {addingOnPage === pn && (
+                      <div className="rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 p-3 space-y-2">
+                        <Input placeholder="Nom du produit"
+                          value={newPromo.product_name ?? ""}
+                          onChange={(e) => setNewPromo((s: any) => ({ ...s, product_name: e.target.value }))}
+                        />
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input type="number" step="0.01" placeholder="Prix promo"
+                            value={newPromo.promo_price ?? ""}
+                            onChange={(e) => setNewPromo((s: any) => ({
+                              ...s, promo_price: e.target.value === "" ? null : Number(e.target.value),
+                            }))}
+                          />
+                          <Input type="number" step="0.01" placeholder="Ancien prix"
+                            value={newPromo.old_price ?? ""}
+                            onChange={(e) => setNewPromo((s: any) => ({
+                              ...s, old_price: e.target.value === "" ? null : Number(e.target.value),
+                            }))}
+                          />
+                          <Input placeholder="Catégorie"
+                            value={newPromo.category ?? ""}
+                            onChange={(e) => setNewPromo((s: any) => ({ ...s, category: e.target.value }))}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="ghost"
+                            onClick={() => { setAddingOnPage(null); setNewPromo({}); }}
+                          >Annuler</Button>
+                          <Button size="sm" disabled={!newPromo.product_name || addMut.isPending}
+                            onClick={() => addMut.mutate(newPromo)}
+                          >
+                            {addMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Enregistrer"}
+                          </Button>
+                        </div>
+                      </div>
                     )}
 
-                    {p.recommendation_reason && !isEdit && (
-                      <p className="mt-2 text-xs italic text-muted-foreground">
-                        {p.recommendation_reason}
+                    {list.length === 0 && !isAnalyzing && (
+                      <p className="text-xs text-muted-foreground italic">
+                        Aucune promo détectée sur cette page.
                       </p>
                     )}
 
-                    <div className="mt-3 flex justify-end gap-1">
-                      {isEdit ? (
-                        <>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              updMut.mutate({ id: p.id, ...edit });
-                              setEditId(null);
-                              setEdit({});
-                            }}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditId(null);
-                              setEdit({});
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditId(p.id);
-                            setEdit({});
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {list.map((p: any) => (
+                        <PromoCard key={p.id} p={p}
+                          isEdit={editId === p.id} edit={edit} setEdit={setEdit}
+                          onEdit={() => startEdit(p)}
+                          onSave={() => saveEdit(p)}
+                          onCancel={() => { setEditId(null); setEdit({}); }}
+                          onDelete={() => {
+                            if (confirm("Supprimer cette promo ?")) delPromoMut.mutate(p.id);
                           }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      )}
+                          onToggle={(v: boolean) => updMut.mutate({ id: p.id, selected: v })}
+                        />
+                      ))}
                     </div>
                   </div>
                 );
@@ -495,8 +583,7 @@ function CatalogPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 border-t pt-4">
-              <Button
-                disabled={selectedCount === 0 || genMut.isPending}
+              <Button disabled={selectedCount === 0 || genMut.isPending}
                 onClick={() => genMut.mutate(currentId)}
               >
                 {genMut.isPending ? (
@@ -506,9 +593,7 @@ function CatalogPage() {
                 )}
                 Générer ma campagne ({selectedCount})
               </Button>
-              <Button
-                variant="outline"
-                disabled={recos.length === 0 || calMut.isPending}
+              <Button variant="outline" disabled={recos.length === 0 || calMut.isPending}
                 onClick={() => calMut.mutate(currentId)}
               >
                 {calMut.isPending ? (
@@ -534,9 +619,7 @@ function CatalogPage() {
             {recos.map((r: any) => (
               <div key={r.id} className="rounded-lg border p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold">
-                    {r.promotion?.product_name ?? "—"}
-                  </p>
+                  <p className="text-sm font-semibold">{r.promotion?.product_name ?? "—"}</p>
                   <div className="flex gap-1">
                     <Badge variant="outline">{r.recommended_format}</Badge>
                     <Badge variant="outline">{r.recommended_platform}</Badge>
