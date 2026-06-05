@@ -726,6 +726,44 @@ function CreationPage() {
         </div>
       </div>
 
+      {catalogPromo && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-primary/5 p-3">
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-xs text-muted-foreground">Promo catalogue</p>
+            <p className="text-sm font-semibold">
+              {catalogPromo.product_name}
+              {catalogPromo.promo_price != null && (
+                <span className="ml-2 text-primary">
+                  {String(catalogPromo.promo_price).replace(".", ",")} €
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="inline-flex rounded-md border bg-background p-0.5">
+            <Button
+              size="sm"
+              variant={catalogMode === "catalog_visual" ? "default" : "ghost"}
+              className="h-7 text-xs gap-1"
+              onClick={() => switchCatalogMode("catalog_visual")}
+              disabled={!catalogPromo.product_image_url}
+              title={catalogPromo.product_image_url ? "Visuel catalogue" : "Aucun visuel extrait"}
+            >
+              <ImageIcon className="h-3 w-3" /> Visuel catalogue
+            </Button>
+            <Button
+              size="sm"
+              variant={catalogMode === "field_photo" ? "default" : "ghost"}
+              className="h-7 text-xs gap-1"
+              onClick={() => switchCatalogMode("field_photo")}
+            >
+              <Camera className="h-3 w-3" /> Photo terrain
+            </Button>
+          </div>
+        </div>
+      )}
+
+
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px]">
         {/* LEFT — canvas / format / background / add blocks */}
         <Card>
