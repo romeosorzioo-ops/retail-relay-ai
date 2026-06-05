@@ -103,6 +103,57 @@ export type Database = {
           },
         ]
       }
+      meta_connections: {
+        Row: {
+          created_at: string
+          fb_user_id: string | null
+          fb_user_name: string | null
+          id: string
+          ig_business_id: string | null
+          ig_username: string | null
+          page_access_token: string | null
+          page_id: string | null
+          page_name: string | null
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+          user_access_token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fb_user_id?: string | null
+          fb_user_name?: string | null
+          id?: string
+          ig_business_id?: string | null
+          ig_username?: string | null
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fb_user_id?: string | null
+          fb_user_name?: string | null
+          id?: string
+          ig_business_id?: string | null
+          ig_username?: string | null
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
