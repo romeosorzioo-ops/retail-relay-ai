@@ -22,10 +22,12 @@ import {
   deleteCatalogPromotionFn, savePageImageFn, setPromotionImageFn,
   clearPromotionImageFn, setPromotionCreationModeFn,
 } from "@/lib/catalog.functions";
+import { createCampaignFromSelectionFn } from "@/lib/campaigns.functions";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import {
   renderPdfPageToCanvas, canvasToBase64, cropImageUrl,
 } from "@/lib/pdf-browser";
+import { CampaignStepper } from "@/components/campaign-stepper";
 
 
 export const Route = createFileRoute("/_authenticated/catalog")({
@@ -407,6 +409,25 @@ function CatalogPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const buildCampaignMut = useMutation({
+    mutationFn: async () => {
+      const ids = promos.filter((p: any) => p.selected).map((p: any) => p.id);
+      if (!currentId || ids.length === 0) throw new Error("Sélectionnez au moins une promo");
+      return createCampaignFromSelectionFn({
+        data: { catalog_import_id: currentId, promotion_ids: ids },
+      });
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success(`Campagne créée — ${r.items_count} visuel(s) en file d'attente.`);
+      navigate({
+        to: "/creation",
+        search: { campaign: r.campaign_id, tab: "queue" } as never,
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const calMut = useMutation({
     mutationFn: (id: string) => addCampaignToCalendarFn({ data: { catalog_import_id: id } }),
     onSuccess: (r: any) => {
@@ -571,7 +592,8 @@ function CatalogPage() {
 
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-6 pb-28">
+      <CampaignStepper active={selectedCount > 0 ? "select" : "catalog"} />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Import catalogue</h1>
         <p className="text-sm text-muted-foreground">
@@ -807,7 +829,7 @@ function CatalogPage() {
                 ) : (
                   <Wand2 className="mr-1 h-4 w-4" />
                 )}
-                Générer ma campagne ({selectedCount})
+                Recommandations IA ({selectedCount})
               </Button>
               <Button variant="outline" disabled={recos.length === 0 || calMut.isPending}
                 onClick={() => calMut.mutate(currentId)}
@@ -880,6 +902,21 @@ function CatalogPage() {
           }
         }}
       />
+
+      {selectedCount > 0 && (
+        <button
+          onClick={() => buildCampaignMut.mutate()}
+          disabled={buildCampaignMut.isPending}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:scale-[1.02] hover:shadow-xl disabled:opacity-70"
+        >
+          {buildCampaignMut.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Wand2 className="h-4 w-4" />
+          )}
+          Générer ma campagne ({selectedCount})
+        </button>
+      )}
     </div>
   );
 }

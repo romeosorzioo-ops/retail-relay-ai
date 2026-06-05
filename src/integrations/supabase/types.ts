@@ -155,6 +155,102 @@ export type Database = {
           },
         ]
       }
+      campaign_items: {
+        Row: {
+          campaign_id: string
+          catalog_promotion_id: string | null
+          category: string | null
+          created_at: string
+          creation_mode: string | null
+          discount_percent: number | null
+          end_date: string | null
+          final_visual_url: string | null
+          generated_caption: string | null
+          id: string
+          old_price: number | null
+          product_name: string
+          promo_price: number | null
+          recommended_date: string | null
+          recommended_format: string | null
+          recommended_platform: string | null
+          recommended_time: string | null
+          scheduled_post_id: string | null
+          source_image_url: string | null
+          start_date: string | null
+          status: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          catalog_promotion_id?: string | null
+          category?: string | null
+          created_at?: string
+          creation_mode?: string | null
+          discount_percent?: number | null
+          end_date?: string | null
+          final_visual_url?: string | null
+          generated_caption?: string | null
+          id?: string
+          old_price?: number | null
+          product_name: string
+          promo_price?: number | null
+          recommended_date?: string | null
+          recommended_format?: string | null
+          recommended_platform?: string | null
+          recommended_time?: string | null
+          scheduled_post_id?: string | null
+          source_image_url?: string | null
+          start_date?: string | null
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          catalog_promotion_id?: string | null
+          category?: string | null
+          created_at?: string
+          creation_mode?: string | null
+          discount_percent?: number | null
+          end_date?: string | null
+          final_visual_url?: string | null
+          generated_caption?: string | null
+          id?: string
+          old_price?: number | null
+          product_name?: string
+          promo_price?: number | null
+          recommended_date?: string | null
+          recommended_format?: string | null
+          recommended_platform?: string | null
+          recommended_time?: string | null
+          scheduled_post_id?: string | null
+          source_image_url?: string | null
+          start_date?: string | null
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_items_scheduled_post_id_fkey"
+            columns: ["scheduled_post_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_recommendations: {
         Row: {
           caption: string | null
@@ -216,6 +312,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaigns: {
+        Row: {
+          catalog_import_id: string | null
+          created_at: string
+          id: string
+          name: string
+          status: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          catalog_import_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          catalog_import_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       catalog_imports: {
         Row: {
