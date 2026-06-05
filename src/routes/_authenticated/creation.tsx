@@ -924,9 +924,11 @@ function CreationPage() {
                     <Label className="text-[10px] text-muted-foreground mb-0.5 block">Format recommandé</Label>
                     <Select
                       value={it.recommended_format ?? "ig_square"}
-                      onValueChange={(v) =>
-                        updateItem.mutate({ id: it.id, recommended_format: v })
-                      }
+                      onValueChange={(v) => {
+                        updateCampaignItemFn({ data: { id: it.id, recommended_format: v } })
+                          .then(() => qc.invalidateQueries({ queryKey: ["campaign-items"] }))
+                          .catch((e: Error) => toast.error(e.message));
+                      }}
                       disabled={it.status === "scheduled"}
                     >
                       <SelectTrigger className="h-8 text-[11px]"><SelectValue /></SelectTrigger>
