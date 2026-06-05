@@ -651,6 +651,58 @@ function CreationPage() {
         {/* LEFT — canvas / format / background / add blocks */}
         <Card>
           <CardContent className="space-y-4 p-4">
+            <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+              <Label className="flex items-center gap-1 text-xs font-semibold">
+                <Camera className="h-3.5 w-3.5" /> Création terrain
+              </Label>
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                Transformez une photo prise en magasin en visuel promo.
+              </p>
+              <label
+                className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed bg-background px-3 py-3 text-center text-[11px] hover:bg-accent"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) uploadFieldPhoto(f);
+                }}
+              >
+                {uploadingField
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Camera className="h-4 w-4 text-primary" />}
+                <span>{uploadingField ? "Envoi…" : "Glissez la photo ici ou cliquez"}</span>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFieldPhoto(f); }} />
+              </label>
+              {sourceType === "field_photo" && sourceImageUrl && (
+                <div className="flex items-center gap-2">
+                  <img src={sourceImageUrl} alt="" className="h-10 w-10 rounded object-cover" />
+                  <Button size="sm" variant="outline" className="text-xs"
+                    onClick={() => { setCropSrc(sourceImageUrl); setCropOpen(true); }}>
+                    Recadrer
+                  </Button>
+                </div>
+              )}
+              <div className="pt-1">
+                <Label className="mb-1 block text-[11px] font-semibold flex items-center gap-1">
+                  <Wand2 className="h-3 w-3" /> Presets rapides
+                </Label>
+                <div className="grid grid-cols-1 gap-1">
+                  {FIELD_PRESETS.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => applyFieldPreset(p.key)}
+                      className="flex items-center gap-1 rounded border bg-background px-2 py-1 text-left text-[11px] hover:border-primary hover:bg-accent"
+                    >
+                      <span>{p.emoji}</span>
+                      <span className="truncate">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label className="mb-1 block text-xs">Format</Label>
               <Select value={format} onValueChange={(v) => setFormat(v as FormatKey)}>
