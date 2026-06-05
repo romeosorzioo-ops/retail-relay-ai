@@ -53,6 +53,7 @@ type ScheduledPost = {
   media_type: string | null;
   promotion_id: string | null;
   generated_content_id: string | null;
+  format: string | null;
 };
 
 function CalendarPage() {
