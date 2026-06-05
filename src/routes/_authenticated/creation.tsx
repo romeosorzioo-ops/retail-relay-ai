@@ -1039,14 +1039,36 @@ function CreationPage() {
 
             <div>
               <Label className="mb-1 block text-xs">Format</Label>
-              <Select value={format} onValueChange={(v) => setFormat(v as FormatKey)}>
+              <Select
+                value={format}
+                onValueChange={(v) => {
+                  const next = v as FormatKey;
+                  if (next === format) return;
+                  const hasContent = (config.blocks?.length ?? 0) > 0 || !!config.bgImage || !!sourceImageUrl;
+                  setFormat(next);
+                  if (hasContent) {
+                    toast.message("Le changement de format peut nécessiter un ajustement du visuel.", {
+                      description: "Vos éléments sont conservés. Repositionnez-les si besoin, ou recadrez l'image.",
+                    });
+                  }
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(FORMATS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  {POST_FORMAT_LIST.map((v) => (
+                    <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {sourceImageUrl && (
+                <Button
+                  type="button" variant="ghost" size="sm"
+                  className="mt-1 h-7 text-[11px] gap-1"
+                  onClick={() => { setCropSrc(sourceImageUrl); setCropOpen(true); }}
+                >
+                  Recadrer l'image pour ce format
+                </Button>
+              )}
             </div>
 
             <div>
