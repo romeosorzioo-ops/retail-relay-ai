@@ -476,3 +476,159 @@ function PromotionsPage() {
     </div>
   );
 }
+
+type GeneratedContent = {
+  id: string;
+  facebook_post: string;
+  instagram_post: string;
+  instagram_story: string;
+  reel_idea: string;
+};
+
+function GeneratedContentDialog({
+  open,
+  onOpenChange,
+  promoName,
+  content,
+  onUpdated,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  promoName: string;
+  content: GeneratedContent | null;
+  onUpdated: (r: GeneratedContent) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Contenus générés — {promoName}</DialogTitle>
+        </DialogHeader>
+        {content && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(
+              [
+                { icon: Facebook, label: "Post Facebook", field: "facebook_post" },
+                { icon: Instagram, label: "Post Instagram", field: "instagram_post" },
+                { icon: Instagram, label: "Story Instagram", field: "instagram_story" },
+                { icon: Film, label: "Idée de Reel", field: "reel_idea" },
+              ] as const
+            ).map((b) => (
+              <ContentCard
+                key={b.field}
+                icon={b.icon}
+                label={b.label}
+                value={content[b.field]}
+                onSave={async (v) => {
+                  const updated = await updateContentFn({
+                    data: {
+                      id: content.id,
+                      facebook_post:
+                        b.field === "facebook_post" ? v : content.facebook_post,
+                      instagram_post:
+                        b.field === "instagram_post" ? v : content.instagram_post,
+                      instagram_story:
+                        b.field === "instagram_story" ? v : content.instagram_story,
+                      reel_idea:
+                        b.field === "reel_idea" ? v : content.reel_idea,
+                    },
+                  });
+                  onUpdated(updated as GeneratedContent);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ContentCard({
+  icon: Icon,
+  label,
+  value,
+  onSave,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  onSave: (v: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  // sync when value changes externally
+  if (!editing && draft !== value) setDraft(value);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className="h-4 w-4 text-primary" />
+          {label}
+        </CardTitle>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Copier"
+            onClick={() => {
+              navigator.clipboard.writeText(editing ? draft : value);
+              toast.success("Copié.");
+            }}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          {editing ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Sauvegarder"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await onSave(draft);
+                  toast.success("Sauvegardé.");
+                  setEditing(false);
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Erreur de sauvegarde.");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Modifier"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={8}
+          />
+        ) : (
+          <p className="whitespace-pre-wrap text-sm">{value}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
