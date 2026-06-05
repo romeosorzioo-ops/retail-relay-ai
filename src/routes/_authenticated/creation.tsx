@@ -253,7 +253,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
 
 function CreationPage() {
   const qc = useQueryClient();
-  const [format, setFormat] = useState<FormatKey>("ig_square");
+  const [format, setFormat] = useState<FormatKey>(DEFAULT_POST_FORMAT);
   const [config, setConfig] = useState<Config>({ bgImage: null, bgColor: "#1f2937", logoUrl: null, blocks: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -926,7 +926,7 @@ function CreationPage() {
                   <div>
                     <Label className="text-[10px] text-muted-foreground mb-0.5 block">Format recommandé</Label>
                     <Select
-                      value={it.recommended_format ?? "ig_square"}
+                      value={(it.recommended_format && it.recommended_format in FORMATS) ? it.recommended_format : DEFAULT_POST_FORMAT}
                       onValueChange={(v) => {
                         updateCampaignItemFn({ data: { id: it.id, recommended_format: v } })
                           .then(() => qc.invalidateQueries({ queryKey: ["campaign-items"] }))
