@@ -33,6 +33,13 @@ import {
 } from "@/lib/graphic-elements";
 
 export const Route = createFileRoute("/_authenticated/creation")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    cp: typeof s.cp === "string" ? s.cp : undefined,
+    mode:
+      s.mode === "catalog_visual" || s.mode === "field_photo"
+        ? (s.mode as "catalog_visual" | "field_photo")
+        : undefined,
+  }),
   component: CreationPage,
 });
 
