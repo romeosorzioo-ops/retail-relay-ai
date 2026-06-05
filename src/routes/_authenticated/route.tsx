@@ -9,15 +9,26 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { meFn } from "@/lib/auth.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const user = await meFn();
-    if (!user) throw redirect({ to: "/auth" });
-    return { user };
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw redirect({ to: "/auth" });
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    return {
+      user: {
+        id: data.user.id,
+        email: data.user.email ?? profile?.email ?? "",
+        name: profile?.name || data.user.user_metadata?.name || "",
+      },
+    };
   },
   component: AuthedLayout,
   errorComponent: ({ error, reset }) => {

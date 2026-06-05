@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { loginFn, signupFn } from "@/lib/auth.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Connexion — KomTonMag AI" }] }),
@@ -17,8 +16,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const login = useServerFn(loginFn);
-  const signup = useServerFn(signupFn);
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
@@ -29,15 +26,17 @@ function AuthPage() {
     setLoading(true);
     setLoginError(null);
     try {
-      const result = await login({
-        data: {
-          email: String(fd.get("email")),
-          password: String(fd.get("password")),
-        },
+      const { error } = await supabase.auth.signInWithPassword({
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
       });
-      if (!result.ok) {
-        setLoginError(result.error);
-        toast.error(result.error);
+      if (error) {
+        const msg =
+          error.message === "Invalid login credentials"
+            ? "Email ou mot de passe incorrect."
+            : error.message;
+        setLoginError(msg);
+        toast.error(msg);
         return;
       }
       toast.success("Connexion réussie");
@@ -57,16 +56,21 @@ function AuthPage() {
     setLoading(true);
     setSignupError(null);
     try {
-      const result = await signup({
-        data: {
-          name: String(fd.get("name")),
-          email: String(fd.get("email")),
-          password: String(fd.get("password")),
+      const { error } = await supabase.auth.signUp({
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: { name: String(fd.get("name")) },
         },
       });
-      if (!result.ok) {
-        setSignupError(result.error);
-        toast.error(result.error);
+      if (error) {
+        const msg =
+          error.message === "User already registered"
+            ? "Un compte existe déjà avec cet email."
+            : error.message;
+        setSignupError(msg);
+        toast.error(msg);
         return;
       }
       toast.success("Compte créé");
@@ -101,77 +105,48 @@ function AuthPage() {
               </TabsList>
               <TabsContent value="login">
                 <form onSubmit={doLogin} className="space-y-3">
-                  <div>
-                    <Label htmlFor="le">Email</Label>
-                    <Input
-                      id="le"
-                      name="email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                    />
+                  <div className="space-y-1">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input id="login-email" name="email" type="email" required />
                   </div>
-                  <div>
-                    <Label htmlFor="lp">Mot de passe</Label>
-                    <Input
-                      id="lp"
-                      name="password"
-                      type="password"
-                      required
-                      autoComplete="current-password"
-                    />
+                  <div className="space-y-1">
+                    <Label htmlFor="login-password">Mot de passe</Label>
+                    <Input id="login-password" name="password" type="password" required />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Connexion..." : "Se connecter"}
-                  </Button>
                   {loginError && (
-                    <p
-                      role="alert"
-                      className="text-sm text-destructive text-center"
-                    >
-                      {loginError}
-                    </p>
+                    <p className="text-sm text-destructive">{loginError}</p>
                   )}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Connexion…" : "Se connecter"}
+                  </Button>
                 </form>
               </TabsContent>
               <TabsContent value="signup">
                 <form onSubmit={doSignup} className="space-y-3">
-                  <div>
-                    <Label htmlFor="sn">Nom</Label>
-                    <Input id="sn" name="name" required />
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-name">Nom</Label>
+                    <Input id="signup-name" name="name" required />
                   </div>
-                  <div>
-                    <Label htmlFor="se">Email</Label>
-                    <Input
-                      id="se"
-                      name="email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                    />
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input id="signup-email" name="email" type="email" required />
                   </div>
-                  <div>
-                    <Label htmlFor="sp">Mot de passe</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-password">Mot de passe</Label>
                     <Input
-                      id="sp"
+                      id="signup-password"
                       name="password"
                       type="password"
-                      required
                       minLength={6}
-                      autoComplete="new-password"
+                      required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Création..." : "Créer mon compte"}
-                  </Button>
                   {signupError && (
-                    <p
-                      role="alert"
-                      className="text-sm text-destructive text-center"
-                    >
-                      {signupError}
-                    </p>
+                    <p className="text-sm text-destructive">{signupError}</p>
                   )}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Création…" : "Créer mon compte"}
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
