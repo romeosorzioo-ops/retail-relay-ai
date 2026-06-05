@@ -24,6 +24,7 @@ import {
 } from "@/lib/catalog.functions";
 import { createCampaignFromSelectionFn } from "@/lib/campaigns.functions";
 import { CropModal, type CropBox } from "@/components/crop-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   renderPdfPageToCanvas, canvasToBase64, cropImageUrl,
 } from "@/lib/pdf-browser";
@@ -924,6 +925,23 @@ function CatalogPage() {
           }
         }}
       />
+
+      <Dialog open={!!previewImage} onOpenChange={(v) => { if (!v) setPreviewImage(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewImage?.label ?? "Miniature"}</DialogTitle>
+          </DialogHeader>
+          {previewImage && (
+            <div className="flex items-center justify-center bg-muted/40 rounded-md overflow-hidden">
+              <img
+                src={previewImage.url}
+                alt={previewImage.label}
+                className="max-h-[70vh] w-auto object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {selectedCount > 0 && (
         <button
