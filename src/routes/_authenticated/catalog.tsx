@@ -811,6 +811,30 @@ function CatalogPage() {
           </CardContent>
         </Card>
       )}
+
+      <CropModal
+        open={!!cropPromo}
+        onOpenChange={(v) => { if (!v) { setCropPromo(null); setCropPageImage(null); } }}
+        imageUrl={cropPageImage}
+        initial={cropPromo?.crop_coordinates ?? null}
+        title={cropPromo ? `Recadrer : ${cropPromo.product_name}` : ""}
+        onConfirm={async (crop) => {
+          if (!cropPromo || !cropPageImage) return;
+          try {
+            const { base64, contentType } = await cropImageUrl(cropPageImage, crop);
+            await setImgMut.mutateAsync({
+              promotion_id: cropPromo.id,
+              data_base64: base64,
+              content_type: contentType,
+              crop_coordinates: crop,
+            });
+            toast.success("Image recadrée.");
+          } catch (e: any) {
+            toast.error(e?.message ?? "Échec du recadrage");
+          }
+        }}
+      />
     </div>
   );
 }
+
