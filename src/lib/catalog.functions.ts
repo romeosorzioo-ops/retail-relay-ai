@@ -1,8 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  MAX_IMAGE_BYTES,
+  assertAllowedMime,
+  assertBase64SizeWithin,
+} from "@/lib/upload-validation";
 
 const MAX_SIZE = 30 * 1024 * 1024;
+
+/**
+ * Guard against SSRF: catalog imports are uploaded through our own server fn
+ * which writes them to the `promotion-files` Supabase bucket, so the file URL
+ * must always live under that bucket. Reject anything else before fetching.
+ */
+function assertOwnedStorageUrl(fileUrl: string): void {
+  const projectRef =
+    process.env.SUPABASE_PROJECT_ID ??
+    (process.env.SUPABASE_URL ?? "")
+      .replace(/^https?:\/\//, "")
+      .split(".")[0];
+  if (!projectRef) {
+    throw new Error("Configuration Supabase manquante.");
+  }
+  const allowedPrefix = `https://${projectRef}.supabase.co/storage/v1/object/public/promotion-files/`;
+  if (!fileUrl.startsWith(allowedPrefix)) {
+    throw new Error("URL de fichier invalide.");
+  }
+}
 
 export const listCatalogImportsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
