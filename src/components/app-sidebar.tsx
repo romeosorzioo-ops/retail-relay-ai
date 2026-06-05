@@ -7,6 +7,7 @@ import {
   Calendar,
   Library,
   LogOut,
+  Plug,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const items = [
   { title: "Génération IA", url: "/generate", icon: Sparkles },
   { title: "Calendrier", url: "/calendar", icon: Calendar },
   { title: "Bibliothèque", url: "/library", icon: Library },
+  { title: "Connexions", url: "/connections", icon: Plug },
 ];
 
 export function AppSidebar({ userName }: { userName?: string }) {

@@ -18,6 +18,7 @@ import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedGenerateRouteImport } from './routes/_authenticated/generate'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenticated/connections'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedLibraryPromotionIdRouteImport } from './routes/_authenticated/library.$promotionId'
 
@@ -65,6 +66,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConnectionsRoute =
+  AuthenticatedConnectionsRouteImport.update({
+    id: '/connections',
+    path: '/connections',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/generate': typeof AuthenticatedGenerateRoute
   '/library': typeof AuthenticatedLibraryRouteWithChildren
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/generate': typeof AuthenticatedGenerateRoute
   '/library': typeof AuthenticatedLibraryRouteWithChildren
@@ -108,6 +117,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/connections': typeof AuthenticatedConnectionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/generate': typeof AuthenticatedGenerateRoute
   '/_authenticated/library': typeof AuthenticatedLibraryRouteWithChildren
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/sitemap.xml'
     | '/calendar'
+    | '/connections'
     | '/dashboard'
     | '/generate'
     | '/library'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/sitemap.xml'
     | '/calendar'
+    | '/connections'
     | '/dashboard'
     | '/generate'
     | '/library'
@@ -147,6 +159,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/sitemap.xml'
     | '/_authenticated/calendar'
+    | '/_authenticated/connections'
     | '/_authenticated/dashboard'
     | '/_authenticated/generate'
     | '/_authenticated/library'
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/connections': {
+      id: '/_authenticated/connections'
+      path: '/connections'
+      fullPath: '/connections'
+      preLoaderRoute: typeof AuthenticatedConnectionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/calendar': {
       id: '/_authenticated/calendar'
       path: '/calendar'
@@ -257,6 +277,7 @@ const AuthenticatedLibraryRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedConnectionsRoute: typeof AuthenticatedConnectionsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGenerateRoute: typeof AuthenticatedGenerateRoute
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRouteWithChildren
@@ -266,6 +287,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedConnectionsRoute: AuthenticatedConnectionsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGenerateRoute: AuthenticatedGenerateRoute,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRouteWithChildren,
@@ -285,3 +307,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
