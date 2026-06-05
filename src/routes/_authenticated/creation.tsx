@@ -223,13 +223,15 @@ function buildFieldPreset(
   }
 }
 
-// Crop an image via canvas to a target aspect-ratio. Returns a PNG Blob.
+// Crop an image via canvas to a target aspect-ratio. Returns the resulting Blob
+// AND the natural dimensions of the source so callers can persist the exact
+// crop coordinates that produced the output.
 async function cropImageToBlob(
   srcUrl: string,
   box: CropBox,
   targetW: number,
   targetH: number,
-): Promise<Blob> {
+): Promise<{ blob: Blob; naturalW: number; naturalH: number }> {
   return await new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -244,7 +246,11 @@ async function cropImageToBlob(
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Canvas indisponible"));
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Export image échoué"))), "image/jpeg", 0.92);
+      canvas.toBlob(
+        (b) => (b ? resolve({ blob: b, naturalW: img.naturalWidth, naturalH: img.naturalHeight }) : reject(new Error("Export image échoué"))),
+        "image/jpeg",
+        0.92,
+      );
     };
     img.onerror = () => reject(new Error("Chargement image impossible"));
     img.src = srcUrl;
