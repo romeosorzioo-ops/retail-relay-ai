@@ -15,54 +15,53 @@ const storeSchema = z.object({
 export const getMyStoreFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    const { rows } = await pool.query(
-      "SELECT * FROM stores WHERE user_id=$1 ORDER BY created_at ASC LIMIT 1",
-      [context.userId],
-    );
-    return rows[0] ?? null;
+    const { data, error } = await context.supabase
+      .from("stores")
+      .select("*")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
   });
 
 export const upsertStoreFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => storeSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    const existing = await pool.query(
-      "SELECT id FROM stores WHERE user_id=$1 LIMIT 1",
-      [context.userId],
-    );
-    if (existing.rowCount && existing.rowCount > 0) {
-      const id = existing.rows[0].id;
-      const { rows } = await pool.query(
-        `UPDATE stores SET name=$1, banner=$2, city=$3, description=$4,
-         tone=$5, frequency=$6, strong_departments=$7 WHERE id=$8 RETURNING *`,
-        [
-          data.name,
-          data.banner,
-          data.city ?? null,
-          data.description ?? null,
-          data.tone ?? null,
-          data.frequency ?? null,
-          data.strong_departments,
-          id,
-        ],
-      );
-      return rows[0];
+    const payload = {
+      user_id: context.userId,
+      name: data.name,
+      banner: data.banner,
+      city: data.city ?? null,
+      description: data.description ?? null,
+      tone: data.tone ?? null,
+      frequency: data.frequency ?? null,
+      strong_departments: data.strong_departments,
+    };
+    const existing = await context.supabase
+      .from("stores")
+      .select("id")
+      .eq("user_id", context.userId)
+      .limit(1)
+      .maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data) {
+      const { data: updated, error } = await context.supabase
+        .from("stores")
+        .update(payload)
+        .eq("id", existing.data.id)
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      return updated;
     }
-    const { rows } = await pool.query(
-      `INSERT INTO stores (user_id, name, banner, city, description, tone, frequency, strong_departments)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [
-        context.userId,
-        data.name,
-        data.banner,
-        data.city ?? null,
-        data.description ?? null,
-        data.tone ?? null,
-        data.frequency ?? null,
-        data.strong_departments,
-      ],
-    );
-    return rows[0];
+    const { data: inserted, error } = await context.supabase
+      .from("stores")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return inserted;
   });

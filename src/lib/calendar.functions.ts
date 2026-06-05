@@ -2,20 +2,46 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+type CalRow = {
+  id: string;
+  user_id: string;
+  generated_content_id: string | null;
+  channel: string;
+  scheduled_date: string;
+  created_at: string;
+  updated_at: string;
+  generated_contents: {
+    facebook_post: string;
+    instagram_post: string;
+    instagram_story: string;
+    reel_idea: string;
+    promotions: { product_name: string } | null;
+  } | null;
+};
+
 export const listCalendarFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    const { rows } = await pool.query(
-      `SELECT cp.*, gc.facebook_post, gc.instagram_post, gc.instagram_story, gc.reel_idea,
-              p.product_name as promo_name
-       FROM calendar_posts cp
-       LEFT JOIN generated_contents gc ON gc.id = cp.generated_content_id
-       LEFT JOIN promotions p ON p.id = gc.promotion_id
-       WHERE cp.user_id=$1 ORDER BY cp.scheduled_date ASC`,
-      [context.userId],
-    );
-    return rows;
+    const { data, error } = await context.supabase
+      .from("calendar_posts")
+      .select(
+        "*, generated_contents(facebook_post,instagram_post,instagram_story,reel_idea,promotions(product_name))",
+      )
+      .eq("user_id", context.userId)
+      .order("scheduled_date", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => {
+      const row = r as unknown as CalRow;
+      return {
+        ...row,
+        facebook_post: row.generated_contents?.facebook_post ?? null,
+        instagram_post: row.generated_contents?.instagram_post ?? null,
+        instagram_story: row.generated_contents?.instagram_story ?? null,
+        reel_idea: row.generated_contents?.reel_idea ?? null,
+        promo_name:
+          row.generated_contents?.promotions?.product_name ?? null,
+      };
+    });
   });
 
 export const addCalendarPostFn = createServerFn({ method: "POST" })
@@ -30,13 +56,18 @@ export const addCalendarPostFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    const { rows } = await pool.query(
-      `INSERT INTO calendar_posts (user_id, generated_content_id, channel, scheduled_date)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [context.userId, data.generated_content_id, data.channel, data.scheduled_date],
-    );
-    return rows[0];
+    const { data: inserted, error } = await context.supabase
+      .from("calendar_posts")
+      .insert({
+        user_id: context.userId,
+        generated_content_id: data.generated_content_id,
+        channel: data.channel,
+        scheduled_date: data.scheduled_date,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return inserted;
   });
 
 export const moveCalendarPostFn = createServerFn({ method: "POST" })
@@ -47,11 +78,12 @@ export const moveCalendarPostFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    await pool.query(
-      "UPDATE calendar_posts SET scheduled_date=$1 WHERE id=$2 AND user_id=$3",
-      [data.scheduled_date, data.id, context.userId],
-    );
+    const { error } = await context.supabase
+      .from("calendar_posts")
+      .update({ scheduled_date: data.scheduled_date })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
@@ -59,34 +91,35 @@ export const deleteCalendarPostFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    await pool.query("DELETE FROM calendar_posts WHERE id=$1 AND user_id=$2", [
-      data.id,
-      context.userId,
-    ]);
+    const { error } = await context.supabase
+      .from("calendar_posts")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 export const dashboardStatsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { pool } = await import("@/lib/lovable/database");
     const [p, c, cal] = await Promise.all([
-      pool.query("SELECT COUNT(*)::int AS n FROM promotions WHERE user_id=$1", [
-        context.userId,
-      ]),
-      pool.query(
-        "SELECT COUNT(*)::int AS n FROM generated_contents WHERE user_id=$1",
-        [context.userId],
-      ),
-      pool.query(
-        "SELECT COUNT(*)::int AS n FROM calendar_posts WHERE user_id=$1",
-        [context.userId],
-      ),
+      context.supabase
+        .from("promotions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("generated_contents")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("calendar_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", context.userId),
     ]);
     return {
-      promotions: p.rows[0].n,
-      contents: c.rows[0].n,
-      planned: cal.rows[0].n,
+      promotions: p.count ?? 0,
+      contents: c.count ?? 0,
+      planned: cal.count ?? 0,
     };
   });
