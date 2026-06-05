@@ -673,11 +673,14 @@ export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: promos } = await context.supabase
       .from("catalog_promotions")
-      .select("id, store_id")
+      .select("id, store_id, product_image_url")
       .eq("catalog_import_id", data.catalog_import_id)
       .eq("user_id", context.userId);
     const ids = (promos ?? []).map((p) => p.id);
     if (ids.length === 0) throw new Error("Aucune promotion à planifier.");
+    const imageByPromo = new Map(
+      (promos ?? []).map((p) => [p.id, p.product_image_url ?? null]),
+    );
     const { data: recos, error } = await context.supabase
       .from("campaign_recommendations")
       .select("*")
@@ -700,6 +703,7 @@ export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
           : r.recommended_format === "reel"
             ? "reel"
             : "post";
+      const media_url = imageByPromo.get(r.catalog_promotion_id) ?? null;
       const { data: sp } = await context.supabase
         .from("scheduled_posts")
         .insert({
@@ -708,11 +712,14 @@ export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
           platforms,
           post_type,
           caption: r.caption ?? "",
+          media_url,
+          media_type: media_url ? "image/png" : null,
           scheduled_at,
           status: "draft",
         })
         .select("id")
         .single();
+
       if (sp) {
         await context.supabase
           .from("campaign_recommendations")
