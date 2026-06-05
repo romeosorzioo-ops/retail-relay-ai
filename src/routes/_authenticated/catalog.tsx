@@ -768,6 +768,8 @@ function CatalogPage() {
                           onRecrop={() => handleRecrop(p)}
                           onReplace={(f: File) => handleReplace(p, f)}
                           onClearImage={() => clearImgMut.mutate(p.id)}
+                          onCreateCatalog={() => startCreation(p, "catalog_visual")}
+                          onCreateField={() => startCreation(p, "field_photo")}
                         />
 
                       ))}
