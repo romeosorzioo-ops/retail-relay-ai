@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  ALLOWED_POST_MEDIA_MIME_TYPES,
+  MAX_IMAGE_BYTES,
+  assertAllowedMime,
+  assertBase64SizeWithin,
+} from "@/lib/upload-validation";
 
 const PLATFORMS = ["facebook", "instagram"] as const;
 const POST_TYPES = ["post", "story"] as const;
@@ -117,7 +123,12 @@ export const uploadPostMediaFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    assertAllowedMime(data.file_type, ALLOWED_POST_MEDIA_MIME_TYPES);
+    assertBase64SizeWithin(data.data_base64, MAX_IMAGE_BYTES);
     const buffer = Buffer.from(data.data_base64, "base64");
+    if (buffer.byteLength > MAX_IMAGE_BYTES) {
+      throw new Error("Le fichier dépasse la taille maximale autorisée.");
+    }
     const ext = data.file_name.split(".").pop() ?? "bin";
     const path = `${context.userId}/posts/${Date.now()}-${Math.random()
       .toString(36)
