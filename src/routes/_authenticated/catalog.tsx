@@ -181,8 +181,31 @@ function PromoCard({
           )}
         </div>
       </div>
+      {!isEdit && (
+        <div className="mt-3 grid grid-cols-2 gap-1">
+          <Button
+            size="sm"
+            variant={p.creation_mode === "catalog_visual" ? "default" : "outline"}
+            className="h-8 text-[11px] gap-1"
+            onClick={onCreateCatalog}
+            title="Créer avec le visuel catalogue"
+          >
+            <Layout className="h-3 w-3" /> Visuel catalogue
+          </Button>
+          <Button
+            size="sm"
+            variant={p.creation_mode === "field_photo" ? "default" : "outline"}
+            className="h-8 text-[11px] gap-1"
+            onClick={onCreateField}
+            title="Créer avec une photo terrain"
+          >
+            <Camera className="h-3 w-3" /> Photo terrain
+          </Button>
+        </div>
+      )}
 
-      <div className="mt-3 flex flex-wrap justify-end gap-1">
+      <div className="mt-2 flex flex-wrap justify-end gap-1">
+
         {!isEdit && (
           <>
             <Button size="sm" variant="ghost" onClick={onRecrop} title="Recadrer depuis la page">
