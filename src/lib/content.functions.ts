@@ -104,7 +104,7 @@ export const generateContentFn = createServerFn({ method: "POST" })
     const { createLovableAiGatewayProvider } = await import(
       "@/lib/ai-gateway.server"
     );
-    const { generateText, Output } = await import("ai");
+    const { generateObject } = await import("ai");
     const gateway = createLovableAiGatewayProvider(key);
 
     const sys = `Tu es un expert en marketing local pour les magasins de grande distribution alimentaire en France.
@@ -124,21 +124,18 @@ Promotion:
 
 Génère 4 contenus prêts à publier.`;
 
-    const { experimental_output } = await generateText({
+    const { object: out } = await generateObject({
       model: gateway("google/gemini-3-flash-preview"),
       system: sys,
       prompt,
-      experimental_output: Output.object({
-        schema: z.object({
-          facebook_post: z.string(),
-          instagram_post: z.string(),
-          instagram_story: z.string(),
-          reel_idea: z.string(),
-        }),
+      schema: z.object({
+        facebook_post: z.string(),
+        instagram_post: z.string(),
+        instagram_story: z.string(),
+        reel_idea: z.string(),
       }),
     });
 
-    const out = experimental_output;
     const { data: inserted, error } = await context.supabase
       .from("generated_contents")
       .insert({
