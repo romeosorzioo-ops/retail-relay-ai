@@ -81,7 +81,7 @@ export function AppSidebar({ userName }: { userName?: string }) {
             variant="ghost"
             size="icon"
             onClick={async () => {
-              await logoutFn();
+              await supabase.auth.signOut();
               navigate({ to: "/auth" });
             }}
             title="Déconnexion"
