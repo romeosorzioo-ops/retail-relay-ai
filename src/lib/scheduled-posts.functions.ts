@@ -16,6 +16,7 @@ const baseSchema = z.object({
   promotion_id: z.string().uuid().nullable().optional(),
   generated_content_id: z.string().uuid().nullable().optional(),
   status: z.enum(STATUSES).optional(),
+  format: z.string().min(1).max(32).nullable().optional(),
 });
 
 export const listScheduledPostsFn = createServerFn({ method: "GET" })
@@ -54,6 +55,7 @@ export const createScheduledPostFn = createServerFn({ method: "POST" })
         media_type: data.media_type ?? null,
         scheduled_at: data.scheduled_at,
         status: data.status ?? "scheduled",
+        format: data.format ?? null,
       })
       .select("*")
       .single();
@@ -80,6 +82,7 @@ export const updateScheduledPostFn = createServerFn({ method: "POST" })
         promotion_id: rest.promotion_id ?? null,
         generated_content_id: rest.generated_content_id ?? null,
         status: rest.status ?? "scheduled",
+        format: rest.format ?? null,
       })
       .eq("id", id)
       .eq("user_id", context.userId)

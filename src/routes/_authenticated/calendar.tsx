@@ -38,6 +38,7 @@ import {
   CreatePostModal,
   type EditingPost,
 } from "@/components/create-post-modal";
+import { formatShortLabel } from "@/lib/post-formats";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: CalendarPage,
@@ -53,6 +54,7 @@ type ScheduledPost = {
   media_type: string | null;
   promotion_id: string | null;
   generated_content_id: string | null;
+  format: string | null;
 };
 
 function CalendarPage() {
@@ -83,6 +85,7 @@ function CalendarPage() {
           scheduled_at: next.toISOString(),
           promotion_id: v.post.promotion_id,
           generated_content_id: v.post.generated_content_id,
+          format: v.post.format,
         },
       });
     },
@@ -299,6 +302,11 @@ function DraggablePost({
       <p className="line-clamp-2 text-muted-foreground">
         {post.caption || post.post_type}
       </p>
+      {post.format && (
+        <span className="mt-0.5 inline-block rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+          {formatShortLabel(post.format)}
+        </span>
+      )}
     </div>
   );
 }

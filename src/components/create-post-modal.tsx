@@ -48,6 +48,7 @@ import {
   uploadPostMediaFn,
 } from "@/lib/scheduled-posts.functions";
 import { listContentsFn } from "@/lib/content.functions";
+import { POST_FORMAT_LIST, getPostFormat } from "@/lib/post-formats";
 
 type Platform = "facebook" | "instagram" | "tiktok";
 type PostType = "post" | "story" | "reel";
@@ -62,6 +63,7 @@ export type EditingPost = {
   scheduled_at?: string;
   promotion_id?: string | null;
   generated_content_id?: string | null;
+  format?: string | null;
 } | null;
 
 const ACCEPT = "image/jpeg,image/png,image/jpg,video/mp4,video/quicktime";
@@ -90,6 +92,7 @@ export function CreatePostModal({
     "facebook",
   );
   const [genContentId, setGenContentId] = useState<string | null>(null);
+  const [formatKey, setFormatKey] = useState<string>("ig_square");
   const dropRef = useRef<HTMLDivElement>(null);
 
   const { data: generated = [] } = useQuery({
@@ -108,6 +111,7 @@ export function CreatePostModal({
       setMediaUrl(editing.media_url ?? null);
       setMediaType(editing.media_type ?? null);
       setGenContentId(editing.generated_content_id ?? null);
+      setFormatKey(editing.format ?? "ig_square");
       const d = editing.scheduled_at ? new Date(editing.scheduled_at) : new Date();
       setDate(format(d, "yyyy-MM-dd"));
       setTime(format(d, "HH:mm"));
@@ -119,6 +123,7 @@ export function CreatePostModal({
       setMediaUrl(null);
       setMediaType(null);
       setGenContentId(null);
+      setFormatKey("ig_square");
       setDate(format(d, "yyyy-MM-dd"));
       setTime("10:00");
     }
@@ -191,6 +196,7 @@ export function CreatePostModal({
         media_type: mediaType,
         scheduled_at: scheduled.toISOString(),
         generated_content_id: genContentId,
+        format: formatKey,
       };
       if (editing?.id) {
         return updateScheduledPostFn({ data: { id: editing.id, ...payload } });
@@ -410,6 +416,22 @@ export function CreatePostModal({
                   </>
                 )}
               </div>
+            </section>
+
+            {/* Format */}
+            <section>
+              <Label className="mb-2 block text-sm font-medium">Format</Label>
+              <Select value={formatKey} onValueChange={setFormatKey}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {POST_FORMAT_LIST.map((f) => (
+                    <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {getPostFormat(formatKey).w}×{getPostFormat(formatKey).h} px
+              </p>
             </section>
 
             {/* Date / Time */}

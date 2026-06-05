@@ -10,12 +10,14 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createScheduledPostFn } from "@/lib/scheduled-posts.functions";
 import { updateCampaignItemFn } from "@/lib/campaigns.functions";
+import { POST_FORMAT_LIST, getPostFormat } from "@/lib/post-formats";
 
 export type CampaignItemForSchedule = {
   id: string;
   recommended_platform: string | null;
   recommended_date: string | null;
   recommended_time: string | null;
+  recommended_format: string | null;
   generated_caption: string | null;
   final_visual_url: string | null;
   promo_price: number | null;
@@ -34,6 +36,7 @@ export function ScheduleItemModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
   const [caption, setCaption] = useState("");
+  const [formatKey, setFormatKey] = useState<string>("ig_square");
 
   useEffect(() => {
     if (!item) return;
@@ -41,6 +44,7 @@ export function ScheduleItemModal({
     setDate(item.recommended_date ?? new Date().toISOString().slice(0, 10));
     setTime(item.recommended_time ?? "10:00");
     setCaption(item.generated_caption ?? "");
+    setFormatKey(item.recommended_format ?? "ig_square");
   }, [item]);
 
   const schedule = useMutation({
@@ -56,6 +60,7 @@ export function ScheduleItemModal({
           media_type: item.final_visual_url ? "image/png" : null,
           scheduled_at,
           status: "scheduled",
+          format: formatKey,
         },
       });
       await updateCampaignItemFn({
@@ -66,6 +71,7 @@ export function ScheduleItemModal({
           recommended_platform: platform,
           recommended_date: date,
           recommended_time: time,
+          recommended_format: formatKey,
           generated_caption: caption,
         },
       });
@@ -81,6 +87,8 @@ export function ScheduleItemModal({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const fmt = getPostFormat(formatKey);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -93,6 +101,18 @@ export function ScheduleItemModal({
           <img src={item.final_visual_url} alt="" className="mx-auto max-h-48 rounded border object-contain" />
         )}
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <Label className="text-xs mb-1 block">Format</Label>
+            <Select value={formatKey} onValueChange={setFormatKey}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {POST_FORMAT_LIST.map((f) => (
+                  <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">{fmt.w}×{fmt.h} px</p>
+          </div>
           <div>
             <Label className="text-xs mb-1 block">Réseau</Label>
             <Select value={platform} onValueChange={setPlatform}>

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const FORMATS = ["ig_square", "story", "fb_post"] as const;
+const FORMAT_SCHEMA = z.string().min(1).max(32);
 
 const configSchema = z
   .object({
@@ -50,7 +50,7 @@ export const saveVisualFn = createServerFn({ method: "POST" })
       .object({
         template_id: z.string().uuid().nullable().optional(),
         promotion_id: z.string().uuid().nullable().optional(),
-        format: z.enum(FORMATS),
+        format: FORMAT_SCHEMA,
         image_url: z.string().max(2000).nullable().optional(),
         source_type: z.enum(["template", "catalog", "field_photo"]).optional(),
         source_image_url: z.string().max(2000).nullable().optional(),

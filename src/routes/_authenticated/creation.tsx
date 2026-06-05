@@ -55,12 +55,9 @@ export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
 });
 
-type FormatKey = "ig_square" | "story" | "fb_post";
-const FORMATS: Record<FormatKey, { label: string; w: number; h: number; previewW: number }> = {
-  ig_square: { label: "Post Instagram 1:1", w: 1080, h: 1080, previewW: 420 },
-  story:     { label: "Story / Reel 9:16",  w: 1080, h: 1920, previewW: 260 },
-  fb_post:   { label: "Post Facebook",       w: 1200, h: 630,  previewW: 480 },
-};
+import { POST_FORMATS, POST_FORMAT_LIST, type PostFormatKey } from "@/lib/post-formats";
+type FormatKey = PostFormatKey;
+const FORMATS = POST_FORMATS;
 
 type BlockRole = "title" | "subtitle" | "price_main" | "price_old" | "badge" | "custom";
 type Block = {
@@ -333,6 +330,9 @@ function CreationPage() {
     } else if (currentItem.creation_mode === "field_photo") {
       setSourceType("field_photo");
     }
+    if (currentItem.recommended_format && currentItem.recommended_format in FORMATS) {
+      setFormat(currentItem.recommended_format as FormatKey);
+    }
     updateCampaignItemFn({ data: { id: currentItem.id, status: "in_progress" } }).catch(() => {});
   }, [currentItem]);
 
@@ -365,7 +365,7 @@ function CreationPage() {
         final_visual_url = up.url;
       }
       return updateCampaignItemFn({
-        data: { id: currentItemId, status: "validated", final_visual_url },
+        data: { id: currentItemId, status: "validated", final_visual_url, recommended_format: format },
       });
     },
     onSuccess: () => {
@@ -643,7 +643,7 @@ function CreationPage() {
       price?: string; oldPrice?: string; badge?: { text?: string; color?: string };
       slogan?: string; fontFamily?: string;
     };
-    if (t.format === "ig_square" || t.format === "story" || t.format === "fb_post") setFormat(t.format);
+    if (typeof t.format === "string" && t.format in FORMATS) setFormat(t.format as FormatKey);
     if (Array.isArray(cfg.blocks) && cfg.blocks.length) {
       // New-style template
       const fTitle = brand?.font_primary;
@@ -923,6 +923,25 @@ function CreationPage() {
                       <Camera className="h-3 w-3" /> Photo terrain
                     </Button>
                   </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground mb-0.5 block">Format recommandé</Label>
+                    <Select
+                      value={it.recommended_format ?? "ig_square"}
+                      onValueChange={(v) => {
+                        updateCampaignItemFn({ data: { id: it.id, recommended_format: v } })
+                          .then(() => qc.invalidateQueries({ queryKey: ["campaign-items"] }))
+                          .catch((e: Error) => toast.error(e.message));
+                      }}
+                      disabled={it.status === "scheduled"}
+                    >
+                      <SelectTrigger className="h-8 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {POST_FORMAT_LIST.map((f) => (
+                          <SelectItem key={f.key} value={f.key}>{f.short} — {f.w}×{f.h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" className="flex-1 h-8 text-xs"
                       onClick={() => openQueueItem(it.id)}>
@@ -1042,14 +1061,36 @@ function CreationPage() {
 
             <div>
               <Label className="mb-1 block text-xs">Format</Label>
-              <Select value={format} onValueChange={(v) => setFormat(v as FormatKey)}>
+              <Select
+                value={format}
+                onValueChange={(v) => {
+                  const next = v as FormatKey;
+                  if (next === format) return;
+                  const hasContent = (config.blocks?.length ?? 0) > 0 || !!config.bgImage || !!sourceImageUrl;
+                  setFormat(next);
+                  if (hasContent) {
+                    toast.message("Le changement de format peut nécessiter un ajustement du visuel.", {
+                      description: "Vos éléments sont conservés. Repositionnez-les si besoin, ou recadrez l'image.",
+                    });
+                  }
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(FORMATS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  {POST_FORMAT_LIST.map((v) => (
+                    <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {sourceImageUrl && (
+                <Button
+                  type="button" variant="ghost" size="sm"
+                  className="mt-1 h-7 text-[11px] gap-1"
+                  onClick={() => { setCropSrc(sourceImageUrl); setCropOpen(true); }}
+                >
+                  Recadrer l'image pour ce format
+                </Button>
+              )}
             </div>
 
             <div>
@@ -1548,6 +1589,7 @@ function CreationPage() {
           generated_caption: currentItem.generated_caption,
           final_visual_url: currentItem.final_visual_url,
           promo_price: currentItem.promo_price,
+          recommended_format: currentItem.recommended_format ?? format,
         } : null}
         onScheduled={() => { setActiveTab("queue"); }}
       />
