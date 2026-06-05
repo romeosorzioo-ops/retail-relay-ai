@@ -262,10 +262,20 @@ function CreationPage() {
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
 
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const [catalogPromoId, setCatalogPromoId] = useState<string | null>(null);
+  const [catalogMode, setCatalogMode] = useState<"catalog_visual" | "field_photo" | null>(null);
+
   const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
   const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
   const { data: brand } = useQuery({ queryKey: ["my-brand"], queryFn: () => getMyBrandProfileFn() });
   const { data: brandFonts = [] } = useQuery({ queryKey: ["my-brand-fonts"], queryFn: () => listBrandFontsFn() });
+  const { data: catalogPromo } = useQuery({
+    queryKey: ["catalog-promo", search.cp],
+    queryFn: () => getCatalogPromotionFn({ data: { id: search.cp as string } }),
+    enabled: !!search.cp,
+  });
 
   // Register every uploaded font in this page
   useEffect(() => { brandFonts.forEach((f) => registerCustomFont(f.name, f.url)); }, [brandFonts]);
