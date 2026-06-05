@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      brand_fonts: {
+        Row: {
+          created_at: string
+          format: string | null
+          id: string
+          name: string
+          store_id: string | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          format?: string | null
+          id?: string
+          name: string
+          store_id?: string | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          format?: string | null
+          id?: string
+          name?: string
+          store_id?: string | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_fonts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_profiles: {
         Row: {
           communication_style: string | null
@@ -21,6 +59,9 @@ export type Database = {
           custom_font_name: string | null
           custom_font_url: string | null
           font_family: string | null
+          font_price: string | null
+          font_primary: string | null
+          font_secondary: string | null
           id: string
           logo_url: string | null
           primary_color: string | null
@@ -36,6 +77,9 @@ export type Database = {
           custom_font_name?: string | null
           custom_font_url?: string | null
           font_family?: string | null
+          font_price?: string | null
+          font_primary?: string | null
+          font_secondary?: string | null
           id?: string
           logo_url?: string | null
           primary_color?: string | null
@@ -51,6 +95,9 @@ export type Database = {
           custom_font_name?: string | null
           custom_font_url?: string | null
           font_family?: string | null
+          font_price?: string | null
+          font_primary?: string | null
+          font_secondary?: string | null
           id?: string
           logo_url?: string | null
           primary_color?: string | null
