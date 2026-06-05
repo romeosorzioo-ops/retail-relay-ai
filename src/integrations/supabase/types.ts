@@ -14,6 +14,88 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_posts: {
+        Row: {
+          channel: string
+          created_at: string
+          generated_content_id: string | null
+          id: string
+          scheduled_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          generated_content_id?: string | null
+          id?: string
+          scheduled_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          generated_content_id?: string | null
+          id?: string
+          scheduled_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_posts_generated_content_id_fkey"
+            columns: ["generated_content_id"]
+            isOneToOne: false
+            referencedRelation: "generated_contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_contents: {
+        Row: {
+          created_at: string
+          facebook_post: string
+          id: string
+          instagram_post: string
+          instagram_story: string
+          promotion_id: string | null
+          reel_idea: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          facebook_post?: string
+          id?: string
+          instagram_post?: string
+          instagram_story?: string
+          promotion_id?: string | null
+          reel_idea?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          facebook_post?: string
+          id?: string
+          instagram_post?: string
+          instagram_story?: string
+          promotion_id?: string | null
+          reel_idea?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_contents_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -35,6 +117,101 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      promotions: {
+        Row: {
+          category: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          old_price: number | null
+          photo_url: string | null
+          price: number | null
+          product_name: string
+          start_date: string | null
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          old_price?: number | null
+          photo_url?: string | null
+          price?: number | null
+          product_name: string
+          start_date?: string | null
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          old_price?: number | null
+          photo_url?: string | null
+          price?: number | null
+          product_name?: string
+          start_date?: string | null
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          banner: string
+          city: string | null
+          created_at: string
+          description: string | null
+          frequency: string | null
+          id: string
+          name: string
+          strong_departments: string[]
+          tone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          banner: string
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          name: string
+          strong_departments?: string[]
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          banner?: string
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          name?: string
+          strong_departments?: string[]
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

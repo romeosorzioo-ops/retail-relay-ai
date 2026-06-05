@@ -2,29 +2,44 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+type ContentRow = {
+  id: string;
+  user_id: string;
+  promotion_id: string | null;
+  facebook_post: string;
+  instagram_post: string;
+  instagram_story: string;
+  reel_idea: string;
+  created_at: string;
+  updated_at: string;
+  promotions: { product_name: string } | null;
+};
+
 export const listContentsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    const { rows } = await pool.query(
-      `SELECT gc.*, p.product_name as promo_name
-       FROM generated_contents gc
-       LEFT JOIN promotions p ON p.id = gc.promotion_id
-       WHERE gc.user_id=$1 ORDER BY gc.created_at DESC`,
-      [context.userId],
-    );
-    return rows;
+    const { data, error } = await context.supabase
+      .from("generated_contents")
+      .select("*, promotions(product_name)")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => {
+      const row = r as unknown as ContentRow;
+      return { ...row, promo_name: row.promotions?.product_name ?? null };
+    });
   });
 
 export const deleteContentFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    await pool.query(
-      "DELETE FROM generated_contents WHERE id=$1 AND user_id=$2",
-      [data.id, context.userId],
-    );
+    const { error } = await context.supabase
+      .from("generated_contents")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
@@ -42,21 +57,20 @@ export const updateContentFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
-    const { rows } = await pool.query(
-      `UPDATE generated_contents
-       SET facebook_post=$1, instagram_post=$2, instagram_story=$3, reel_idea=$4
-       WHERE id=$5 AND user_id=$6 RETURNING *`,
-      [
-        data.facebook_post,
-        data.instagram_post,
-        data.instagram_story,
-        data.reel_idea,
-        data.id,
-        context.userId,
-      ],
-    );
-    return rows[0];
+    const { data: updated, error } = await context.supabase
+      .from("generated_contents")
+      .update({
+        facebook_post: data.facebook_post,
+        instagram_post: data.instagram_post,
+        instagram_story: data.instagram_story,
+        reel_idea: data.reel_idea,
+      })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return updated;
   });
 
 export const generateContentFn = createServerFn({ method: "POST" })
@@ -65,20 +79,22 @@ export const generateContentFn = createServerFn({ method: "POST" })
     z.object({ promotion_id: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { pool } = await import("@/lib/lovable/database");
+    const storeRes = await context.supabase
+      .from("stores")
+      .select("*")
+      .eq("user_id", context.userId)
+      .limit(1)
+      .maybeSingle();
+    const promoRes = await context.supabase
+      .from("promotions")
+      .select("*")
+      .eq("id", data.promotion_id)
+      .eq("user_id", context.userId)
+      .limit(1)
+      .maybeSingle();
 
-    const store = (
-      await pool.query("SELECT * FROM stores WHERE user_id=$1 LIMIT 1", [
-        context.userId,
-      ])
-    ).rows[0];
-    const promo = (
-      await pool.query(
-        "SELECT * FROM promotions WHERE id=$1 AND user_id=$2 LIMIT 1",
-        [data.promotion_id, context.userId],
-      )
-    ).rows[0];
-
+    const store = storeRes.data;
+    const promo = promoRes.data;
     if (!store) throw new Error("Configurez d'abord votre profil magasin.");
     if (!promo) throw new Error("Promotion introuvable.");
 
@@ -123,17 +139,18 @@ Génère 4 contenus prêts à publier.`;
     });
 
     const out = experimental_output;
-    const { rows } = await pool.query(
-      `INSERT INTO generated_contents (user_id, promotion_id, facebook_post, instagram_post, instagram_story, reel_idea)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [
-        context.userId,
-        promo.id,
-        out.facebook_post,
-        out.instagram_post,
-        out.instagram_story,
-        out.reel_idea,
-      ],
-    );
-    return rows[0];
+    const { data: inserted, error } = await context.supabase
+      .from("generated_contents")
+      .insert({
+        user_id: context.userId,
+        promotion_id: promo.id,
+        facebook_post: out.facebook_post,
+        instagram_post: out.instagram_post,
+        instagram_story: out.instagram_story,
+        reel_idea: out.reel_idea,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return inserted;
   });
