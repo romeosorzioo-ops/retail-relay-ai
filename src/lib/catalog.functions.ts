@@ -730,3 +730,142 @@ export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
     }
     return { ok: true, created };
   });
+
+/* ============================================================
+   Image extraction & management for catalog promotions (V1)
+   ============================================================ */
+
+async function uploadDataUrlToStorage(opts: {
+  supabase: any;
+  userId: string;
+  importId: string;
+  kind: "page" | "product";
+  refId: string | number;
+  dataBase64: string;
+  contentType: string;
+}) {
+  const ext = opts.contentType.includes("png") ? "png" : "jpg";
+  const path = `${opts.userId}/catalog-product-images/${opts.importId}/${opts.kind}-${opts.refId}-${Date.now()}.${ext}`;
+  const buffer = Buffer.from(opts.dataBase64, "base64");
+  const { error } = await opts.supabase.storage
+    .from("promotion-files")
+    .upload(path, buffer, { contentType: opts.contentType, upsert: false });
+  if (error) throw new Error(error.message);
+  const { data: pub } = opts.supabase.storage
+    .from("promotion-files")
+    .getPublicUrl(path);
+  return pub.publicUrl as string;
+}
+
+export const savePageImageFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        catalog_import_id: z.string().uuid(),
+        page_number: z.number().int().min(1).max(500),
+        data_base64: z.string().min(1),
+        content_type: z.string().max(60).default("image/png"),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: imp } = await context.supabase
+      .from("catalog_imports")
+      .select("id")
+      .eq("id", data.catalog_import_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!imp) throw new Error("Catalogue introuvable.");
+    const url = await uploadDataUrlToStorage({
+      supabase: context.supabase,
+      userId: context.userId,
+      importId: imp.id,
+      kind: "page",
+      refId: data.page_number,
+      dataBase64: data.data_base64,
+      contentType: data.content_type,
+    });
+    await context.supabase
+      .from("catalog_pages")
+      .upsert(
+        {
+          catalog_import_id: imp.id,
+          user_id: context.userId,
+          page_number: data.page_number,
+          page_image_url: url,
+        },
+        { onConflict: "catalog_import_id,page_number" },
+      );
+    await context.supabase
+      .from("catalog_promotions")
+      .update({ page_image_url: url })
+      .eq("catalog_import_id", imp.id)
+      .eq("user_id", context.userId)
+      .eq("page_number", data.page_number);
+    return { url };
+  });
+
+export const setPromotionImageFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        promotion_id: z.string().uuid(),
+        data_base64: z.string().min(1),
+        content_type: z.string().max(60).default("image/png"),
+        crop_coordinates: z
+          .object({
+            x: z.number(),
+            y: z.number(),
+            width: z.number(),
+            height: z.number(),
+          })
+          .nullable()
+          .optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: promo } = await context.supabase
+      .from("catalog_promotions")
+      .select("id, catalog_import_id")
+      .eq("id", data.promotion_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!promo) throw new Error("Promotion introuvable.");
+    const url = await uploadDataUrlToStorage({
+      supabase: context.supabase,
+      userId: context.userId,
+      importId: promo.catalog_import_id,
+      kind: "product",
+      refId: promo.id,
+      dataBase64: data.data_base64,
+      contentType: data.content_type,
+    });
+    const { error } = await context.supabase
+      .from("catalog_promotions")
+      .update({
+        product_image_url: url,
+        crop_coordinates: data.crop_coordinates ?? null,
+      })
+      .eq("id", promo.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { url };
+  });
+
+export const clearPromotionImageFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ promotion_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("catalog_promotions")
+      .update({ product_image_url: null, crop_coordinates: null })
+      .eq("id", data.promotion_id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
