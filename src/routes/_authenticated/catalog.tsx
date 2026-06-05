@@ -86,7 +86,7 @@ function confidenceBadge(c?: number | null) {
 
 function PromoCard({
   p, isEdit, edit, setEdit, onSave, onCancel, onEdit, onDelete, onToggle,
-  onRecrop, onReplace, onClearImage,
+  onRecrop, onReplace, onClearImage, onCreateCatalog, onCreateField,
 }: any) {
   const fileRef = useRef<HTMLInputElement>(null);
   return (
