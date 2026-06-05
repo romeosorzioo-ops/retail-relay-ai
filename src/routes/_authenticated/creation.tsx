@@ -105,6 +105,15 @@ type Config = {
   logoUrl?: string | null;
   blocks: Block[];
   elements?: GraphicEl[];
+  lastCrop?: {
+    src: string;
+    x: number; y: number; width: number; height: number;
+    naturalW: number; naturalH: number;
+    targetW: number; targetH: number;
+    zoom: number;
+    rotation: number;
+    at: number;
+  } | null;
 };
 
 const ROLE_LABEL: Record<BlockRole, string> = {
@@ -214,13 +223,15 @@ function buildFieldPreset(
   }
 }
 
-// Crop an image via canvas to a target aspect-ratio. Returns a PNG Blob.
+// Crop an image via canvas to a target aspect-ratio. Returns the resulting Blob
+// AND the natural dimensions of the source so callers can persist the exact
+// crop coordinates that produced the output.
 async function cropImageToBlob(
   srcUrl: string,
   box: CropBox,
   targetW: number,
   targetH: number,
-): Promise<Blob> {
+): Promise<{ blob: Blob; naturalW: number; naturalH: number }> {
   return await new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -235,7 +246,11 @@ async function cropImageToBlob(
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Canvas indisponible"));
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Export image échoué"))), "image/jpeg", 0.92);
+      canvas.toBlob(
+        (b) => (b ? resolve({ blob: b, naturalW: img.naturalWidth, naturalH: img.naturalHeight }) : reject(new Error("Export image échoué"))),
+        "image/jpeg",
+        0.92,
+      );
     };
     img.onerror = () => reject(new Error("Chargement image impossible"));
     img.src = srcUrl;
@@ -266,6 +281,7 @@ function CreationPage() {
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [showCropDebug, setShowCropDebug] = useState(false);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
@@ -743,12 +759,24 @@ function CreationPage() {
   async function handleCropConfirm(box: CropBox) {
     if (!cropSrc) return;
     try {
-      const blob = await cropImageToBlob(cropSrc, box, dims.w, dims.h);
+      const { blob, naturalW, naturalH } = await cropImageToBlob(cropSrc, box, dims.w, dims.h);
       const data_base64 = await blobToBase64(blob);
       const res = await uploadVisualImageFn({
         data: { file_name: `field-${Date.now()}.jpg`, file_type: "image/jpeg", data_base64 },
       });
-      setConfig((c) => ({ ...c, bgImage: res.url }));
+      const zoom = box.width > 0 ? 1 / box.width : 1;
+      setConfig((c) => ({
+        ...c,
+        bgImage: res.url,
+        lastCrop: {
+          src: cropSrc,
+          x: box.x, y: box.y, width: box.width, height: box.height,
+          naturalW, naturalH,
+          targetW: dims.w, targetH: dims.h,
+          zoom, rotation: 0,
+          at: Date.now(),
+        },
+      }));
       toast.success("Photo recadrée");
     } catch (e) { toast.error((e as Error).message); }
   }
@@ -1151,7 +1179,17 @@ function CreationPage() {
 
         {/* CENTER — preview */}
         <Card>
-          <CardContent className="flex items-center justify-center p-4">
+          <CardContent className="flex flex-col items-center justify-center gap-2 p-4">
+            <div className="flex w-full items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCropDebug((v) => !v)}
+                className="rounded border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                title="Afficher les coordonnées du dernier recadrage"
+              >
+                {showCropDebug ? "Masquer debug crop" : "Debug crop"}
+              </button>
+            </div>
             <div
               ref={canvasWrapRef}
               onPointerMove={onPointerMoveCanvas}
@@ -1162,11 +1200,30 @@ function CreationPage() {
                 width: previewWidth,
                 height: previewHeight,
                 background: config.bgColor ?? "#1f2937",
-                backgroundImage: config.bgImage ? `linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.3)), url(${config.bgImage})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
               }}
             >
+              {config.bgImage && (
+                <img
+                  src={config.bgImage}
+                  alt=""
+                  draggable={false}
+                  crossOrigin="anonymous"
+                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                  style={{ objectFit: "fill", objectPosition: "top left" }}
+                />
+              )}
+              {showCropDebug && config.lastCrop && (
+                <div className="pointer-events-none absolute right-1 top-1 z-50 rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow">
+                  <div>crop_x: {config.lastCrop.x.toFixed(4)}</div>
+                  <div>crop_y: {config.lastCrop.y.toFixed(4)}</div>
+                  <div>crop_w: {config.lastCrop.width.toFixed(4)}</div>
+                  <div>crop_h: {config.lastCrop.height.toFixed(4)}</div>
+                  <div>zoom: ×{config.lastCrop.zoom.toFixed(2)}</div>
+                  <div>rotation: {config.lastCrop.rotation}°</div>
+                  <div>src: {config.lastCrop.naturalW}×{config.lastCrop.naturalH}</div>
+                  <div>out: {config.lastCrop.targetW}×{config.lastCrop.targetH}</div>
+                </div>
+              )}
               {config.blocks.map((b) => {
                 const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
                   ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
