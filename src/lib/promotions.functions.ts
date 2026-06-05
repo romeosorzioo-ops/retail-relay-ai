@@ -9,7 +9,9 @@ const promoSchema = z.object({
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   category: z.string().max(60).nullable().optional(),
-  photo_url: z.string().max(2000).nullable().optional(),
+  file_url: z.string().max(2000).nullable().optional(),
+  file_type: z.string().max(100).nullable().optional(),
+  file_name: z.string().max(255).nullable().optional(),
 });
 
 export const listPromotionsFn = createServerFn({ method: "GET" })
