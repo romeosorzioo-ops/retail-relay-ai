@@ -6,8 +6,9 @@ import { toPng } from "html-to-image";
 import {
   Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus, Save,
   Sparkles, Tag as TagIcon, Trash2, Type, Upload, Image as ImageIcon,
-  Shapes, Copy, RotateCw,
+  Shapes, Copy, RotateCw, Camera, Wand2,
 } from "lucide-react";
+import { CropModal, type CropBox } from "@/components/crop-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
