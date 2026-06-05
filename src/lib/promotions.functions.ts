@@ -47,7 +47,9 @@ export const createPromotionFn = createServerFn({ method: "POST" })
         start_date: data.start_date ?? null,
         end_date: data.end_date ?? null,
         category: data.category ?? null,
-        photo_url: data.photo_url ?? null,
+        file_url: data.file_url ?? null,
+        file_type: data.file_type ?? null,
+        file_name: data.file_name ?? null,
       })
       .select("*")
       .single();
