@@ -333,7 +333,7 @@ function CreationPage() {
     setPromotionCreationModeFn({
       data: { promotion_id: catalogPromo.id, creation_mode: mode },
     }).catch(() => {});
-    navigate({ search: { cp: catalogPromo.id, mode } as never, replace: true });
+    navigate({ to: "/creation", search: { cp: catalogPromo.id, mode } as never, replace: true });
   }
 
   // Apply catalog promo when loaded
