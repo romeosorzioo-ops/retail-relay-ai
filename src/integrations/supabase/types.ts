@@ -52,6 +52,45 @@ export type Database = {
           },
         ]
       }
+      created_visuals: {
+        Row: {
+          config_json: Json
+          created_at: string
+          format: string
+          id: string
+          image_url: string | null
+          promotion_id: string | null
+          store_id: string | null
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config_json?: Json
+          created_at?: string
+          format: string
+          id?: string
+          image_url?: string | null
+          promotion_id?: string | null
+          store_id?: string | null
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config_json?: Json
+          created_at?: string
+          format?: string
+          id?: string
+          image_url?: string | null
+          promotion_id?: string | null
+          store_id?: string | null
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_contents: {
         Row: {
           content_text: string
@@ -330,6 +369,36 @@ export type Database = {
           tone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      visual_templates: {
+        Row: {
+          category: string
+          config_json: Json
+          created_at: string
+          format: string
+          id: string
+          name: string
+          preview_url: string | null
+        }
+        Insert: {
+          category: string
+          config_json?: Json
+          created_at?: string
+          format: string
+          id?: string
+          name: string
+          preview_url?: string | null
+        }
+        Update: {
+          category?: string
+          config_json?: Json
+          created_at?: string
+          format?: string
+          id?: string
+          name?: string
+          preview_url?: string | null
         }
         Relationships: []
       }
