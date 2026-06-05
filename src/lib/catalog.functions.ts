@@ -532,7 +532,7 @@ export const deleteCatalogPromotionFn = createServerFn({ method: "POST" })
   });
 
 const campaignSchema = z.object({
-  recommended_format: z.enum(["post", "story", "reel", "carousel"]),
+  recommended_format: z.enum(["ig_square", "ig_portrait", "story"]),
   recommended_platform: z.enum(["facebook", "instagram", "both"]),
   recommended_date: z.string().nullable().optional(),
   recommended_time: z.string().nullable().optional(),
@@ -595,9 +595,13 @@ Promotion à promouvoir:
 - Catégorie: ${p.category ?? "-"}
 - Période: ${p.start_date ?? "-"} → ${p.end_date ?? "-"}
 
-Recommande UNE campagne optimale:
+Recommande UNE campagne optimale. Komaag ne gère que des visuels statiques (pas de vidéo, pas de Reel). Choisis le format selon ces règles:
+- Promotion simple → "ig_square" (Post carré 1080x1080)
+- Promotion importante / mise en avant → "ig_portrait" (Post portrait 1080x1350)
+- Communication rapide / éphémère → "story" (Story 1080x1920)
+
 {
-  "recommended_format": "post" | "story" | "reel" | "carousel",
+  "recommended_format": "ig_square" | "ig_portrait" | "story",
   "recommended_platform": "facebook" | "instagram" | "both",
   "recommended_date": "YYYY-MM-DD (dans la période de validité, jour à fort trafic GMS)",
   "recommended_time": "HH:MM (créneau d'engagement optimal pour le réseau et la catégorie)",
@@ -697,12 +701,7 @@ export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
       const date = r.recommended_date ?? new Date().toISOString().slice(0, 10);
       const time = (r.recommended_time ?? "10:00").slice(0, 5);
       const scheduled_at = new Date(`${date}T${time}:00`).toISOString();
-      const post_type =
-        r.recommended_format === "story"
-          ? "story"
-          : r.recommended_format === "reel"
-            ? "reel"
-            : "post";
+      const post_type = r.recommended_format === "story" ? "story" : "post";
       const media_url = imageByPromo.get(r.catalog_promotion_id) ?? null;
       const { data: sp } = await context.supabase
         .from("scheduled_posts")
