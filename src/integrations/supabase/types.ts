@@ -54,35 +54,35 @@ export type Database = {
       }
       generated_contents: {
         Row: {
+          content_text: string
+          content_type: string
           created_at: string
-          facebook_post: string
           id: string
-          instagram_post: string
-          instagram_story: string
           promotion_id: string | null
-          reel_idea: string
+          reel_idea: string | null
+          store_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          content_text: string
+          content_type: string
           created_at?: string
-          facebook_post?: string
           id?: string
-          instagram_post?: string
-          instagram_story?: string
           promotion_id?: string | null
-          reel_idea?: string
+          reel_idea?: string | null
+          store_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          content_text?: string
+          content_type?: string
           created_at?: string
-          facebook_post?: string
           id?: string
-          instagram_post?: string
-          instagram_story?: string
           promotion_id?: string | null
-          reel_idea?: string
+          reel_idea?: string | null
+          store_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -92,6 +92,13 @@ export type Database = {
             columns: ["promotion_id"]
             isOneToOne: false
             referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_contents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
