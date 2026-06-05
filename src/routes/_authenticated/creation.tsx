@@ -176,6 +176,8 @@ function CreationPage() {
   );
 
   const selected = config.blocks.find((b) => b.id === selectedId) ?? null;
+  const elements = config.elements ?? [];
+  const selectedElement = elements.find((e) => e.id === selectedElementId) ?? null;
 
   function updateBlock(id: string, patch: Partial<Block>) {
     setConfig((c) => ({ ...c, blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
@@ -183,6 +185,45 @@ function CreationPage() {
   function deleteBlock(id: string) {
     setConfig((c) => ({ ...c, blocks: c.blocks.filter((b) => b.id !== id) }));
     if (selectedId === id) setSelectedId(null);
+  }
+
+  // ---------- Graphic elements ----------
+  function updateElement(id: string, patch: Partial<GraphicEl>) {
+    setConfig((c) => ({ ...c, elements: (c.elements ?? []).map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+  }
+  function deleteElement(id: string) {
+    setConfig((c) => ({ ...c, elements: (c.elements ?? []).filter((e) => e.id !== id) }));
+    if (selectedElementId === id) setSelectedElementId(null);
+  }
+  function duplicateElement(id: string) {
+    setConfig((c) => {
+      const src = (c.elements ?? []).find((e) => e.id === id);
+      if (!src) return c;
+      const copy = { ...src, id: uid(), x: Math.min(95, src.x + 5), y: Math.min(95, src.y + 5) };
+      return { ...c, elements: [...(c.elements ?? []), copy] };
+    });
+  }
+  function addElement(key: string) {
+    const def = getElementDef(key);
+    if (!def) return;
+    const ratio = def.defaultRatio ?? 1;
+    const w = 25;
+    const el: GraphicEl = {
+      id: uid(),
+      key,
+      category: def.category,
+      x: 35, y: 35,
+      width: w,
+      height: w / ratio,
+      rotation: 0,
+      color: def.defaultColor,
+      strokeWidth: def.defaultStroke,
+      opacity: 1,
+      secondary: def.defaultSecondary,
+    };
+    setConfig((c) => ({ ...c, elements: [...(c.elements ?? []), el] }));
+    setSelectedId(null);
+    setSelectedElementId(el.id);
   }
   function addBlock(role: BlockRole) {
     const fTitle = brand?.font_primary ?? "Montserrat";
