@@ -832,6 +832,7 @@ function CatalogPage() {
                           onClearImage={() => clearImgMut.mutate(p.id)}
                           onCreateCatalog={() => startCreation(p, "catalog_visual")}
                           onCreateField={() => startCreation(p, "field_photo")}
+                          onPreview={(url: string, label: string) => setPreviewImage({ url, label })}
                         />
 
                       ))}
