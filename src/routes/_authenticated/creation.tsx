@@ -40,6 +40,9 @@ export const Route = createFileRoute("/_authenticated/creation")({
       s.mode === "catalog_visual" || s.mode === "field_photo"
         ? (s.mode as "catalog_visual" | "field_photo")
         : undefined,
+    campaign: typeof s.campaign === "string" ? s.campaign : undefined,
+    tab: s.tab === "queue" || s.tab === "editor" ? (s.tab as "queue" | "editor") : undefined,
+    item: typeof s.item === "string" ? s.item : undefined,
   }),
   component: CreationPage,
 });
