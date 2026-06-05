@@ -105,6 +105,15 @@ type Config = {
   logoUrl?: string | null;
   blocks: Block[];
   elements?: GraphicEl[];
+  lastCrop?: {
+    src: string;
+    x: number; y: number; width: number; height: number;
+    naturalW: number; naturalH: number;
+    targetW: number; targetH: number;
+    zoom: number;
+    rotation: number;
+    at: number;
+  } | null;
 };
 
 const ROLE_LABEL: Record<BlockRole, string> = {
