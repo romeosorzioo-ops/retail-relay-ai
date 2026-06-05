@@ -14,8 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { getMyStoreFn, upsertStoreFn } from "@/lib/stores.functions";
+import {
+  getMyBrandProfileFn,
+  upsertBrandProfileFn,
+} from "@/lib/brand-profiles.functions";
+import { uploadVisualImageFn } from "@/lib/visuals.functions";
 
 export const Route = createFileRoute("/_authenticated/store")({
   component: StorePage,
@@ -41,12 +47,24 @@ const DEPARTMENTS = [
   "Traiteur",
   "Produits locaux",
 ];
+const FONTS = ["Inter", "Roboto", "Poppins", "Montserrat", "Playfair Display", "Lora"];
+const COMM_STYLES = [
+  "Familial",
+  "Premium",
+  "Festif",
+  "Local & authentique",
+  "Jeune & dynamique",
+];
 
 function StorePage() {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["my-store"],
     queryFn: () => getMyStoreFn(),
+  });
+  const { data: brand } = useQuery({
+    queryKey: ["my-brand"],
+    queryFn: () => getMyBrandProfileFn(),
   });
 
   const [form, setForm] = useState({
@@ -58,6 +76,16 @@ function StorePage() {
     frequency: "3 fois/semaine",
     strong_departments: [] as string[],
   });
+
+  const [brandForm, setBrandForm] = useState({
+    logo_url: "" as string,
+    primary_color: "#e11d48",
+    secondary_color: "#1f2937",
+    font_family: "Inter",
+    slogan: "",
+    communication_style: "Familial",
+  });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -73,6 +101,19 @@ function StorePage() {
     }
   }, [data]);
 
+  useEffect(() => {
+    if (brand) {
+      setBrandForm({
+        logo_url: brand.logo_url ?? "",
+        primary_color: brand.primary_color ?? "#e11d48",
+        secondary_color: brand.secondary_color ?? "#1f2937",
+        font_family: brand.font_family ?? "Inter",
+        slogan: brand.slogan ?? "",
+        communication_style: brand.communication_style ?? "Familial",
+      });
+    }
+  }, [brand]);
+
   const save = useMutation({
     mutationFn: () => upsertStoreFn({ data: form }),
     onSuccess: () => {
@@ -81,6 +122,52 @@ function StorePage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const saveBrand = useMutation({
+    mutationFn: () =>
+      upsertBrandProfileFn({
+        data: {
+          logo_url: brandForm.logo_url || null,
+          primary_color: brandForm.primary_color,
+          secondary_color: brandForm.secondary_color,
+          font_family: brandForm.font_family,
+          slogan: brandForm.slogan || null,
+          communication_style: brandForm.communication_style,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Identité visuelle enregistrée.");
+      qc.invalidateQueries({ queryKey: ["my-brand"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  async function uploadLogo(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Image uniquement");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const data_base64 = btoa(binary);
+      const res = await uploadVisualImageFn({
+        data: { file_name: file.name, file_type: file.type, data_base64 },
+      });
+      setBrandForm((b) => ({ ...b, logo_url: res.url }));
+      toast.success("Logo chargé");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   function toggleDept(d: string) {
     setForm((f) => ({
@@ -208,6 +295,166 @@ function StorePage() {
           <div className="pt-2">
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
               Enregistrer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Identité visuelle</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Ces éléments pré-remplissent automatiquement vos visuels dans le
+            module Création.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="mb-2 block">Logo</Label>
+            <div className="flex items-center gap-3">
+              {brandForm.logo_url ? (
+                <img
+                  src={brandForm.logo_url}
+                  alt="Logo"
+                  className="h-16 w-16 rounded-md border object-contain bg-white"
+                />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-md border bg-muted text-xs text-muted-foreground">
+                  Aucun
+                </div>
+              )}
+              <label className="flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-accent">
+                {uploadingLogo ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Charger un logo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadLogo(f);
+                  }}
+                />
+              </label>
+              {brandForm.logo_url && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setBrandForm((b) => ({ ...b, logo_url: "" }))}
+                >
+                  Retirer
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Couleur principale</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={brandForm.primary_color}
+                  onChange={(e) =>
+                    setBrandForm({ ...brandForm, primary_color: e.target.value })
+                  }
+                  className="h-9 w-12 cursor-pointer rounded border"
+                />
+                <Input
+                  value={brandForm.primary_color}
+                  onChange={(e) =>
+                    setBrandForm({ ...brandForm, primary_color: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Couleur secondaire</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={brandForm.secondary_color}
+                  onChange={(e) =>
+                    setBrandForm({
+                      ...brandForm,
+                      secondary_color: e.target.value,
+                    })
+                  }
+                  className="h-9 w-12 cursor-pointer rounded border"
+                />
+                <Input
+                  value={brandForm.secondary_color}
+                  onChange={(e) =>
+                    setBrandForm({
+                      ...brandForm,
+                      secondary_color: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Police principale</Label>
+              <Select
+                value={brandForm.font_family}
+                onValueChange={(v) =>
+                  setBrandForm({ ...brandForm, font_family: v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Style de communication</Label>
+              <Select
+                value={brandForm.communication_style}
+                onValueChange={(v) =>
+                  setBrandForm({ ...brandForm, communication_style: v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMM_STYLES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Slogan</Label>
+              <Input
+                value={brandForm.slogan}
+                placeholder="Ex: Le goût du local depuis 1985"
+                onChange={(e) =>
+                  setBrandForm({ ...brandForm, slogan: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <Button
+              onClick={() => saveBrand.mutate()}
+              disabled={saveBrand.isPending}
+            >
+              Enregistrer l'identité visuelle
             </Button>
           </div>
         </CardContent>

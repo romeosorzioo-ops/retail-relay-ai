@@ -31,6 +31,7 @@ import {
   uploadVisualImageFn,
 } from "@/lib/visuals.functions";
 import { listPromotionsFn } from "@/lib/promotions.functions";
+import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
 
 export const Route = createFileRoute("/_authenticated/creation")({
   component: CreationPage,
@@ -52,6 +53,9 @@ const ICON_BADGES = ["-10%", "-20%", "-30%", "-50%", "PRIX CHOC", "NOUVEAU", "LO
 type Config = {
   layout?: "banner" | "split" | "centered" | string;
   primaryColor?: string;
+  secondaryColor?: string;
+  fontFamily?: string;
+  slogan?: string;
   mainText?: string;
   productName?: string;
   price?: string;
@@ -89,6 +93,27 @@ function CreationPage() {
     queryKey: ["promotions"],
     queryFn: () => listPromotionsFn(),
   });
+  const { data: brand } = useQuery({
+    queryKey: ["my-brand"],
+    queryFn: () => getMyBrandProfileFn(),
+  });
+
+  // Pre-fill brand identity into the visual when brand profile loads
+  useEffect(() => {
+    if (!brand) return;
+    setConfig((c) => ({
+      ...c,
+      primaryColor: c.primaryColor === "#E11D48" && brand.primary_color
+        ? brand.primary_color
+        : c.primaryColor,
+      secondaryColor: c.secondaryColor ?? brand.secondary_color ?? undefined,
+      fontFamily: c.fontFamily ?? brand.font_family ?? undefined,
+      slogan: c.slogan ?? brand.slogan ?? undefined,
+      logoUrl: c.logoUrl ?? brand.logo_url ?? null,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand]);
+
 
   const dims = FORMATS[format];
 
@@ -100,11 +125,22 @@ function CreationPage() {
   function applyTemplate(t: (typeof templates)[number]) {
     setTemplateId(t.id);
     const cfg = (t.config_json ?? {}) as Config;
-    setConfig((prev) => ({ ...prev, ...cfg }));
+    setConfig((prev) => ({
+      ...prev,
+      ...cfg,
+      // Brand identity always wins over template defaults
+      primaryColor: brand?.primary_color ?? cfg.primaryColor ?? prev.primaryColor,
+      secondaryColor:
+        brand?.secondary_color ?? cfg.secondaryColor ?? prev.secondaryColor,
+      fontFamily: brand?.font_family ?? cfg.fontFamily ?? prev.fontFamily,
+      slogan: brand?.slogan ?? cfg.slogan ?? prev.slogan,
+      logoUrl: brand?.logo_url ?? prev.logoUrl ?? cfg.logoUrl ?? null,
+    }));
     if (t.format === "ig_square" || t.format === "story" || t.format === "fb_post") {
       setFormat(t.format);
     }
   }
+
 
   function applyPromotion(id: string) {
     setPromotionId(id);
@@ -312,6 +348,35 @@ function CreationPage() {
                   }
                 />
               </div>
+            </div>
+
+            <div>
+              <Label className="mb-1 block text-xs">Couleur secondaire</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={config.secondaryColor ?? "#1f2937"}
+                  onChange={(e) =>
+                    setConfig({ ...config, secondaryColor: e.target.value })
+                  }
+                  className="h-9 w-12 cursor-pointer rounded border"
+                />
+                <Input
+                  value={config.secondaryColor ?? ""}
+                  onChange={(e) =>
+                    setConfig({ ...config, secondaryColor: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-1 block text-xs">Slogan</Label>
+              <Input
+                value={config.slogan ?? ""}
+                placeholder="Slogan de votre magasin"
+                onChange={(e) => setConfig({ ...config, slogan: e.target.value })}
+              />
             </div>
 
             <div>
@@ -588,11 +653,22 @@ async function renderCanvas(
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fillRect(0, h - bandH, w, bandH);
 
+  const font = cfg.fontFamily ?? "Inter";
+
+  // Slogan (small, above main text)
+  if (cfg.slogan) {
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.textBaseline = "top";
+    ctx.font = `500 ${36 * scale}px "${font}", system-ui, sans-serif`;
+    ctx.fillText(cfg.slogan, pad, pad);
+  }
+
   // Main text (top-left)
   ctx.fillStyle = "#ffffff";
   ctx.textBaseline = "top";
-  ctx.font = `900 ${110 * scale}px "Inter", system-ui, sans-serif`;
-  wrapText(ctx, (cfg.mainText ?? "").toUpperCase(), pad, pad, w - pad * 2, 110 * scale);
+  ctx.font = `900 ${110 * scale}px "${font}", system-ui, sans-serif`;
+  const mainTop = cfg.slogan ? pad + 56 * scale : pad;
+  wrapText(ctx, (cfg.mainText ?? "").toUpperCase(), pad, mainTop, w - pad * 2, 110 * scale);
 
   // Badge (top-right circle)
   if (cfg.badge?.text) {
@@ -604,7 +680,7 @@ async function renderCanvas(
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#111";
-    ctx.font = `900 ${52 * scale}px "Inter", system-ui, sans-serif`;
+    ctx.font = `900 ${52 * scale}px "${font}", system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(cfg.badge.text, cx, cy);
@@ -614,7 +690,7 @@ async function renderCanvas(
 
   // Product name (band)
   ctx.fillStyle = "#ffffff";
-  ctx.font = `700 ${64 * scale}px "Inter", system-ui, sans-serif`;
+  ctx.font = `700 ${64 * scale}px "${font}", system-ui, sans-serif`;
   wrapText(
     ctx,
     cfg.productName ?? "",
@@ -627,13 +703,13 @@ async function renderCanvas(
   // Price
   if (cfg.price) {
     ctx.fillStyle = cfg.primaryColor ?? "#E11D48";
-    ctx.font = `900 ${160 * scale}px "Inter", system-ui, sans-serif`;
+    ctx.font = `900 ${160 * scale}px "${font}", system-ui, sans-serif`;
     const priceText = `${cfg.price} €`;
     ctx.fillText(priceText, pad, h - bandH + bandH * 0.45);
 
     if (cfg.oldPrice) {
       ctx.fillStyle = "#ddd";
-      ctx.font = `600 ${56 * scale}px "Inter", system-ui, sans-serif`;
+      ctx.font = `600 ${56 * scale}px "${font}", system-ui, sans-serif`;
       const priceWidth = ctx.measureText(priceText).width;
       const oldX = pad + priceWidth + 24 * scale;
       const oldY = h - bandH + bandH * 0.55;
