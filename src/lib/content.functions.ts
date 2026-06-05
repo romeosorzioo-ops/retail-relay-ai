@@ -15,6 +15,31 @@ type ContentRow = {
   promotions: { product_name: string } | null;
 };
 
+const generatedContentSchema = z.object({
+  facebook_post: z.string().min(1).max(5000),
+  instagram_post: z.string().min(1).max(5000),
+  instagram_story: z.string().min(1).max(5000),
+  reel_idea: z.string().min(1).max(5000),
+});
+
+function parseGeneratedContent(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const candidate = fenced?.[1] ?? trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
+
+  try {
+    const raw = JSON.parse(candidate) as Record<string, unknown>;
+    return generatedContentSchema.parse({
+      facebook_post: String(raw.facebook_post ?? raw.facebook ?? "").trim(),
+      instagram_post: String(raw.instagram_post ?? raw.instagram ?? "").trim(),
+      instagram_story: String(raw.instagram_story ?? raw.story ?? "").trim(),
+      reel_idea: String(raw.reel_idea ?? raw.reel ?? "").trim(),
+    });
+  } catch {
+    throw new Error("La réponse IA n'a pas pu être lue. Réessayez dans quelques secondes.");
+  }
+}
+
 export const listContentsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -104,7 +129,7 @@ export const generateContentFn = createServerFn({ method: "POST" })
     const { createLovableAiGatewayProvider } = await import(
       "@/lib/ai-gateway.server"
     );
-    const { generateObject } = await import("ai");
+    const { generateText } = await import("ai");
     const gateway = createLovableAiGatewayProvider(key);
 
     const sys = `Tu es un expert en marketing local pour les magasins de grande distribution alimentaire en France.
@@ -122,19 +147,22 @@ Promotion:
 - Catégorie: ${promo.category ?? "-"}
 - Dates: ${promo.start_date ?? "-"} → ${promo.end_date ?? "-"}
 
-Génère 4 contenus prêts à publier.`;
+Génère 4 contenus prêts à publier.
 
-    const { object: out } = await generateObject({
+Réponds uniquement avec un objet JSON valide, sans markdown, avec exactement ces clés:
+{
+  "facebook_post": "...",
+  "instagram_post": "...",
+  "instagram_story": "...",
+  "reel_idea": "..."
+}`;
+
+    const { text } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),
       system: sys,
       prompt,
-      schema: z.object({
-        facebook_post: z.string(),
-        instagram_post: z.string(),
-        instagram_story: z.string(),
-        reel_idea: z.string(),
-      }),
     });
+    const out = parseGeneratedContent(text);
 
     const { data: inserted, error } = await context.supabase
       .from("generated_contents")
