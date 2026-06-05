@@ -1179,7 +1179,17 @@ function CreationPage() {
 
         {/* CENTER — preview */}
         <Card>
-          <CardContent className="flex items-center justify-center p-4">
+          <CardContent className="flex flex-col items-center justify-center gap-2 p-4">
+            <div className="flex w-full items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCropDebug((v) => !v)}
+                className="rounded border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                title="Afficher les coordonnées du dernier recadrage"
+              >
+                {showCropDebug ? "Masquer debug crop" : "Debug crop"}
+              </button>
+            </div>
             <div
               ref={canvasWrapRef}
               onPointerMove={onPointerMoveCanvas}
