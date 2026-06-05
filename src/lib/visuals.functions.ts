@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const FORMATS = ["ig_square", "story", "fb_post"] as const;
+const FORMAT_SCHEMA = z.string().min(1).max(32);
 
 const configSchema = z
   .object({
