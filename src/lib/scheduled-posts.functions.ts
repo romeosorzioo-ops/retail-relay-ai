@@ -82,6 +82,7 @@ export const updateScheduledPostFn = createServerFn({ method: "POST" })
         promotion_id: rest.promotion_id ?? null,
         generated_content_id: rest.generated_content_id ?? null,
         status: rest.status ?? "scheduled",
+        format: rest.format ?? null,
       })
       .eq("id", id)
       .eq("user_id", context.userId)
