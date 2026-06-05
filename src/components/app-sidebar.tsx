@@ -9,6 +9,7 @@ import {
   LogOut,
   Plug,
   Palette,
+  FileUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,6 +30,7 @@ const items = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
   { title: "Mon magasin", url: "/store", icon: Store },
   { title: "Promotions", url: "/promotions", icon: Tag },
+  { title: "Import catalogue", url: "/catalog", icon: FileUp },
   { title: "Génération IA", url: "/generate", icon: Sparkles },
   { title: "Création", url: "/creation", icon: Palette },
   { title: "Calendrier", url: "/calendar", icon: Calendar },

@@ -155,6 +155,175 @@ export type Database = {
           },
         ]
       }
+      campaign_recommendations: {
+        Row: {
+          caption: string | null
+          catalog_promotion_id: string
+          created_at: string
+          creative_angle: string | null
+          id: string
+          recommended_date: string | null
+          recommended_format: string | null
+          recommended_platform: string | null
+          recommended_time: string | null
+          scheduled_post_id: string | null
+          status: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+          visual_brief: string | null
+        }
+        Insert: {
+          caption?: string | null
+          catalog_promotion_id: string
+          created_at?: string
+          creative_angle?: string | null
+          id?: string
+          recommended_date?: string | null
+          recommended_format?: string | null
+          recommended_platform?: string | null
+          recommended_time?: string | null
+          scheduled_post_id?: string | null
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+          visual_brief?: string | null
+        }
+        Update: {
+          caption?: string | null
+          catalog_promotion_id?: string
+          created_at?: string
+          creative_angle?: string | null
+          id?: string
+          recommended_date?: string | null
+          recommended_format?: string | null
+          recommended_platform?: string | null
+          recommended_time?: string | null
+          scheduled_post_id?: string | null
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+          visual_brief?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recommendations_catalog_promotion_id_fkey"
+            columns: ["catalog_promotion_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_imports: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          status: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          status?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      catalog_promotions: {
+        Row: {
+          catalog_import_id: string
+          category: string | null
+          created_at: string
+          discount_percent: number | null
+          end_date: string | null
+          id: string
+          old_price: number | null
+          page_number: number | null
+          product_name: string
+          promo_price: number | null
+          recommendation_reason: string | null
+          selected: boolean
+          social_score: number | null
+          start_date: string | null
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          catalog_import_id: string
+          category?: string | null
+          created_at?: string
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          old_price?: number | null
+          page_number?: number | null
+          product_name: string
+          promo_price?: number | null
+          recommendation_reason?: string | null
+          selected?: boolean
+          social_score?: number | null
+          start_date?: string | null
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          catalog_import_id?: string
+          category?: string | null
+          created_at?: string
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          old_price?: number | null
+          page_number?: number | null
+          product_name?: string
+          promo_price?: number | null
+          recommendation_reason?: string | null
+          selected?: boolean
+          social_score?: number | null
+          start_date?: string | null
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_promotions_catalog_import_id_fkey"
+            columns: ["catalog_import_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       created_visuals: {
         Row: {
           config_json: Json
