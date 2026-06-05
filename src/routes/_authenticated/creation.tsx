@@ -920,6 +920,22 @@ function CreationPage() {
                       <Camera className="h-3 w-3" /> Photo terrain
                     </Button>
                   </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground mb-0.5 block">Format recommandé</Label>
+                    <Select
+                      value={it.recommended_format ?? "ig_square"}
+                      onValueChange={(v) =>
+                        updateItem.mutate({ id: it.id, recommended_format: v })
+                      }
+                      disabled={it.status === "scheduled"}
+                    >
+                      <SelectTrigger className="h-8 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {POST_FORMAT_LIST.map((f) => (
+                          <SelectItem key={f.key} value={f.key}>{f.short} — {f.w}×{f.h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" className="flex-1 h-8 text-xs"
                       onClick={() => openQueueItem(it.id)}>
