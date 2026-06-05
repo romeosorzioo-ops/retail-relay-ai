@@ -26,33 +26,6 @@ export const listPromotionsFn = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
-export const ensurePromotionFilesBucketFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async () => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const bucketName = "promotion-files";
-
-    const { data: existingBucket, error: getError } = await supabaseAdmin.storage.getBucket(bucketName);
-    if (existingBucket) return { ok: true, bucket: bucketName };
-
-    const notFound = getError?.message?.toLowerCase().includes("not found");
-    if (getError && !notFound) {
-      throw new Error(`Impossible de vérifier le stockage ${bucketName}: ${getError.message}`);
-    }
-
-    const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
-      public: true,
-      fileSizeLimit: 10 * 1024 * 1024,
-      allowedMimeTypes: ["image/png", "image/jpeg", "application/pdf"],
-    });
-
-    if (createError && !createError.message.toLowerCase().includes("already exists")) {
-      throw new Error(`Impossible de créer le stockage ${bucketName}: ${createError.message}`);
-    }
-
-    return { ok: true, bucket: bucketName };
-  });
-
 export const createPromotionFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => promoSchema.parse(d))
