@@ -906,8 +906,8 @@ function CreationPage() {
                 <div key={it.id} className="rounded-lg border p-3 space-y-2">
                   <div className="flex gap-2">
                     <div className="h-16 w-16 flex-shrink-0 rounded border overflow-hidden bg-muted">
-                      {it.source_image_url ? (
-                        <img src={it.source_image_url} alt="" className="h-full w-full object-cover" />
+                      {(it.thumbnail_url ?? it.source_image_url) ? (
+                        <img src={it.thumbnail_url ?? it.source_image_url} alt={it.product_name ?? ""} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                           <ImageIcon className="h-5 w-5" />
