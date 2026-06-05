@@ -6,7 +6,6 @@ export const CONTENT_TYPES = [
   "facebook_post",
   "instagram_post",
   "instagram_story",
-  "reel_idea",
 ] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
@@ -27,7 +26,6 @@ const aiSchema = z.object({
   facebook_post: z.string().min(1).max(5000),
   instagram_post: z.string().min(1).max(5000),
   instagram_story: z.string().min(1).max(5000),
-  reel_idea: z.string().min(1).max(5000),
 });
 
 function parseGeneratedContent(text: string) {
@@ -41,7 +39,6 @@ function parseGeneratedContent(text: string) {
       facebook_post: String(raw.facebook_post ?? raw.facebook ?? "").trim(),
       instagram_post: String(raw.instagram_post ?? raw.instagram ?? "").trim(),
       instagram_story: String(raw.instagram_story ?? raw.story ?? "").trim(),
-      reel_idea: String(raw.reel_idea ?? raw.reel ?? "").trim(),
     });
   } catch {
     throw new Error("La réponse IA n'a pas pu être lue. Réessayez dans quelques secondes.");
@@ -161,14 +158,13 @@ Promotion:
 - Catégorie: ${promo.category ?? "-"}
 - Dates: ${promo.start_date ?? "-"} → ${promo.end_date ?? "-"}
 
-Génère 4 contenus prêts à publier.
+Génère 3 contenus prêts à publier (visuels statiques uniquement, pas de vidéo).
 
 Réponds uniquement avec un objet JSON valide, sans markdown, avec exactement ces clés:
 {
   "facebook_post": "...",
   "instagram_post": "...",
-  "instagram_story": "...",
-  "reel_idea": "..."
+  "instagram_story": "..."
 }`;
 
     const { text } = await generateText({
@@ -182,14 +178,13 @@ Réponds uniquement avec un objet JSON valide, sans markdown, avec exactement ce
       { content_type: "facebook_post" as const, content_text: out.facebook_post },
       { content_type: "instagram_post" as const, content_text: out.instagram_post },
       { content_type: "instagram_story" as const, content_text: out.instagram_story },
-      { content_type: "reel_idea" as const, content_text: out.reel_idea, reel_idea: out.reel_idea },
     ].map((r) => ({
       user_id: context.userId,
       promotion_id: promo.id,
       store_id: store.id,
       content_type: r.content_type,
       content_text: r.content_text,
-      reel_idea: (r as { reel_idea?: string }).reel_idea ?? null,
+      reel_idea: null,
     }));
 
     const { data: inserted, error } = await context.supabase
