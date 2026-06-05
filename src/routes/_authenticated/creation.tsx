@@ -330,6 +330,9 @@ function CreationPage() {
     } else if (currentItem.creation_mode === "field_photo") {
       setSourceType("field_photo");
     }
+    if (currentItem.recommended_format && currentItem.recommended_format in FORMATS) {
+      setFormat(currentItem.recommended_format as FormatKey);
+    }
     updateCampaignItemFn({ data: { id: currentItem.id, status: "in_progress" } }).catch(() => {});
   }, [currentItem]);
 
