@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import {
   Upload, Loader2, FileText, Trash2, Sparkles, CalendarPlus,
   Wand2, Filter as FilterIcon, Pencil, Check, X, RefreshCw, Plus,
   AlertTriangle, ShieldCheck, HelpCircle, Image as ImageIcon, Crop, Replace,
+  Camera, Layout,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   generateCampaignFn, listCampaignRecommendationsFn, addCampaignToCalendarFn,
   listCatalogPagesFn, reanalyzeCatalogPageFn, addCatalogPromotionFn,
   deleteCatalogPromotionFn, savePageImageFn, setPromotionImageFn,
-  clearPromotionImageFn,
+  clearPromotionImageFn, setPromotionCreationModeFn,
 } from "@/lib/catalog.functions";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import {
