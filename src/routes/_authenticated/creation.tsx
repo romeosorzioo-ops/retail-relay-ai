@@ -270,6 +270,62 @@ function CreationPage() {
     dragRef.current = null;
   }
 
+  // ---------- Element pointer (move / resize / rotate) ----------
+  function onPointerDownElement(e: React.PointerEvent, el: GraphicEl, mode: "move" | "resize" | "rotate") {
+    e.stopPropagation();
+    setSelectedId(null);
+    setSelectedElementId(el.id);
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + (el.x + el.width / 2) * rect.width / 100;
+    const cy = rect.top + (el.y + (el.height * rect.width / rect.height) / 2) * rect.height / 100;
+    elDragRef.current = {
+      id: el.id, mode, startX: e.clientX, startY: e.clientY,
+      bx: el.x, by: el.y, bw: el.width, bh: el.height, brot: el.rotation, rect, cx, cy,
+    };
+  }
+  function onPointerMoveCanvas(e: React.PointerEvent) {
+    // block drag
+    const d = dragRef.current;
+    if (d) {
+      const dx = ((e.clientX - d.startX) / d.rect.width) * 100;
+      const dy = ((e.clientY - d.startY) / d.rect.height) * 100;
+      updateBlock(d.id, { x: Math.max(0, Math.min(100, d.bx + dx)), y: Math.max(0, Math.min(100, d.by + dy)) });
+      return;
+    }
+    // element drag
+    const ed = elDragRef.current;
+    if (!ed) return;
+    if (ed.mode === "move") {
+      const dx = ((e.clientX - ed.startX) / ed.rect.width) * 100;
+      const dy = ((e.clientY - ed.startY) / ed.rect.height) * 100;
+      updateElement(ed.id, {
+        x: Math.max(-10, Math.min(100, ed.bx + dx)),
+        y: Math.max(-10, Math.min(100, ed.by + dy)),
+      });
+    } else if (ed.mode === "resize") {
+      const dx = ((e.clientX - ed.startX) / ed.rect.width) * 100;
+      const newW = Math.max(3, Math.min(120, ed.bw + dx));
+      const ratio = ed.bw > 0 ? ed.bh / ed.bw : 1;
+      updateElement(ed.id, { width: newW, height: newW * ratio });
+    } else if (ed.mode === "rotate") {
+      const angle = (Math.atan2(e.clientY - ed.cy, e.clientX - ed.cx) * 180) / Math.PI + 90;
+      updateElement(ed.id, { rotation: Math.round(angle) });
+    }
+  }
+  function onPointerUpCanvas(e: React.PointerEvent) {
+    if (dragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      dragRef.current = null;
+    }
+    if (elDragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      elDragRef.current = null;
+    }
+  }
+
   function applyTemplate(t: (typeof templates)[number]) {
     setTemplateId(t.id);
     const cfg = (t.config_json ?? {}) as Partial<Config> & {
