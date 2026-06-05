@@ -740,7 +740,11 @@ function CatalogPage() {
                             if (confirm("Supprimer cette promo ?")) delPromoMut.mutate(p.id);
                           }}
                           onToggle={(v: boolean) => updMut.mutate({ id: p.id, selected: v })}
+                          onRecrop={() => handleRecrop(p)}
+                          onReplace={(f: File) => handleReplace(p, f)}
+                          onClearImage={() => clearImgMut.mutate(p.id)}
                         />
+
                       ))}
                     </div>
                   </div>
