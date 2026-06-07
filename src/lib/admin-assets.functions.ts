@@ -338,7 +338,7 @@ export const upsertPresetFn = createServerFn({ method: "POST" })
       graphic_asset_ids: data.graphic_asset_ids,
       config_json: data.config_json,
       is_active: data.is_active,
-    };
+    } as never;
     if (data.id) {
       const { data: row, error } = await supabaseAdmin
         .from("creation_presets")
