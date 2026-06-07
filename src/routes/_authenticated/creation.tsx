@@ -29,6 +29,7 @@ import {
   listCampaignItemsFn, getCampaignItemFn, updateCampaignItemFn,
 } from "@/lib/campaigns.functions";
 import { getMyBrandProfileFn } from "@/lib/brand-profiles.functions";
+import { getMyBrandGuidelineFn } from "@/lib/brand-guidelines.functions";
 import { listBrandFontsFn } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
 import {
@@ -293,7 +294,16 @@ function CreationPage() {
 
   const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
   const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
-  const { data: brand } = useQuery({ queryKey: ["my-brand"], queryFn: () => getMyBrandProfileFn() });
+  const { data: brandProfile } = useQuery({ queryKey: ["my-brand"], queryFn: () => getMyBrandProfileFn() });
+  const { data: brandGuideline } = useQuery({ queryKey: ["my-brand-guideline"], queryFn: () => getMyBrandGuidelineFn() });
+  // Fusion : la charte d'enseigne sert de fallback pour les champs non
+  // personnalisés par l'utilisateur dans son profil de marque.
+  const brand = useMemo(() => ({
+    ...(brandGuideline ?? {}),
+    ...Object.fromEntries(
+      Object.entries(brandProfile ?? {}).filter(([, v]) => v != null && v !== ""),
+    ),
+  }), [brandProfile, brandGuideline]) as typeof brandProfile;
   const { data: brandFonts = [] } = useQuery({ queryKey: ["my-brand-fonts"], queryFn: () => listBrandFontsFn() });
   const { data: catalogPromo } = useQuery({
     queryKey: ["catalog-promo", search.cp],

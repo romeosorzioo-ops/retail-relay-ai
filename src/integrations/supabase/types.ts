@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       brand_fonts: {
         Row: {
+          allowed_brands: string[]
           created_at: string
           format: string | null
           id: string
@@ -25,6 +26,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allowed_brands?: string[]
           created_at?: string
           format?: string | null
           id?: string
@@ -34,6 +36,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allowed_brands?: string[]
           created_at?: string
           format?: string | null
           id?: string
@@ -48,6 +51,79 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_guidelines: {
+        Row: {
+          accent_color: string | null
+          arrow_style: string | null
+          badge_style: string | null
+          body_font_id: string | null
+          brand: string
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string | null
+          price_font_id: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          title_font_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          arrow_style?: string | null
+          badge_style?: string | null
+          body_font_id?: string | null
+          brand: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string | null
+          price_font_id?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          title_font_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          arrow_style?: string | null
+          badge_style?: string | null
+          body_font_id?: string | null
+          brand?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string | null
+          price_font_id?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          title_font_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_guidelines_body_font_id_fkey"
+            columns: ["body_font_id"]
+            isOneToOne: false
+            referencedRelation: "brand_fonts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_guidelines_price_font_id_fkey"
+            columns: ["price_font_id"]
+            isOneToOne: false
+            referencedRelation: "brand_fonts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_guidelines_title_font_id_fkey"
+            columns: ["title_font_id"]
+            isOneToOne: false
+            referencedRelation: "brand_fonts"
             referencedColumns: ["id"]
           },
         ]
@@ -832,6 +908,7 @@ export type Database = {
           frequency: string | null
           id: string
           name: string
+          store_brand: string | null
           strong_departments: string[]
           tone: string | null
           updated_at: string
@@ -845,6 +922,7 @@ export type Database = {
           frequency?: string | null
           id?: string
           name: string
+          store_brand?: string | null
           strong_departments?: string[]
           tone?: string | null
           updated_at?: string
@@ -858,6 +936,7 @@ export type Database = {
           frequency?: string | null
           id?: string
           name?: string
+          store_brand?: string | null
           strong_departments?: string[]
           tone?: string | null
           updated_at?: string
@@ -867,6 +946,7 @@ export type Database = {
       }
       visual_templates: {
         Row: {
+          allowed_brands: string[]
           category: string
           config_json: Json
           created_at: string
@@ -876,6 +956,7 @@ export type Database = {
           preview_url: string | null
         }
         Insert: {
+          allowed_brands?: string[]
           category: string
           config_json?: Json
           created_at?: string
@@ -885,6 +966,7 @@ export type Database = {
           preview_url?: string | null
         }
         Update: {
+          allowed_brands?: string[]
           category?: string
           config_json?: Json
           created_at?: string

@@ -23,6 +23,7 @@ import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCatalogRouteImport } from './routes/_authenticated/catalog'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedLibraryPromotionIdRouteImport } from './routes/_authenticated/library.$promotionId'
+import { Route as AuthenticatedAdminBrandGuidelinesRouteImport } from './routes/_authenticated/admin.brand-guidelines'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -95,6 +96,12 @@ const AuthenticatedLibraryPromotionIdRoute =
     path: '/$promotionId',
     getParentRoute: () => AuthenticatedLibraryRoute,
   } as any)
+const AuthenticatedAdminBrandGuidelinesRoute =
+  AuthenticatedAdminBrandGuidelinesRouteImport.update({
+    id: '/admin/brand-guidelines',
+    path: '/admin/brand-guidelines',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +132,7 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
 }
 export interface FileRoutesById {
@@ -141,6 +150,7 @@ export interface FileRoutesById {
   '/_authenticated/library': typeof AuthenticatedLibraryRouteWithChildren
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
+  '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/_authenticated/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/admin/brand-guidelines'
     | '/library/$promotionId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/admin/brand-guidelines'
     | '/library/$promotionId'
   id:
     | '__root__'
@@ -189,6 +201,7 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/promotions'
     | '/_authenticated/store'
+    | '/_authenticated/admin/brand-guidelines'
     | '/_authenticated/library/$promotionId'
   fileRoutesById: FileRoutesById
 }
@@ -299,6 +312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLibraryPromotionIdRouteImport
       parentRoute: typeof AuthenticatedLibraryRoute
     }
+    '/_authenticated/admin/brand-guidelines': {
+      id: '/_authenticated/admin/brand-guidelines'
+      path: '/admin/brand-guidelines'
+      fullPath: '/admin/brand-guidelines'
+      preLoaderRoute: typeof AuthenticatedAdminBrandGuidelinesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -323,6 +343,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRouteWithChildren
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedStoreRoute: typeof AuthenticatedStoreRoute
+  AuthenticatedAdminBrandGuidelinesRoute: typeof AuthenticatedAdminBrandGuidelinesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -335,6 +356,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLibraryRoute: AuthenticatedLibraryRouteWithChildren,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedStoreRoute: AuthenticatedStoreRoute,
+  AuthenticatedAdminBrandGuidelinesRoute:
+    AuthenticatedAdminBrandGuidelinesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -349,13 +372,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

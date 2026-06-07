@@ -5,13 +5,29 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const listBrandFontsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // Récupère les polices de l'utilisateur, filtrées par enseigne :
+    // une police sans `allowed_brands` est universelle ; sinon il faut
+    // que l'enseigne du magasin soit listée.
+    const store = await context.supabase
+      .from("stores")
+      .select("store_brand, banner")
+      .eq("user_id", context.userId)
+      .limit(1)
+      .maybeSingle();
+    const brand = store.data?.store_brand ?? store.data?.banner ?? null;
+
     const { data, error } = await context.supabase
       .from("brand_fonts")
       .select("*")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = data ?? [];
+    if (!brand) return rows.filter((r) => !r.allowed_brands?.length);
+    return rows.filter(
+      (r) =>
+        !r.allowed_brands?.length || r.allowed_brands.includes(brand),
+    );
   });
 
 export const addBrandFontFn = createServerFn({ method: "POST" })
@@ -22,16 +38,27 @@ export const addBrandFontFn = createServerFn({ method: "POST" })
         name: z.string().min(1).max(80),
         url: z.string().min(1).max(2000),
         format: z.string().max(20).nullable().optional(),
+        allowed_brands: z.array(z.string().max(80)).max(20).optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const store = await context.supabase
       .from("stores")
-      .select("id")
+      .select("id, store_brand, banner")
       .eq("user_id", context.userId)
       .limit(1)
       .maybeSingle();
+    // Si l'utilisateur ne précise pas d'enseignes, on attache la police à
+    // l'enseigne de son magasin par défaut.
+    const defaultBrand =
+      store.data?.store_brand ?? store.data?.banner ?? null;
+    const allowed =
+      data.allowed_brands && data.allowed_brands.length > 0
+        ? data.allowed_brands
+        : defaultBrand
+          ? [defaultBrand]
+          : [];
     const { data: row, error } = await context.supabase
       .from("brand_fonts")
       .insert({
@@ -40,6 +67,7 @@ export const addBrandFontFn = createServerFn({ method: "POST" })
         name: data.name,
         url: data.url,
         format: data.format ?? null,
+        allowed_brands: allowed,
       })
       .select("*")
       .single();

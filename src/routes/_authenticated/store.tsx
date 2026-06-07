@@ -28,14 +28,13 @@ import {
   deleteBrandFontFn,
 } from "@/lib/brand-fonts.functions";
 import { FONT_LIBRARY, registerCustomFont } from "@/lib/fonts";
+import { STORE_BRANDS } from "@/lib/store-brands";
 
 export const Route = createFileRoute("/_authenticated/store")({
   component: StorePage,
 });
 
-const BANNERS = [
-  "Super U", "Hyper U", "U Express", "Intermarché", "Carrefour Market", "Spar", "Autre",
-];
+const BANNERS = STORE_BRANDS;
 const TONES = ["Familial", "Professionnel", "Dynamique", "Local"];
 const FREQS = ["2 fois/semaine", "3 fois/semaine", "Quotidien"];
 const DEPARTMENTS = [
@@ -114,7 +113,7 @@ function StorePage() {
   }, [brand]);
 
   const save = useMutation({
-    mutationFn: () => upsertStoreFn({ data: form }),
+    mutationFn: () => upsertStoreFn({ data: { ...form, store_brand: form.banner } }),
     onSuccess: () => {
       toast.success("Profil magasin enregistré.");
       qc.invalidateQueries({ queryKey: ["my-store"] });

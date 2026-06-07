@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const storeSchema = z.object({
   name: z.string().trim().min(1).max(120),
   banner: z.string().min(1),
+  store_brand: z.string().trim().max(80).optional().nullable(),
   city: z.string().trim().max(120).optional().nullable(),
   description: z.string().trim().max(2000).optional().nullable(),
   tone: z.string().max(40).optional().nullable(),
@@ -34,6 +35,7 @@ export const upsertStoreFn = createServerFn({ method: "POST" })
       user_id: context.userId,
       name: data.name,
       banner: data.banner,
+      store_brand: data.store_brand ?? data.banner ?? null,
       city: data.city ?? null,
       description: data.description ?? null,
       tone: data.tone ?? null,
