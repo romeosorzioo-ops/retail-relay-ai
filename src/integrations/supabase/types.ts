@@ -657,6 +657,112 @@ export type Database = {
         }
         Relationships: []
       }
+      creation_presets: {
+        Row: {
+          brand: string
+          config_json: Json
+          created_at: string
+          format: string
+          graphic_asset_ids: string[]
+          id: string
+          is_active: boolean
+          name: string
+          price_font_id: string | null
+          template_id: string | null
+          title_font_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string
+          config_json?: Json
+          created_at?: string
+          format: string
+          graphic_asset_ids?: string[]
+          id?: string
+          is_active?: boolean
+          name: string
+          price_font_id?: string | null
+          template_id?: string | null
+          title_font_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          config_json?: Json
+          created_at?: string
+          format?: string
+          graphic_asset_ids?: string[]
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_font_id?: string | null
+          template_id?: string | null
+          title_font_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creation_presets_price_font_id_fkey"
+            columns: ["price_font_id"]
+            isOneToOne: false
+            referencedRelation: "font_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creation_presets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "visual_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creation_presets_title_font_id_fkey"
+            columns: ["title_font_id"]
+            isOneToOne: false
+            referencedRelation: "font_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      font_assets: {
+        Row: {
+          brand: string | null
+          created_at: string
+          family: string
+          file_url: string
+          id: string
+          is_active: boolean
+          name: string
+          style: string
+          updated_at: string
+          usage: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          family: string
+          file_url: string
+          id?: string
+          is_active?: boolean
+          name: string
+          style?: string
+          updated_at?: string
+          usage?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          family?: string
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          style?: string
+          updated_at?: string
+          usage?: string
+        }
+        Relationships: []
+      }
       generated_contents: {
         Row: {
           content_text: string
@@ -707,6 +813,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      graphic_assets: {
+        Row: {
+          brand: string | null
+          created_at: string
+          file_url: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          file_url: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       meta_connections: {
         Row: {
@@ -944,36 +1083,69 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       visual_templates: {
         Row: {
           allowed_brands: string[]
+          brand: string | null
           category: string
           config_json: Json
           created_at: string
           format: string
           id: string
+          image_url: string | null
+          is_active: boolean
           name: string
           preview_url: string | null
+          updated_at: string
         }
         Insert: {
           allowed_brands?: string[]
+          brand?: string | null
           category: string
           config_json?: Json
           created_at?: string
           format: string
           id?: string
+          image_url?: string | null
+          is_active?: boolean
           name: string
           preview_url?: string | null
+          updated_at?: string
         }
         Update: {
           allowed_brands?: string[]
+          brand?: string | null
           category?: string
           config_json?: Json
           created_at?: string
           format?: string
           id?: string
+          image_url?: string | null
+          is_active?: boolean
           name?: string
           preview_url?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -982,10 +1154,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "user" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1112,6 +1290,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["user", "admin"],
+    },
   },
 } as const
