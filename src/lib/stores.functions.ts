@@ -35,6 +35,7 @@ export const upsertStoreFn = createServerFn({ method: "POST" })
       user_id: context.userId,
       name: data.name,
       banner: data.banner,
+      store_brand: data.store_brand ?? data.banner ?? null,
       city: data.city ?? null,
       description: data.description ?? null,
       tone: data.tone ?? null,
