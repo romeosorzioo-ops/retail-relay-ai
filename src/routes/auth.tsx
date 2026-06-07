@@ -165,7 +165,7 @@ function AuthPage() {
                   {signupError && (
                     <p className="text-sm text-destructive">{signupError}</p>
                   )}
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" variant="brand" className="w-full" disabled={loading}>
                     {loading ? "Création…" : "Créer mon compte"}
                   </Button>
                 </form>

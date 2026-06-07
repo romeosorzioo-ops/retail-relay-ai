@@ -159,3 +159,35 @@
   backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid color-mix(in srgb, white 60%, transparent);
 }
+
+/* Brand gradient icon — applies the Komaag pink→yellow gradient to
+   lucide icons via a global SVG <linearGradient id="komaag-gradient"/>
+   defined once in the root layout. */
+@utility icon-brand {
+  color: #ff66c4; /* fallback */
+}
+.icon-brand svg,
+svg.icon-brand {
+  stroke: url(#komaag-gradient);
+  color: transparent;
+}
+
+/* Brand button — gradient fill, white text, soft hover lift */
+@utility btn-brand {
+  background-image: var(--gradient-primary);
+  background-color: var(--brand-primary);
+  color: #ffffff;
+  box-shadow: 0 6px 18px -8px rgba(255, 102, 196, 0.55),
+              0 4px 10px -6px rgba(255, 222, 89, 0.4);
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+.btn-brand:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03) saturate(1.05);
+  box-shadow: 0 12px 26px -10px rgba(255, 102, 196, 0.65),
+              0 8px 16px -8px rgba(255, 222, 89, 0.5);
+}
+.btn-brand:active {
+  transform: translateY(0);
+}
+

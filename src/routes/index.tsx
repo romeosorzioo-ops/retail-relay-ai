@@ -90,7 +90,7 @@ function Landing() {
               <Button variant="ghost">Connexion</Button>
             </Link>
             <Link to="/auth">
-              <Button>Commencer</Button>
+              <Button variant="brand">Commencer</Button>
             </Link>
           </div>
         </div>
@@ -98,8 +98,8 @@ function Landing() {
 
       <main>
         <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-accent/40 px-3 py-1 text-xs text-accent-foreground">
-            <Sparkles className="h-3 w-3" />
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-gradient px-3 py-1 text-xs font-medium text-white shadow-brand">
+            <span className="inline-flex"><Sparkles className="h-3 w-3" /></span>
             IA conçue pour la grande distribution alimentaire
           </div>
           <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
@@ -114,7 +114,7 @@ function Landing() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link to="/auth">
-              <Button size="lg">Créer mon compte</Button>
+              <Button size="lg" variant="brand">Créer mon compte</Button>
             </Link>
             <Link to="/auth">
               <Button size="lg" variant="outline">
@@ -153,7 +153,9 @@ function Landing() {
                 key={f.t}
                 className="rounded-xl border bg-card p-6 shadow-sm transition hover:shadow-md"
               >
-                <f.icon className="mb-3 h-6 w-6 text-primary" />
+                <span className="icon-brand mb-3 inline-flex">
+                  <f.icon className="h-6 w-6" />
+                </span>
                 <h2 className="font-semibold">{f.t}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{f.d}</p>
               </article>
