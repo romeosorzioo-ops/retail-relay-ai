@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createScheduledPostFn } from "@/lib/scheduled-posts.functions";
+import { createScheduledPostFn, FREE_LIMIT_ERROR } from "@/lib/scheduled-posts.functions";
 import { updateCampaignItemFn } from "@/lib/campaigns.functions";
 import { POST_FORMAT_LIST, getPostFormat, DEFAULT_POST_FORMAT } from "@/lib/post-formats";
+import { PremiumLimitModal } from "@/components/premium-limit-modal";
 
 export type CampaignItemForSchedule = {
   id: string;
