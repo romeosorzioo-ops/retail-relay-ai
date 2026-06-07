@@ -24,12 +24,11 @@ export function PremiumLimitModal({
             🎉 Félicitations&nbsp;!
           </DialogTitle>
           <DialogDescription className="text-base text-foreground/80">
-            Vous avez créé vos 3 premières publications gratuitement.
+            Vous avez utilisé vos 3 publications offertes.
             <br />
             <br />
-            Votre catalogue a déjà été transformé en contenu. Passez à une
-            offre Komaag pour continuer à créer et programmer vos
-            publications.
+            Passez à une offre Komaag pour continuer à créer et programmer
+            vos contenus.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-2">
