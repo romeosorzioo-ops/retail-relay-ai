@@ -686,7 +686,7 @@ function SignupModal({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [banner, setBanner] = useState(STORE_BRANDS[0]?.value ?? "Super U");
+  const [banner, setBanner] = useState<string>(STORE_BRANDS[0] ?? "Super U");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -803,8 +803,8 @@ function SignupModal({
                 </SelectTrigger>
                 <SelectContent>
                   {STORE_BRANDS.map((b) => (
-                    <SelectItem key={b.value} value={b.value}>
-                      {b.label}
+                    <SelectItem key={b} value={b}>
+                      {b}
                     </SelectItem>
                   ))}
                 </SelectContent>
