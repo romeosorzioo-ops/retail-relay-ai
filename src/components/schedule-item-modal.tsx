@@ -94,6 +94,8 @@ export function ScheduleItemModal({
       }
       toast.error(e.message);
     },
+  });
+
 
   const fmt = getPostFormat(formatKey);
 
