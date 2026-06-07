@@ -64,7 +64,7 @@ function fileToBase64(file: File): Promise<string> {
 function statusBadge(status: string) {
   const m: Record<string, { label: string; cls: string }> = {
     uploaded: { label: "Uploadé", cls: "bg-muted text-muted-foreground" },
-    analyzing: { label: "Analyse…", cls: "bg-blue-100 text-blue-700" },
+    analyzing: { label: "Analyse…", cls: "bg-brand-gradient-soft text-foreground" },
     analyzed: { label: "Analysé", cls: "bg-green-100 text-green-700" },
     failed: { label: "Échec", cls: "bg-red-100 text-red-700" },
     pending: { label: "En attente", cls: "bg-muted text-muted-foreground" },

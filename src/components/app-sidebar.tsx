@@ -55,11 +55,11 @@ export function AppSidebar({ userName }: { userName?: string }) {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-gradient text-white font-bold shadow-brand">
             K
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold leading-none">
+            <span className="text-sm font-semibold leading-none text-brand-gradient">
               Komaag
             </span>
             <span className="text-[10px] text-muted-foreground">
