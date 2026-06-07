@@ -86,8 +86,14 @@ export function ScheduleItemModal({
       onOpenChange(false);
       onScheduled?.();
     },
-    onError: (e: Error) => toast.error(e.message),
-  });
+    onError: (e: Error) => {
+      if (e.message?.includes(FREE_LIMIT_ERROR)) {
+        onOpenChange(false);
+        setShowPremium(true);
+        return;
+      }
+      toast.error(e.message);
+    },
 
   const fmt = getPostFormat(formatKey);
 
