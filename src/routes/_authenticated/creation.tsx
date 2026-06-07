@@ -891,13 +891,13 @@ function CreationPage() {
           )}
           <Button variant="outline" onClick={downloadPng}><Download className="h-4 w-4" /> PNG</Button>
           {currentItemId && (
-            <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700"
+            <Button variant="brand"
               onClick={() => validateItemMut.mutate()} disabled={validateItemMut.isPending}>
               {validateItemMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Valider le visuel
             </Button>
           )}
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Button variant="brand" onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Enregistrer
           </Button>
@@ -1673,7 +1673,7 @@ function CreationPage() {
             <Button variant="outline" onClick={() => { setPostValidateOpen(false); setActiveTab("queue"); }}>
               Retour à la file
             </Button>
-            <Button onClick={() => { setPostValidateOpen(false); setScheduleOpen(true); }}>
+            <Button variant="brand" onClick={() => { setPostValidateOpen(false); setScheduleOpen(true); }}>
               <CalendarPlus className="h-4 w-4" /> Programmer maintenant
             </Button>
           </DialogFooter>

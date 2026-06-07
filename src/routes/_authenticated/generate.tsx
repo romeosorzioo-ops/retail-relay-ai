@@ -81,7 +81,7 @@ function GeneratePage() {
               ))}
             </SelectContent>
           </Select>
-          <Button disabled={!selected || gen.isPending} onClick={() => gen.mutate()}>
+          <Button variant="brand" disabled={!selected || gen.isPending} onClick={() => gen.mutate()}>
             <Sparkles className="mr-1 h-4 w-4" />
             {gen.isPending ? "Génération…" : "Générer mes contenus"}
           </Button>

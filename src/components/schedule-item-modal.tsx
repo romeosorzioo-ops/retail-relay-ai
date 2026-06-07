@@ -140,7 +140,7 @@ export function ScheduleItemModal({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={schedule.isPending}>
             Annuler
           </Button>
-          <Button onClick={() => schedule.mutate()} disabled={schedule.isPending || !date}>
+          <Button variant="brand" onClick={() => schedule.mutate()} disabled={schedule.isPending || !date}>
             {schedule.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
             Programmer
           </Button>
