@@ -25,6 +25,10 @@ import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedLibraryPromotionIdRouteImport } from './routes/_authenticated/library.$promotionId'
+import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated/admin.templates'
+import { Route as AuthenticatedAdminPresetsRouteImport } from './routes/_authenticated/admin.presets'
+import { Route as AuthenticatedAdminGraphicsRouteImport } from './routes/_authenticated/admin.graphics'
+import { Route as AuthenticatedAdminFontsRouteImport } from './routes/_authenticated/admin.fonts'
 import { Route as AuthenticatedAdminBrandGuidelinesRouteImport } from './routes/_authenticated/admin.brand-guidelines'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -108,6 +112,29 @@ const AuthenticatedLibraryPromotionIdRoute =
     path: '/$promotionId',
     getParentRoute: () => AuthenticatedLibraryRoute,
   } as any)
+const AuthenticatedAdminTemplatesRoute =
+  AuthenticatedAdminTemplatesRouteImport.update({
+    id: '/templates',
+    path: '/templates',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPresetsRoute =
+  AuthenticatedAdminPresetsRouteImport.update({
+    id: '/presets',
+    path: '/presets',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminGraphicsRoute =
+  AuthenticatedAdminGraphicsRouteImport.update({
+    id: '/graphics',
+    path: '/graphics',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminFontsRoute = AuthenticatedAdminFontsRouteImport.update({
+  id: '/fonts',
+  path: '/fonts',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminBrandGuidelinesRoute =
   AuthenticatedAdminBrandGuidelinesRouteImport.update({
     id: '/brand-guidelines',
@@ -130,6 +157,10 @@ export interface FileRoutesByFullPath {
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
+  '/admin/fonts': typeof AuthenticatedAdminFontsRoute
+  '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
+  '/admin/presets': typeof AuthenticatedAdminPresetsRoute
+  '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -147,6 +178,10 @@ export interface FileRoutesByTo {
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
+  '/admin/fonts': typeof AuthenticatedAdminFontsRoute
+  '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
+  '/admin/presets': typeof AuthenticatedAdminPresetsRoute
+  '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
@@ -167,6 +202,10 @@ export interface FileRoutesById {
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
   '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
+  '/_authenticated/admin/fonts': typeof AuthenticatedAdminFontsRoute
+  '/_authenticated/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
+  '/_authenticated/admin/presets': typeof AuthenticatedAdminPresetsRoute
+  '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/_authenticated/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -187,6 +226,10 @@ export interface FileRouteTypes {
     | '/promotions'
     | '/store'
     | '/admin/brand-guidelines'
+    | '/admin/fonts'
+    | '/admin/graphics'
+    | '/admin/presets'
+    | '/admin/templates'
     | '/library/$promotionId'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -204,6 +247,10 @@ export interface FileRouteTypes {
     | '/promotions'
     | '/store'
     | '/admin/brand-guidelines'
+    | '/admin/fonts'
+    | '/admin/graphics'
+    | '/admin/presets'
+    | '/admin/templates'
     | '/library/$promotionId'
     | '/admin'
   id:
@@ -223,6 +270,10 @@ export interface FileRouteTypes {
     | '/_authenticated/promotions'
     | '/_authenticated/store'
     | '/_authenticated/admin/brand-guidelines'
+    | '/_authenticated/admin/fonts'
+    | '/_authenticated/admin/graphics'
+    | '/_authenticated/admin/presets'
+    | '/_authenticated/admin/templates'
     | '/_authenticated/library/$promotionId'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
@@ -348,6 +399,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLibraryPromotionIdRouteImport
       parentRoute: typeof AuthenticatedLibraryRoute
     }
+    '/_authenticated/admin/templates': {
+      id: '/_authenticated/admin/templates'
+      path: '/templates'
+      fullPath: '/admin/templates'
+      preLoaderRoute: typeof AuthenticatedAdminTemplatesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/presets': {
+      id: '/_authenticated/admin/presets'
+      path: '/presets'
+      fullPath: '/admin/presets'
+      preLoaderRoute: typeof AuthenticatedAdminPresetsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/graphics': {
+      id: '/_authenticated/admin/graphics'
+      path: '/graphics'
+      fullPath: '/admin/graphics'
+      preLoaderRoute: typeof AuthenticatedAdminGraphicsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/fonts': {
+      id: '/_authenticated/admin/fonts'
+      path: '/fonts'
+      fullPath: '/admin/fonts'
+      preLoaderRoute: typeof AuthenticatedAdminFontsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/brand-guidelines': {
       id: '/_authenticated/admin/brand-guidelines'
       path: '/brand-guidelines'
@@ -360,12 +439,20 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBrandGuidelinesRoute: typeof AuthenticatedAdminBrandGuidelinesRoute
+  AuthenticatedAdminFontsRoute: typeof AuthenticatedAdminFontsRoute
+  AuthenticatedAdminGraphicsRoute: typeof AuthenticatedAdminGraphicsRoute
+  AuthenticatedAdminPresetsRoute: typeof AuthenticatedAdminPresetsRoute
+  AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBrandGuidelinesRoute:
     AuthenticatedAdminBrandGuidelinesRoute,
+  AuthenticatedAdminFontsRoute: AuthenticatedAdminFontsRoute,
+  AuthenticatedAdminGraphicsRoute: AuthenticatedAdminGraphicsRoute,
+  AuthenticatedAdminPresetsRoute: AuthenticatedAdminPresetsRoute,
+  AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
@@ -421,3 +508,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
