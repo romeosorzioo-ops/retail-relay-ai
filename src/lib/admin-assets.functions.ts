@@ -95,13 +95,13 @@ export const upsertTemplateFn = createServerFn({ method: "POST" })
     const payload = {
       name: data.name,
       brand: data.brand ?? null,
-      category: data.category ?? null,
+      category: data.category ?? "",
       format: data.format,
       image_url: data.image_url ?? data.preview_url ?? null,
-      preview_url: data.preview_url ?? data.image_url ?? null,
+      preview_url: data.preview_url ?? data.image_url ?? "",
       is_active: data.is_active,
       allowed_brands: data.allowed_brands,
-    };
+    } as never;
     if (data.id) {
       const { data: row, error } = await supabaseAdmin
         .from("visual_templates")
