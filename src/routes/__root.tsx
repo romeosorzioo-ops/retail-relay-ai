@@ -142,6 +142,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Global SVG gradient def for .icon-brand utility */}
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+        <defs>
+          <linearGradient id="komaag-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff66c4" />
+            <stop offset="100%" stopColor="#ffde59" />
+          </linearGradient>
+        </defs>
+      </svg>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

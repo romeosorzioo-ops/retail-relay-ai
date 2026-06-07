@@ -73,16 +73,25 @@ export function AppSidebar({ userName }: { userName?: string }) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {allItems.map((it) => (
-                <SidebarMenuItem key={it.url}>
-                  <SidebarMenuButton asChild isActive={path === it.url}>
-                    <Link to={it.url} className="flex items-center gap-2">
-                      <it.icon className="h-4 w-4" />
-                      <span>{it.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {allItems.map((it) => {
+                const active = path === it.url;
+                return (
+                  <SidebarMenuItem key={it.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="data-[active=true]:bg-brand-gradient-soft data-[active=true]:text-foreground data-[active=true]:font-semibold"
+                    >
+                      <Link to={it.url} className="flex items-center gap-2">
+                        <span className={active ? "icon-brand inline-flex" : "inline-flex"}>
+                          <it.icon className="h-4 w-4" />
+                        </span>
+                        <span>{it.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
