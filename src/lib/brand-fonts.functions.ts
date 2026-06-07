@@ -38,24 +38,6 @@ export const addBrandFontFn = createServerFn({ method: "POST" })
         name: z.string().min(1).max(80),
         url: z.string().min(1).max(2000),
         format: z.string().max(20).nullable().optional(),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    const store = await context.supabase
-      .from("stores")
-      .select("id")
-      .eq("user_id", context.userId)
-      .limit(1)
-      .maybeSingle();
-export const addBrandFontFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z
-      .object({
-        name: z.string().min(1).max(80),
-        url: z.string().min(1).max(2000),
-        format: z.string().max(20).nullable().optional(),
         allowed_brands: z.array(z.string().max(80)).max(20).optional(),
       })
       .parse(d),
