@@ -166,7 +166,7 @@ function Landing() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link to="/auth">
               <Button size="lg" variant="brand">
-                Essayer gratuitement
+                Créer mes 3 premières publications gratuitement
               </Button>
             </Link>
             <Link to="/auth">
