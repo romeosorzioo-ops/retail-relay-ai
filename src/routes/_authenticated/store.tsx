@@ -113,7 +113,7 @@ function StorePage() {
   }, [brand]);
 
   const save = useMutation({
-    mutationFn: () => upsertStoreFn({ data: form }),
+    mutationFn: () => upsertStoreFn({ data: { ...form, store_brand: form.banner } }),
     onSuccess: () => {
       toast.success("Profil magasin enregistré.");
       qc.invalidateQueries({ queryKey: ["my-store"] });
