@@ -134,11 +134,14 @@ function Landing() {
             <span className="font-semibold">Komaag</span>
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/pricing">
+              <Button variant="ghost">Tarifs</Button>
+            </Link>
             <Link to="/auth">
               <Button variant="ghost">Connexion</Button>
             </Link>
             <Link to="/auth">
-              <Button variant="brand">Essayer gratuitement</Button>
+              <Button variant="brand">Créer mes 3 premières publications gratuitement</Button>
             </Link>
           </div>
         </div>
