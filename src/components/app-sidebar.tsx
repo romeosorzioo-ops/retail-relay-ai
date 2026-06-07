@@ -10,6 +10,7 @@ import {
   Plug,
   Palette,
   FileUp,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +37,7 @@ const items = [
   { title: "Calendrier", url: "/calendar", icon: Calendar },
   { title: "Bibliothèque", url: "/library", icon: Library },
   { title: "Connexions", url: "/connections", icon: Plug },
+  { title: "Chartes graphiques", url: "/admin/brand-guidelines", icon: Shield },
 ];
 
 
