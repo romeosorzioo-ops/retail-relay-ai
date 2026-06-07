@@ -100,6 +100,7 @@ export function ScheduleItemModal({
   const fmt = getPostFormat(formatKey);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -157,5 +158,8 @@ export function ScheduleItemModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <PremiumLimitModal open={showPremium} onOpenChange={setShowPremium} />
+    </>
   );
+
 }
