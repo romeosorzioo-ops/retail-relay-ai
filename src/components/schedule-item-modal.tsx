@@ -38,6 +38,7 @@ export function ScheduleItemModal({
   const [time, setTime] = useState("10:00");
   const [caption, setCaption] = useState("");
   const [formatKey, setFormatKey] = useState<string>(DEFAULT_POST_FORMAT);
+  const [showPremium, setShowPremium] = useState(false);
 
   useEffect(() => {
     if (!item) return;
