@@ -406,7 +406,7 @@ function CreationPage() {
   function statusBadge(s: string) {
     const m: Record<string, { label: string; cls: string }> = {
       to_create:   { label: "À créer",     cls: "bg-muted text-muted-foreground" },
-      in_progress: { label: "En cours",    cls: "bg-blue-100 text-blue-700" },
+      in_progress: { label: "En cours",    cls: "bg-brand-gradient-soft text-foreground" },
       to_validate: { label: "À valider",   cls: "bg-amber-100 text-amber-700" },
       validated:   { label: "Validé",      cls: "bg-emerald-100 text-emerald-700" },
       scheduled:   { label: "Programmé",   cls: "bg-primary/15 text-primary" },
