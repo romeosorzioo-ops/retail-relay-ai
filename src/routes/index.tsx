@@ -279,7 +279,7 @@ function Landing() {
             ))}
           </ul>
           <div className="mt-12">
-            <Link to="/auth">
+            <Link to="/onboarding">
               <Button size="lg" variant="brand">
                 Essayer gratuitement
               </Button>
