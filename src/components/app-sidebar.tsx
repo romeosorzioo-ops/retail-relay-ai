@@ -11,6 +11,7 @@ import {
   Palette,
   FileUp,
   Shield,
+  Sparkle,
 } from "lucide-react";
 import {
   Sidebar,
