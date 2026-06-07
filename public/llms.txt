@@ -1,0 +1,10 @@
+# Komaag
+
+> Komaag transforme les promotions et la vie d'un magasin en contenus social-media prêts à publier, pensé pour la grande distribution alimentaire (Super U, Intermarché, Carrefour Market, Spar…).
+
+Komaag est un SaaS français qui aide les responsables de magasins à créer des posts Facebook, des posts Instagram et des Stories à partir de leurs promotions hebdomadaires, en respectant la charte de leur enseigne.
+
+## Pages
+
+- [Accueil](/): Présentation de Komaag, fonctionnalités principales et accès à l'inscription.
+- [Connexion](/auth): Connexion et création de compte Komaag.

@@ -1,9 +1,14 @@
 User-agent: *
 Allow: /
-Disallow: /auth
 Disallow: /dashboard
 Disallow: /store
 Disallow: /promotions
 Disallow: /generate
 Disallow: /calendar
 Disallow: /library
+Disallow: /catalog
+Disallow: /connections
+Disallow: /creation
+Disallow: /admin
+
+Sitemap: https://retail-relay-ai.lovable.app/sitemap.xml

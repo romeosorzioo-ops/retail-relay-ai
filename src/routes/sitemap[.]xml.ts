@@ -1,15 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-const BASE_URL = "";
+const BASE_URL = "https://retail-relay-ai.lovable.app";
+
+interface SitemapEntry {
+  path: string;
+  changefreq: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+  priority: string;
+}
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const entries = [
+        // Only public, indexable routes. Authenticated routes (/dashboard,
+        // /promotions, /calendar, /catalog, /connections, /creation, /store,
+        // /library, /generate, /admin*) are intentionally excluded — they
+        // require a session and should not be indexed.
+        const entries: SitemapEntry[] = [
           { path: "/", changefreq: "weekly", priority: "1.0" },
-          { path: "/auth", changefreq: "monthly", priority: "0.5" },
+          { path: "/auth", changefreq: "monthly", priority: "0.3" },
         ];
         const urls = entries
           .map(

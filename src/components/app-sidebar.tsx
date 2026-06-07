@@ -99,9 +99,11 @@ export function AppSidebar({ userName }: { userName?: string }) {
               await supabase.auth.signOut();
               navigate({ to: "/auth" });
             }}
-            title="Déconnexion"
+            aria-label="Se déconnecter"
+            title="Se déconnecter"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Se déconnecter</span>
           </Button>
         </div>
       </SidebarFooter>

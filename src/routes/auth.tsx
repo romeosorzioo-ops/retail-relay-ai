@@ -10,7 +10,25 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Connexion — Komaag" }] }),
+  head: () => ({
+    meta: [
+      { title: "Connexion — Komaag" },
+      {
+        name: "description",
+        content:
+          "Connectez-vous ou créez votre compte Komaag pour générer vos posts magasin en quelques secondes.",
+      },
+      { property: "og:title", content: "Connexion — Komaag" },
+      {
+        property: "og:description",
+        content:
+          "Accédez à Komaag : générez vos posts Facebook et Instagram à partir de vos promotions.",
+      },
+      { property: "og:url", content: "https://retail-relay-ai.lovable.app/auth" },
+      { name: "robots", content: "noindex, follow" },
+    ],
+    links: [{ rel: "canonical", href: "https://retail-relay-ai.lovable.app/auth" }],
+  }),
   component: AuthPage,
 });
 
@@ -85,14 +103,17 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-gradient text-white font-bold shadow-brand">
             K
           </div>
           <span className="font-semibold">Komaag</span>
         </Link>
+        <h1 className="mb-4 text-center text-2xl font-semibold tracking-tight">
+          Accéder à Komaag
+        </h1>
         <Card>
           <CardHeader>
             <CardTitle>Bienvenue</CardTitle>
@@ -154,6 +175,6 @@ function AuthPage() {
         </Card>
       </div>
       <Toaster />
-    </div>
+    </main>
   );
 }
