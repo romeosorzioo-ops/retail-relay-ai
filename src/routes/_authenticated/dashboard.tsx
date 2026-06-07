@@ -17,6 +17,22 @@ function Dashboard() {
     queryKey: ["dashboard-stats"],
     queryFn: () => dashboardStatsFn(),
   });
+  const { data: usage } = useQuery({
+    queryKey: ["plan-usage"],
+    queryFn: () => getPlanUsageFn(),
+  });
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setDismissed(localStorage.getItem("komaag-welcome-dismissed") === "1");
+  }, []);
+  const showWelcome =
+    !dismissed && usage?.plan === "free" && (usage?.used ?? 0) === 0;
+  function dismissWelcome() {
+    localStorage.setItem("komaag-welcome-dismissed", "1");
+    setDismissed(true);
+  }
+
 
   const cards = [
     {
