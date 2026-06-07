@@ -22,6 +22,8 @@ import { Route as AuthenticatedCreationRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenticated/connections'
 import { Route as AuthenticatedCatalogRouteImport } from './routes/_authenticated/catalog'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedLibraryPromotionIdRouteImport } from './routes/_authenticated/library.$promotionId'
 import { Route as AuthenticatedAdminBrandGuidelinesRouteImport } from './routes/_authenticated/admin.brand-guidelines'
 
@@ -90,6 +92,16 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedLibraryPromotionIdRoute =
   AuthenticatedLibraryPromotionIdRouteImport.update({
     id: '/$promotionId',
@@ -98,15 +110,16 @@ const AuthenticatedLibraryPromotionIdRoute =
   } as any)
 const AuthenticatedAdminBrandGuidelinesRoute =
   AuthenticatedAdminBrandGuidelinesRouteImport.update({
-    id: '/admin/brand-guidelines',
-    path: '/admin/brand-guidelines',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/brand-guidelines',
+    path: '/brand-guidelines',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/calendar': typeof AuthenticatedCalendarRoute
   '/catalog': typeof AuthenticatedCatalogRoute
   '/connections': typeof AuthenticatedConnectionsRoute
@@ -118,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/store': typeof AuthenticatedStoreRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +148,7 @@ export interface FileRoutesByTo {
   '/store': typeof AuthenticatedStoreRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -141,6 +156,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/catalog': typeof AuthenticatedCatalogRoute
   '/_authenticated/connections': typeof AuthenticatedConnectionsRoute
@@ -152,6 +168,7 @@ export interface FileRoutesById {
   '/_authenticated/store': typeof AuthenticatedStoreRoute
   '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/_authenticated/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,6 +176,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/sitemap.xml'
+    | '/admin'
     | '/calendar'
     | '/catalog'
     | '/connections'
@@ -170,6 +188,7 @@ export interface FileRouteTypes {
     | '/store'
     | '/admin/brand-guidelines'
     | '/library/$promotionId'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -186,12 +205,14 @@ export interface FileRouteTypes {
     | '/store'
     | '/admin/brand-guidelines'
     | '/library/$promotionId'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/sitemap.xml'
+    | '/_authenticated/admin'
     | '/_authenticated/calendar'
     | '/_authenticated/catalog'
     | '/_authenticated/connections'
@@ -203,6 +224,7 @@ export interface FileRouteTypes {
     | '/_authenticated/store'
     | '/_authenticated/admin/brand-guidelines'
     | '/_authenticated/library/$promotionId'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -305,6 +327,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/library/$promotionId': {
       id: '/_authenticated/library/$promotionId'
       path: '/$promotionId'
@@ -314,13 +350,27 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/brand-guidelines': {
       id: '/_authenticated/admin/brand-guidelines'
-      path: '/admin/brand-guidelines'
+      path: '/brand-guidelines'
       fullPath: '/admin/brand-guidelines'
       preLoaderRoute: typeof AuthenticatedAdminBrandGuidelinesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
   }
 }
+
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminBrandGuidelinesRoute: typeof AuthenticatedAdminBrandGuidelinesRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminBrandGuidelinesRoute:
+    AuthenticatedAdminBrandGuidelinesRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedLibraryRouteChildren {
   AuthenticatedLibraryPromotionIdRoute: typeof AuthenticatedLibraryPromotionIdRoute
@@ -334,6 +384,7 @@ const AuthenticatedLibraryRouteWithChildren =
   AuthenticatedLibraryRoute._addFileChildren(AuthenticatedLibraryRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedCatalogRoute: typeof AuthenticatedCatalogRoute
   AuthenticatedConnectionsRoute: typeof AuthenticatedConnectionsRoute
@@ -343,10 +394,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRouteWithChildren
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedStoreRoute: typeof AuthenticatedStoreRoute
-  AuthenticatedAdminBrandGuidelinesRoute: typeof AuthenticatedAdminBrandGuidelinesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedCatalogRoute: AuthenticatedCatalogRoute,
   AuthenticatedConnectionsRoute: AuthenticatedConnectionsRoute,
@@ -356,8 +407,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLibraryRoute: AuthenticatedLibraryRouteWithChildren,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedStoreRoute: AuthenticatedStoreRoute,
-  AuthenticatedAdminBrandGuidelinesRoute:
-    AuthenticatedAdminBrandGuidelinesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
