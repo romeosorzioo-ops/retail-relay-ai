@@ -73,7 +73,7 @@ export function AppSidebar({ userName }: { userName?: string }) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((it) => (
+              {allItems.map((it) => (
                 <SidebarMenuItem key={it.url}>
                   <SidebarMenuButton asChild isActive={path === it.url}>
                     <Link to={it.url} className="flex items-center gap-2">
