@@ -29,12 +29,28 @@ const configSchema = z
 export const listVisualTemplatesFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // Filtrer par enseigne du magasin : un template sans `allowed_brands`
+    // (tableau vide) est universel ; sinon il faut que l'enseigne du magasin
+    // soit listée.
+    const store = await context.supabase
+      .from("stores")
+      .select("store_brand, banner")
+      .eq("user_id", context.userId)
+      .limit(1)
+      .maybeSingle();
+    const brand = store.data?.store_brand ?? store.data?.banner ?? null;
+
     const { data, error } = await context.supabase
       .from("visual_templates")
       .select("*")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = data ?? [];
+    if (!brand) return rows.filter((r) => !r.allowed_brands?.length);
+    return rows.filter(
+      (r) =>
+        !r.allowed_brands?.length || r.allowed_brands.includes(brand),
+    );
   });
 
 export const listCreatedVisualsFn = createServerFn({ method: "GET" })
