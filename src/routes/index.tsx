@@ -140,8 +140,8 @@ function Landing() {
             <Link to="/auth">
               <Button variant="ghost">Connexion</Button>
             </Link>
-            <Link to="/auth">
-              <Button variant="brand">Créer mes 3 premières publications gratuitement</Button>
+            <Link to="/onboarding">
+              <Button variant="brand">Essayer gratuitement</Button>
             </Link>
           </div>
         </div>
@@ -164,12 +164,12 @@ function Landing() {
             prêts à publier pour vos réseaux sociaux.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link to="/auth">
+            <Link to="/onboarding">
               <Button size="lg" variant="brand">
                 Essayer gratuitement
               </Button>
             </Link>
-            <Link to="/auth">
+            <Link to="/onboarding">
               <Button size="lg" variant="outline">
                 <PlayCircle className="h-4 w-4" aria-hidden="true" />
                 Voir une démonstration
