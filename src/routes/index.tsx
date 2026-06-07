@@ -166,7 +166,7 @@ function Landing() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link to="/auth">
               <Button size="lg" variant="brand">
-                Créer mes 3 premières publications gratuitement
+                Essayer gratuitement
               </Button>
             </Link>
             <Link to="/auth">
@@ -176,6 +176,9 @@ function Landing() {
               </Button>
             </Link>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Aucune carte bancaire requise. Créez jusqu'à 3 publications gratuitement.
+          </p>
         </section>
 
         {/* Features */}

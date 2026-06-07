@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tag, Sparkles, Calendar, ArrowRight } from "lucide-react";
+import { Tag, Sparkles, Calendar, ArrowRight, X } from "lucide-react";
 import { dashboardStatsFn } from "@/lib/calendar.functions";
+import { getPlanUsageFn } from "@/lib/scheduled-posts.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -15,6 +17,22 @@ function Dashboard() {
     queryKey: ["dashboard-stats"],
     queryFn: () => dashboardStatsFn(),
   });
+  const { data: usage } = useQuery({
+    queryKey: ["plan-usage"],
+    queryFn: () => getPlanUsageFn(),
+  });
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setDismissed(localStorage.getItem("komaag-welcome-dismissed") === "1");
+  }, []);
+  const showWelcome =
+    !dismissed && usage?.plan === "free" && (usage?.used ?? 0) === 0;
+  function dismissWelcome() {
+    localStorage.setItem("komaag-welcome-dismissed", "1");
+    setDismissed(true);
+  }
+
 
   const cards = [
     {
@@ -39,6 +57,23 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
+      {showWelcome && (
+        <div className="relative flex items-start gap-3 rounded-xl border bg-brand-gradient-soft p-4 pr-10 shadow-sm">
+          <p className="text-sm">
+            🎉 Bienvenue sur Komaag. Vous disposez de{" "}
+            <span className="font-semibold">3 publications gratuites</span>{" "}
+            pour découvrir la plateforme.
+          </p>
+          <button
+            type="button"
+            onClick={dismissWelcome}
+            aria-label="Fermer"
+            className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:bg-background/60"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
           Bonjour, {user.name} 👋
