@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tag, Sparkles, Calendar, ArrowRight } from "lucide-react";
+import { Tag, Sparkles, Calendar, ArrowRight, X } from "lucide-react";
 import { dashboardStatsFn } from "@/lib/calendar.functions";
+import { getPlanUsageFn } from "@/lib/scheduled-posts.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
