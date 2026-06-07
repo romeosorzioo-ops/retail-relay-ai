@@ -25,14 +25,14 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
 });
 
-const tabs = [
+const tabs: Array<{ to: string; label: string; exact?: boolean }> = [
   { to: "/admin", label: "Tableau de bord", exact: true },
   { to: "/admin/templates", label: "Templates" },
   { to: "/admin/fonts", label: "Typographies" },
   { to: "/admin/graphics", label: "Éléments graphiques" },
   { to: "/admin/presets", label: "Presets" },
   { to: "/admin/brand-guidelines", label: "Chartes" },
-] as const;
+];
 
 function AdminLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
