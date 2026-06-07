@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 const items = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
@@ -37,7 +38,10 @@ const items = [
   { title: "Calendrier", url: "/calendar", icon: Calendar },
   { title: "Bibliothèque", url: "/library", icon: Library },
   { title: "Connexions", url: "/connections", icon: Plug },
-  { title: "Chartes graphiques", url: "/admin/brand-guidelines", icon: Shield },
+];
+
+const adminItems = [
+  { title: "Admin", url: "/admin", icon: Shield },
 ];
 
 
