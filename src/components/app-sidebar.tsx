@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 const items = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
@@ -37,13 +38,18 @@ const items = [
   { title: "Calendrier", url: "/calendar", icon: Calendar },
   { title: "Bibliothèque", url: "/library", icon: Library },
   { title: "Connexions", url: "/connections", icon: Plug },
-  { title: "Chartes graphiques", url: "/admin/brand-guidelines", icon: Shield },
+];
+
+const adminItems = [
+  { title: "Admin", url: "/admin", icon: Shield },
 ];
 
 
 export function AppSidebar({ userName }: { userName?: string }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { isAdmin } = useIsAdmin();
+  const allItems = isAdmin ? [...items, ...adminItems] : items;
 
   return (
     <Sidebar collapsible="icon">
@@ -67,7 +73,7 @@ export function AppSidebar({ userName }: { userName?: string }) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((it) => (
+              {allItems.map((it) => (
                 <SidebarMenuItem key={it.url}>
                   <SidebarMenuButton asChild isActive={path === it.url}>
                     <Link to={it.url} className="flex items-center gap-2">
