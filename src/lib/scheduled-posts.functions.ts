@@ -37,10 +37,43 @@ export const listScheduledPostsFn = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const FREE_POST_LIMIT = 3;
+export const FREE_LIMIT_ERROR = "FREE_LIMIT_REACHED";
+
+export const getPlanUsageFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("profiles")
+      .select("plan, free_posts_used")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const plan = (data?.plan ?? "free") as string;
+    const used = data?.free_posts_used ?? 0;
+    return {
+      plan,
+      used,
+      limit: FREE_POST_LIMIT,
+      remaining: plan === "free" ? Math.max(0, FREE_POST_LIMIT - used) : null,
+      reached: plan === "free" && used >= FREE_POST_LIMIT,
+    };
+  });
+
 export const createScheduledPostFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => baseSchema.parse(d))
   .handler(async ({ data, context }) => {
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("plan, free_posts_used")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const plan = (profile?.plan ?? "free") as string;
+    const used = profile?.free_posts_used ?? 0;
+    if (plan === "free" && used >= FREE_POST_LIMIT) {
+      throw new Error(FREE_LIMIT_ERROR);
+    }
     const store = await context.supabase
       .from("stores")
       .select("id")
@@ -66,6 +99,12 @@ export const createScheduledPostFn = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    if (plan === "free") {
+      await context.supabase
+        .from("profiles")
+        .update({ free_posts_used: used + 1 })
+        .eq("id", context.userId);
+    }
     return row;
   });
 

@@ -11,6 +11,7 @@ import {
   Palette,
   FileUp,
   Shield,
+  Sparkle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +39,7 @@ const items = [
   { title: "Calendrier", url: "/calendar", icon: Calendar },
   { title: "Bibliothèque", url: "/library", icon: Library },
   { title: "Connexions", url: "/connections", icon: Plug },
+  { title: "Tarifs", url: "/pricing", icon: Sparkle },
 ];
 
 const adminItems = [
