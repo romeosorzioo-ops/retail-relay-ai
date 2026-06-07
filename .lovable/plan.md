@@ -1,72 +1,79 @@
-# Workflow Campagne : Catalogue → Calendrier
+## Espace Admin Komaag
 
-Objectif : enchaîner import catalogue, sélection de promos, création/validation de visuels et programmation dans un seul parcours guidé.
+### 1. Rôles utilisateurs (sécurité)
 
-## 1. Base de données (migration Supabase)
+- Nouvelle enum `app_role` : `user`, `admin`.
+- Nouvelle table `user_roles (user_id, role)` + fonction `has_role()` SECURITY DEFINER (pattern recommandé Supabase, anti-récursion RLS).
+- RLS : un utilisateur voit ses propres rôles ; les admins peuvent tout lire/écrire.
+- Hook client `useIsAdmin()` qui interroge `user_roles`.
+- Layout protégé `/_authenticated/_admin` (gate `beforeLoad` → redirect `/dashboard` si non-admin).
+- Item « Admin » dans la sidebar masqué pour les non-admins.
+- Le premier admin sera promu manuellement via SQL (je fournirai la commande à la fin).
 
-Deux nouvelles tables + adaptations.
+### 2. Storage
 
-**`campaigns`**
-- `id`, `user_id`, `store_id`, `catalog_import_id` (nullable)
-- `name` (auto : "Campagne catalogue - <mois année>")
-- `status` : `draft | in_creation | ready_to_schedule | scheduled`
-- `created_at`, `updated_at`
+Création de 3 buckets **privés** (URLs signées au runtime) :
+- `template-assets`
+- `font-assets`
+- `graphic-assets`
 
-**`campaign_items`**
-- `id`, `campaign_id`, `catalog_promotion_id` (nullable), `store_id`
-- Snapshot promo : `product_name`, `promo_price`, `old_price`, `discount_percent`, `category`, `start_date`, `end_date`, `source_image_url`
-- `creation_mode` : `catalog_visual | field_photo` (nullable au départ)
-- `status` : `to_create | in_progress | to_validate | validated | scheduled`
-- Reco IA : `recommended_platform`, `recommended_format`, `recommended_date`, `recommended_time`, `generated_caption`
-- `final_visual_url` (nullable), `scheduled_post_id` (nullable, FK scheduled_posts ON DELETE SET NULL)
-- `created_at`, `updated_at`
+Policies : lecture pour `authenticated`, écriture réservée aux admins via `has_role()`.
 
-RLS scope `auth.uid() = user_id` + GRANTs `authenticated` / `service_role`. Trigger `update_updated_at_column`.
+### 3. Tables
 
-## 2. Server functions (`src/lib/campaigns.functions.ts`)
+| Table | Champs métier |
+|---|---|
+| `visual_templates` (refonte) | name, brand, category, format, image_url, is_active |
+| `font_assets` | name, family, style, usage, brand (nullable), file_url, is_active |
+| `graphic_assets` | name, type (arrow/badge/sticker/price_label/local_icon/shape), brand (nullable), file_url, is_active |
+| `creation_presets` | name, brand, format, template_id, title_font_id, price_font_id, graphic_asset_ids[], config_json, is_active |
 
-- `createCampaignFromSelectionFn({ catalog_import_id, promotion_ids[] })` — crée la campagne + 1 `campaign_item` par promo (snapshot des champs depuis `catalog_promotions`), retourne `campaign_id`.
-- `listCampaignItemsFn({ campaign_id? })` — par défaut la campagne active la plus récente non terminée.
-- `updateCampaignItemFn({ id, creation_mode?, status?, final_visual_url?, generated_caption?, recommended_* })`.
-- `attachScheduledPostToItemFn({ id, scheduled_post_id })` — passe le statut à `scheduled` et met à jour `campaigns.status` si tous les items sont scheduled.
+**Migration douce** sur `visual_templates` : on ajoute `brand`, `image_url`, `is_active` (existent déjà : `name`, `category`, `format`, `preview_url`, `config_json`, `allowed_brands` créé au tour précédent). `preview_url` → fallback de `image_url`. `allowed_brands` reste compatible avec le filtrage déjà en place.
 
-## 3. Page Catalogue — Bouton flottant
+Toutes les tables ont leurs grants + RLS + policies (lecture authentifié, écriture admin) + trigger `updated_at`.
 
-Dans `src/routes/_authenticated/catalog.tsx` :
-- Ajouter une `Set<string>` `selectedPromoIds` + checkbox sur chaque `PromoCard`.
-- FAB en bas à droite (`fixed bottom-6 right-6`, ombre, gradient `bg-primary`) quand `selectedPromoIds.size > 0` : `"Générer ma campagne ({n})"`.
-- Au clic → mutation `createCampaignFromSelectionFn` → `navigate({ to: "/creation", search: { campaign: id, tab: "queue" } })`.
+### 4. Routes admin (`/_authenticated/_admin/*`)
 
-## 4. Module Création — Onglet "File d'attente"
+- `/admin` → tableau de bord (compteur d'assets par type).
+- `/admin/templates` → liste + upload PNG + édition + activer/désactiver/supprimer.
+- `/admin/fonts` → liste + upload `.ttf/.otf/.woff/.woff2` + édition.
+- `/admin/graphics` → liste + upload PNG/SVG + édition par type.
+- `/admin/presets` → création de presets en sélectionnant template + polices + éléments + enseigne + format.
 
-Dans `src/routes/_authenticated/creation.tsx` :
-- `validateSearch` accepte `{ cp?, mode?, campaign?, tab?, item? }`.
-- Header en `Tabs` : **Éditeur** / **File d'attente**.
-- Onglet file : grille de cartes `campaign_items` avec image, nom, prix, remise, badge catégorie, dates, badge statut, sélecteur **Visuel catalogue / Photo terrain**, bouton **Ouvrir**.
-- "Ouvrir" → charge l'éditeur avec préremplissage (image, prix, ancien prix, remise, caption IA si présente) et passe `item` en search param ; statut → `in_progress`.
+Chaque page : table + formulaire d'édition (Dialog), upload via base64 → server fn → storage privé → `getPublicUrl` ou `createSignedUrl` (selon visibilité).
 
-## 5. Éditeur — Validation & programmation
+### 5. Server functions
 
-- Bouton **Valider le visuel** : upload du PNG canvas → `final_visual_url` ; `updateCampaignItemFn({ status: 'validated', final_visual_url })`.
-- Dialog post-validation : **Programmer maintenant** / **Retour à la file**.
-- "Programmer" ouvre une modale (réutilise les champs de `scheduled-posts`) préremplie (caption IA, plateforme reco, date/heure reco, media = `final_visual_url`) → `createScheduledPostFn` → `attachScheduledPostToItemFn`.
+Un fichier par domaine (`templates.functions.ts`, `font-assets.functions.ts`, `graphic-assets.functions.ts`, `presets.functions.ts`) avec :
+- `listXxxFn` (filtrable par brand / is_active)
+- `upsertXxxFn` (admin only via middleware `requireAdmin`)
+- `deleteXxxFn`
+- `uploadXxxFileFn` (admin only, valide MIME + taille)
 
-## 6. Fil d'Ariane
+Nouveau middleware `requireAdmin` qui empile `requireSupabaseAuth` puis vérifie `has_role(uid, 'admin')`.
 
-Composant `<CampaignStepper>` partagé (5 étapes : Catalogue · Sélection · Création · Validation · Programmation), affiché en haut de Catalogue et Création, étape active dérivée de la route + statut campagne.
+### 6. Intégration module Création
 
-## Détails techniques
+- Nouvelle requête `listActivePresetsForMyStoreFn` :
+  - retourne presets `is_active = true`
+  - filtrés par enseigne du magasin
+  - fallback automatique sur `brand = 'Générique'` si rien trouvé
+- Galerie de presets affichée en haut de l'éditeur, à côté/à la place de la sélection de template actuelle.
+- Sélection d'un preset → applique : template (fond du visuel), polices titre/prix, éléments graphiques, `config_json`.
+- Les textes, prix, logo et éléments restent éditables (logique existante conservée).
 
-- Calculs reco simples côté serveur : plateforme = `facebook` par défaut, format = `fb_post`, date = `start_date ?? now()+2j`, heure = `10:00`, caption = template court à partir du nom/prix/remise (pas d'appel LLM nouveau pour ce lot).
-- Pas de publication Meta : on s'arrête à la création du `scheduled_post` interne.
-- Suppression d'un `scheduled_post` → `campaign_items.scheduled_post_id` repasse `NULL` via `ON DELETE SET NULL`, statut item recalé à `validated`.
-- Types Supabase régénérés après la migration ; le code TanStack est ajouté ensuite.
+### 7. Hors scope (à proposer après)
 
-## Plan d'exécution
+- UI de promotion d'utilisateurs en admin (pour cette V1, promotion via SQL).
+- Versioning des presets.
+- Aperçu live du preset avant sélection.
 
-1. Migration (`campaigns`, `campaign_items`, GRANTs, RLS, trigger).
-2. `campaigns.functions.ts` + reco helper.
-3. Catalogue : sélection + FAB + navigation.
-4. Création : tabs, file d'attente, préremplissage depuis `campaign_item`.
-5. Bouton "Valider le visuel" + dialog programmation.
-6. `<CampaignStepper>` + intégration.
+### Détails techniques
+
+- Buckets privés + `createSignedUrl(60 * 60 * 24 * 7)` pour l'affichage.
+- Upload : base64 côté client → server fn → `supabase.storage.from(bucket).upload()` (chemin `${admin_user_id}/${type}/${timestamp}-${rand}.${ext}`).
+- Validation Zod côté serveur sur toutes les entrées (déjà la convention du projet).
+- Tous les `CREATE TABLE` dans `public` reçoivent `GRANT SELECT, INSERT, UPDATE, DELETE TO authenticated` + `GRANT ALL TO service_role`, puis RLS scopée par `has_role()`.
+- L'erreur runtime « Failed to fetch dynamically imported module » du HMR sera résolue par le redéploiement après migration.
+
+Confirmez et je lance la migration DB + la création des buckets, puis le code.
