@@ -174,28 +174,39 @@ function PreviewPage() {
     if (generatedPosts.length === 0) {
       setGeneratedPosts(buildMockPosts(products));
     } else {
-      // Backfill visualMock for posts persisted before the feature shipped
-      const needsBackfill = generatedPosts.some((p) => !p.visualMock);
+      // Backfill visualMock / template / migrate legacy productImageUrl→sourceImageUrl.
+      const needsBackfill = generatedPosts.some(
+        (p) => !p.visualMock || !p.visualTemplate || (!p.sourceImageUrl && p.productImageUrl),
+      );
       if (needsBackfill) {
         setGeneratedPosts(
           generatedPosts.map((p, i) => {
-            if (p.visualMock) return p;
             const match = products.find((d) => d.product_name === p.product_name);
             const platform = p.platform ?? PLATFORMS[i % PLATFORMS.length];
+            const tpl =
+              (p.visualTemplate as TemplateKey | undefined) ??
+              pickTemplateForCategory(match?.category ?? p.visualMock?.category);
+            const legacySource = p.sourceImageUrl ?? p.productImageUrl ?? null;
             return {
               ...p,
               platform,
-              visualMock: {
-                productName: p.product_name,
-                promoPrice: match?.promo_price ?? null,
-                oldPrice: match?.old_price ?? null,
-                discount: match?.discount_percent ?? null,
-                category: match?.category ?? null,
-                backgroundGradient: PROMO_GRADIENTS[i % PROMO_GRADIENTS.length],
-                badgeText: BADGE_TEXTS[0],
-                format: FORMAT_BY_PLATFORM[platform],
-                variant: 0,
-              },
+              visualTemplate: tpl,
+              sourceImageUrl: legacySource,
+              cutoutImageUrl: p.cutoutImageUrl ?? legacySource,
+              visualStatus:
+                p.visualStatus ?? (legacySource ? "template_generated" : "pending"),
+              visualMock:
+                p.visualMock ?? {
+                  productName: p.product_name,
+                  promoPrice: match?.promo_price ?? null,
+                  oldPrice: match?.old_price ?? null,
+                  discount: match?.discount_percent ?? null,
+                  category: match?.category ?? null,
+                  backgroundGradient: PROMO_GRADIENTS[i % PROMO_GRADIENTS.length],
+                  badgeText: BADGE_TEXTS[0],
+                  format: FORMAT_BY_PLATFORM[platform],
+                  variant: 0,
+                },
             };
           }),
         );
