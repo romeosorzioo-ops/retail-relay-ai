@@ -181,18 +181,18 @@
   background-image: var(--gradient-primary);
   background-color: var(--brand-primary);
   color: #ffffff;
-  box-shadow: 0 6px 18px -8px rgba(107, 92, 246, 0.55),
-              0 4px 10px -6px rgba(139, 124, 250, 0.4);
+  box-shadow: 0 0 30px rgba(255, 102, 196, 0.25),
+              0 6px 18px -8px rgba(255, 102, 196, 0.45);
   transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 .btn-brand:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.03) saturate(1.05);
-  box-shadow: 0 12px 26px -10px rgba(107, 92, 246, 0.65),
-              0 8px 16px -8px rgba(139, 124, 250, 0.5);
+  transform: scale(1.02);
+  filter: brightness(1.05) saturate(1.05);
+  box-shadow: 0 0 40px rgba(255, 102, 196, 0.35),
+              0 12px 26px -10px rgba(255, 222, 89, 0.45);
 }
 .btn-brand:active {
-  transform: translateY(0);
+  transform: scale(1);
 }
 
 /* Subtle grid background for landing & tunnel */
