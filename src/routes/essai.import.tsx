@@ -164,10 +164,22 @@ function ImportPage() {
         size="lg"
         variant="brand"
         className="mt-8"
-        disabled={!hasFile || busy}
-        onClick={() => {
+        disabled={busy}
+        onClick={async () => {
+          console.log("Analyse clicked", { hasFile, pdfName });
+          if (!hasFile) {
+            toast.error("Veuillez d'abord déposer un PDF.");
+            return;
+          }
+          setBusy(true);
           setStep("analyse");
-          navigate({ to: "/essai/analyse" });
+          try {
+            await navigate({ to: "/essai/analyse" });
+          } catch (e) {
+            console.error("Navigation error", e);
+            setBusy(false);
+            toast.error("Impossible de lancer l'analyse.");
+          }
         }}
       >
         {busy ? "Préparation…" : "Analyser avec l'IA →"}

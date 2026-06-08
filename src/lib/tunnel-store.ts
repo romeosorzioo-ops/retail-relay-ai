@@ -78,7 +78,6 @@ export const useTunnelStore = create<TunnelState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         pdfName: s.pdfName,
-        pdfBase64: s.pdfBase64,
         detectedProducts: s.detectedProducts,
         generatedPosts: s.generatedPosts,
         currentStep: s.currentStep,
