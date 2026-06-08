@@ -62,13 +62,19 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onT
             storeName={storeName}
           />
         )}
-        {hover && onRegenerateImage && (
-          <button
-            onClick={onRegenerateImage}
-            className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm font-medium text-white backdrop-blur-sm"
-          >
-            <RefreshCw className="h-4 w-4" /> Régénérer le visuel
-          </button>
+        {hover && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm font-medium text-white backdrop-blur-sm">
+            {onChangeImage && (
+              <button onClick={onChangeImage} className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-2 hover:bg-white/25">
+                <ImageIcon className="h-4 w-4" /> Changer l'image
+              </button>
+            )}
+            {onRegenerateImage && !imageUrl && (
+              <button onClick={onRegenerateImage} className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-2 hover:bg-white/25">
+                <RefreshCw className="h-4 w-4" /> Régénérer
+              </button>
+            )}
+          </div>
         )}
       </div>
 
