@@ -54,14 +54,24 @@ export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMo
             storeName={storeName}
           />
         )}
-        {onRegenerateImage && (
-          <button
-            onClick={onRegenerateImage}
-            className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Régénérer le visuel
-          </button>
-        )}
+        <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+          {onChangeImage && (
+            <button
+              onClick={onChangeImage}
+              className="inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"
+            >
+              <ImageIcon className="h-3.5 w-3.5" /> Changer l'image
+            </button>
+          )}
+          {onRegenerateImage && !imageUrl && (
+            <button
+              onClick={onRegenerateImage}
+              className="inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Régénérer
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Counters */}
