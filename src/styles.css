@@ -50,12 +50,12 @@
 }
 
 :root {
-  /* === Komaag brand === */
-  --brand-primary: #6B5CF6;
-  --brand-secondary: #A89BF8;
-  --gradient-primary: linear-gradient(135deg, #6B5CF6 0%, #8B7CFA 100%);
-  --gradient-primary-soft: linear-gradient(135deg, rgba(107, 92, 246, 0.12) 0%, rgba(139, 124, 250, 0.12) 100%);
-  --shadow-brand: 0 10px 24px -10px rgba(107, 92, 246, 0.55), 0 6px 14px -8px rgba(139, 124, 250, 0.45);
+  /* === Komaag brand (pink → yellow) === */
+  --brand-primary: #ff66c4;
+  --brand-secondary: #ffde59;
+  --gradient-primary: linear-gradient(135deg, #ff66c4 0%, #ffde59 100%);
+  --gradient-primary-soft: linear-gradient(135deg, rgba(255, 102, 196, 0.14) 0%, rgba(255, 222, 89, 0.14) 100%);
+  --shadow-brand: 0 10px 24px -10px rgba(255, 102, 196, 0.45), 0 6px 14px -8px rgba(255, 222, 89, 0.35);
 
   --radius: 0.75rem;
 
@@ -66,7 +66,7 @@
   --card-foreground: rgb(240, 239, 248);
   --popover: rgb(17, 17, 24);
   --popover-foreground: rgb(240, 239, 248);
-  --primary: rgb(107, 92, 246);
+  --primary: rgb(255, 102, 196);
   --primary-foreground: rgb(255, 255, 255);
   --secondary: rgb(26, 26, 36);
   --secondary-foreground: rgb(240, 239, 248);
@@ -78,20 +78,20 @@
   --destructive-foreground: rgb(255, 255, 255);
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: rgb(107, 92, 246);
-  --chart-1: rgb(107, 92, 246);
-  --chart-2: rgb(139, 124, 250);
-  --chart-3: rgb(168, 155, 248);
-  --chart-4: rgb(199, 189, 250);
-  --chart-5: rgb(220, 214, 252);
+  --ring: rgb(255, 102, 196);
+  --chart-1: rgb(255, 102, 196);
+  --chart-2: rgb(255, 162, 168);
+  --chart-3: rgb(255, 196, 134);
+  --chart-4: rgb(255, 222, 89);
+  --chart-5: rgb(255, 240, 170);
   --sidebar: rgb(17, 17, 24);
   --sidebar-foreground: rgb(240, 239, 248);
-  --sidebar-primary: rgb(107, 92, 246);
+  --sidebar-primary: rgb(255, 102, 196);
   --sidebar-primary-foreground: rgb(255, 255, 255);
   --sidebar-accent: rgb(26, 26, 36);
   --sidebar-accent-foreground: rgb(240, 239, 248);
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: rgb(107, 92, 246);
+  --sidebar-ring: rgb(255, 102, 196);
 }
 
 .dark {
@@ -101,7 +101,7 @@
   --card-foreground: rgb(240, 239, 248);
   --popover: rgb(17, 17, 24);
   --popover-foreground: rgb(240, 239, 248);
-  --primary: rgb(107, 92, 246);
+  --primary: rgb(255, 102, 196);
   --primary-foreground: rgb(255, 255, 255);
   --secondary: rgb(26, 26, 36);
   --secondary-foreground: rgb(240, 239, 248);
@@ -113,15 +113,15 @@
   --destructive-foreground: rgb(255, 255, 255);
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: rgb(107, 92, 246);
+  --ring: rgb(255, 102, 196);
   --sidebar: rgb(17, 17, 24);
   --sidebar-foreground: rgb(240, 239, 248);
-  --sidebar-primary: rgb(107, 92, 246);
+  --sidebar-primary: rgb(255, 102, 196);
   --sidebar-primary-foreground: rgb(255, 255, 255);
   --sidebar-accent: rgb(26, 26, 36);
   --sidebar-accent-foreground: rgb(240, 239, 248);
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: rgb(107, 92, 246);
+  --sidebar-ring: rgb(255, 102, 196);
 }
 
 @layer base {
@@ -181,18 +181,18 @@
   background-image: var(--gradient-primary);
   background-color: var(--brand-primary);
   color: #ffffff;
-  box-shadow: 0 6px 18px -8px rgba(107, 92, 246, 0.55),
-              0 4px 10px -6px rgba(139, 124, 250, 0.4);
+  box-shadow: 0 0 30px rgba(255, 102, 196, 0.25),
+              0 6px 18px -8px rgba(255, 102, 196, 0.45);
   transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 .btn-brand:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.03) saturate(1.05);
-  box-shadow: 0 12px 26px -10px rgba(107, 92, 246, 0.65),
-              0 8px 16px -8px rgba(139, 124, 250, 0.5);
+  transform: scale(1.02);
+  filter: brightness(1.05) saturate(1.05);
+  box-shadow: 0 0 40px rgba(255, 102, 196, 0.35),
+              0 12px 26px -10px rgba(255, 222, 89, 0.45);
 }
 .btn-brand:active {
-  transform: translateY(0);
+  transform: scale(1);
 }
 
 /* Subtle grid background for landing & tunnel */
@@ -205,9 +205,9 @@
 
 /* Komaag pill badge utility */
 @utility komaag-badge {
-  background-color: rgba(107, 92, 246, 0.15);
-  border: 1px solid rgba(107, 92, 246, 0.3);
-  color: #A89BF8;
+  background-color: rgba(255, 102, 196, 0.15);
+  border: 1px solid rgba(255, 102, 196, 0.35);
+  color: #ffd6ec;
   border-radius: 100px;
   padding: 4px 14px;
   font-size: 13px;
