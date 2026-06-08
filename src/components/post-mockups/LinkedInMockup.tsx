@@ -1,15 +1,19 @@
-import { ThumbsUp, MessageSquare, Repeat2, Send, MoreHorizontal, Globe2 } from "lucide-react";
+import { ThumbsUp, MessageSquare, Repeat2, Send, MoreHorizontal, Globe2, RefreshCw } from "lucide-react";
 import { EditableText, initials } from "./shared";
+import { PromoVisualMockup } from "./PromoVisualMockup";
+import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
   storeName: string;
   postText: string;
   imageUrl?: string;
   sector?: string;
+  visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
+  onRegenerateImage?: () => void;
 };
 
-export function LinkedInMockup({ storeName, postText, imageUrl, sector, onTextChange }: Props) {
+export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMock, onTextChange, onRegenerateImage }: Props) {
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#38434F] bg-[#1B1F23] text-[#E7E9EA] shadow-xl">
       {/* Header */}
