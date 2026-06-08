@@ -12,12 +12,27 @@ export type TunnelProduct = {
 
 export type TunnelPlatform = "facebook" | "instagram" | "linkedin";
 
+export type VisualFormat = "16:9" | "1:1" | "1.91:1";
+
+export type VisualMock = {
+  productName: string;
+  promoPrice?: number | null;
+  oldPrice?: number | null;
+  discount?: number | null;
+  category?: string | null;
+  backgroundGradient: string;
+  badgeText: string;
+  format: VisualFormat;
+  variant?: number;
+};
+
 export type TunnelPost = {
   id: string;
   product_name: string;
   caption: string;
   platform?: TunnelPlatform;
   imageUrl?: string | null;
+  visualMock?: VisualMock | null;
   selected?: boolean;
   scheduled_at?: string | null;
 };
