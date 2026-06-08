@@ -112,9 +112,7 @@ function PreviewPage() {
   useEffect(() => {
     const url = pdfUrlRef.current;
     if (!url) return;
-    const targets = generatedPosts.filter(
-      (p) => !p.productImageUrl && (p.pageNumber || true),
-    );
+    const targets = generatedPosts.filter((p) => !p.sourceImageUrl);
     if (targets.length === 0) return;
     let cancelled = false;
     (async () => {
@@ -136,13 +134,24 @@ function PreviewPage() {
             console.warn("Page render failed", page, e);
           }
         }
-        if (cancelled || Object.keys(updates).length === 0) return;
+        if (cancelled) return;
         setGeneratedPosts(
-          generatedPosts.map((p) =>
-            updates[p.id]
-              ? { ...p, productImageUrl: updates[p.id], imageUrl: p.imageUrl ?? updates[p.id] }
-              : p,
-          ),
+          generatedPosts.map((p) => {
+            if (p.sourceImageUrl) return p;
+            const src = updates[p.id];
+            if (!src) {
+              // Render failed → fallback state, no source image
+              return { ...p, visualStatus: "fallback" };
+            }
+            // Simulated cutout = same source for now; structure ready for real BG removal.
+            return {
+              ...p,
+              sourceImageUrl: src,
+              cutoutImageUrl: src,
+              finalVisualUrl: null,
+              visualStatus: "template_generated",
+            };
+          }),
         );
       } finally {
         if (!cancelled) setExtracting(false);
