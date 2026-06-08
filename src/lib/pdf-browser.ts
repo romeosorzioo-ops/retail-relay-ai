@@ -36,6 +36,27 @@ export async function renderPdfPageToCanvas(
   return canvas;
 }
 
+export function base64ToBlobUrl(b64: string, type = "application/pdf"): string {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type }));
+}
+
+export async function renderPdfPageToDataUrl(
+  pdfUrl: string,
+  pageNumber: number,
+  targetWidth = 1400,
+): Promise<string> {
+  const canvas = await renderPdfPageToCanvas(pdfUrl, pageNumber, targetWidth);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+export async function getPdfPageCount(pdfUrl: string): Promise<number> {
+  const pdf = await loadPdf(pdfUrl);
+  return pdf.numPages as number;
+}
+
 export function canvasToBase64(canvas: HTMLCanvasElement, type = "image/png"): string {
   const dataUrl = canvas.toDataURL(type, 0.92);
   return dataUrl.slice(dataUrl.indexOf(",") + 1);
