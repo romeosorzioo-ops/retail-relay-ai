@@ -69,17 +69,78 @@ function PreviewPage() {
   const {
     detectedProducts,
     generatedPosts,
+    pdfBase64,
     setDetectedProducts,
     setGeneratedPosts,
     setStep,
   } = useTunnelStore();
   const [gateOpen, setGateOpen] = useState(false);
   const [network, setNetwork] = useState<TunnelPlatform>("facebook");
+  const [extracting, setExtracting] = useState(false);
+  const [changeImageFor, setChangeImageFor] = useState<string | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
   const storeName =
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("komaag-trial-account") || "{}")
           .storeName || "Mon magasin"
       : "Mon magasin";
+
+  // Build a stable blob URL from the in-memory pdfBase64 (not persisted).
+  useEffect(() => {
+    if (!pdfBase64) return;
+    const url = base64ToBlobUrl(pdfBase64);
+    pdfUrlRef.current = url;
+    return () => {
+      URL.revokeObjectURL(url);
+      pdfUrlRef.current = null;
+    };
+  }, [pdfBase64]);
+
+  // Lazy extract product images for SELECTED posts only (max 3).
+  useEffect(() => {
+    const url = pdfUrlRef.current;
+    if (!url) return;
+    const targets = generatedPosts.filter(
+      (p) => !p.productImageUrl && (p.pageNumber || true),
+    );
+    if (targets.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setExtracting(true);
+      try {
+        const updates: Record<string, string> = {};
+        for (let i = 0; i < targets.length; i++) {
+          const post = targets[i];
+          const page =
+            post.pageNumber ??
+            detectedProducts.find((d) => d.product_name === post.product_name)
+              ?.pageNumber ??
+            i + 1;
+          try {
+            const dataUrl = await renderPdfPageToDataUrl(url, page, 1200);
+            if (cancelled) return;
+            updates[post.id] = dataUrl;
+          } catch (e) {
+            console.warn("Page render failed", page, e);
+          }
+        }
+        if (cancelled || Object.keys(updates).length === 0) return;
+        setGeneratedPosts(
+          generatedPosts.map((p) =>
+            updates[p.id]
+              ? { ...p, productImageUrl: updates[p.id], imageUrl: p.imageUrl ?? updates[p.id] }
+              : p,
+          ),
+        );
+      } finally {
+        if (!cancelled) setExtracting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfBase64, generatedPosts.length]);
 
   useEffect(() => {
     setStep("preview");
