@@ -42,12 +42,16 @@ export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMo
       <div className="relative w-full bg-[#0d0d0f]" style={{ aspectRatio: "1.91 / 1" }}>
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : visualMock ? (
-          <PromoVisualMockup visual={{ ...visualMock, format: "1.91:1" }} storeName={storeName} />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#22272b] to-[#15191c] text-xs text-[#7c7f86]">
-            Image 1.91:1
-          </div>
+          <PromoVisualMockup
+            visual={visualMock ? { ...visualMock, format: "1.91:1" } : {
+              productName: storeName || "Offre du moment",
+              promoPrice: null, oldPrice: null, discount: null, category: null,
+              backgroundGradient: "linear-gradient(135deg, #ff66c4 0%, #ffde59 100%)",
+              badgeText: "Offre catalogue", format: "1.91:1", variant: 0,
+            }}
+            storeName={storeName}
+          />
         )}
         {onRegenerateImage && (
           <button
