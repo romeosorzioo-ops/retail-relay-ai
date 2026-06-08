@@ -36,7 +36,7 @@ export function TunnelProgress() {
                     "flex h-6 w-6 items-center justify-center rounded-full text-xs",
                     done && "bg-brand-gradient text-white",
                     active &&
-                      "bg-brand-gradient text-white ring-2 ring-offset-2 ring-offset-background ring-[hsl(var(--ring))]",
+                      "bg-brand-gradient text-white ring-2 ring-offset-2 ring-offset-background ring-primary",
                     !done && !active && "bg-muted text-muted-foreground",
                   )}
                 >
