@@ -1,0 +1,89 @@
+import { useState } from "react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw } from "lucide-react";
+import { EditableText, initials } from "./shared";
+
+type Props = {
+  storeName: string;
+  postText: string;
+  imageUrl?: string;
+  onTextChange: (t: string) => void;
+  onRegenerateImage?: () => void;
+};
+
+function renderWithHashtags(text: string) {
+  const parts = text.split(/(#[\p{L}0-9_]+)/gu);
+  return parts.map((p, i) =>
+    p.startsWith("#") ? (
+      <span key={i} className="text-[#E0F1FF] font-medium">{p}</span>
+    ) : (
+      <span key={i}>{p}</span>
+    ),
+  );
+}
+
+export function InstagramMockup({ storeName, postText, imageUrl, onTextChange, onRegenerateImage }: Props) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <div className="mx-auto w-full max-w-[470px] overflow-hidden rounded-lg border border-[#262626] bg-black text-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] to-[#d62976] p-[2px]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-xs font-semibold">
+              {initials(storeName)}
+            </div>
+          </div>
+          <div className="text-[14px] font-semibold">{storeName || "mon_magasin"}</div>
+        </div>
+        <MoreHorizontal className="h-5 w-5" />
+      </div>
+
+      {/* Square image */}
+      <div
+        className="relative aspect-square w-full bg-[#111]"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1a1f] to-[#2a2a30] text-xs text-[#7c7f86]">
+            Image 1:1
+          </div>
+        )}
+        {hover && onRegenerateImage && (
+          <button
+            onClick={onRegenerateImage}
+            className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm font-medium text-white backdrop-blur-sm"
+          >
+            <RefreshCw className="h-4 w-4" /> Régénérer l'image
+          </button>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-between px-3 py-2">
+        <div className="flex items-center gap-3">
+          <Heart className="h-6 w-6" />
+          <MessageCircle className="h-6 w-6" />
+          <Send className="h-6 w-6" />
+        </div>
+        <Bookmark className="h-6 w-6" />
+      </div>
+
+      <div className="px-3 pb-1 text-[14px] font-semibold">128 J'aime</div>
+
+      {/* Caption */}
+      <div className="px-3 pb-3 text-[14px] leading-[1.4]">
+        <span className="mr-1 font-semibold">{storeName || "mon_magasin"}</span>
+        <EditableText
+          value={postText}
+          onChange={onTextChange}
+          className="inline [&]:inline"
+        />
+        <div className="mt-1 whitespace-pre-wrap">{renderWithHashtags(postText)}</div>
+      </div>
+    </div>
+  );
+}
