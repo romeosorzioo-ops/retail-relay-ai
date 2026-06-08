@@ -24,7 +24,7 @@ function renderWithHashtags(text: string) {
   );
 }
 
-export function InstagramMockup({ storeName, postText, imageUrl, onTextChange, onRegenerateImage }: Props) {
+export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage }: Props) {
   const [hover, setHover] = useState(false);
 
   return (
