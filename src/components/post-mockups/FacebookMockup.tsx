@@ -1,6 +1,7 @@
 import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe2, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
+import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
   postText: string;
   imageUrl?: string;
   visualMock?: VisualMock | null;
+  templateData?: KomaagTemplateVisualProps | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
