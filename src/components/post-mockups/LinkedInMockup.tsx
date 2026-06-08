@@ -43,7 +43,9 @@ export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMo
 
       {/* Image 1.91:1 */}
       <div className="relative w-full bg-[#0d0d0f]" style={{ aspectRatio: "1.91 / 1" }}>
-        {imageUrl ? (
+        {templateData ? (
+          <KomaagTemplateVisual {...templateData} format="1.91:1" />
+        ) : imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <PromoVisualMockup
