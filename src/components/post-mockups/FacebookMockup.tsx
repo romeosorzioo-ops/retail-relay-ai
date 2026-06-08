@@ -41,7 +41,9 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, temp
 
       {/* Image 16:9 */}
       <div className="relative aspect-video w-full bg-[#0d0d0f]">
-        {imageUrl ? (
+        {templateData ? (
+          <KomaagTemplateVisual {...templateData} format="16:9" />
+        ) : imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <PromoVisualMockup
