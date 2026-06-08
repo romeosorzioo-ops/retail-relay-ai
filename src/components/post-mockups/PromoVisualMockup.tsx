@@ -1,18 +1,18 @@
 import type { VisualMock, VisualFormat } from "@/lib/tunnel-store";
 
 export const PROMO_GRADIENTS = [
-  "linear-gradient(135deg, #1A0B2E 0%, #6B5CF6 100%)",
-  "linear-gradient(160deg, #0A0A0F 0%, #2D1B69 50%, #6B5CF6 100%)",
-  "linear-gradient(135deg, #6B5CF6 0%, #C026D3 100%)",
-  "linear-gradient(135deg, #0F172A 0%, #312E81 60%, #7C6FFA 100%)",
-  "radial-gradient(circle at 30% 20%, #7C6FFA 0%, #1A0B2E 70%)",
-  "linear-gradient(135deg, #4C1D95 0%, #0A0A0F 100%)",
+  "linear-gradient(135deg, #ff66c4 0%, #ffde59 100%)",
+  "linear-gradient(160deg, #0A0A0F 0%, #ff66c4 60%, #ffde59 100%)",
+  "linear-gradient(135deg, #ff8ad4 0%, #ffde59 100%)",
+  "linear-gradient(135deg, #2a0a1f 0%, #ff66c4 60%, #ffde59 100%)",
+  "radial-gradient(circle at 30% 20%, #ffde59 0%, #ff66c4 55%, #1a0a14 100%)",
+  "linear-gradient(135deg, #ff66c4 0%, #ffa64d 50%, #ffde59 100%)",
 ];
 
 export const BADGE_STYLES = [
-  "rounded-full bg-white text-[#6B5CF6]",
-  "rounded-md bg-[#FACC15] text-[#0A0A0F]",
-  "rounded-full bg-[#6B5CF6] text-white ring-2 ring-white/40",
+  "rounded-full bg-white text-[#ff3aa3]",
+  "rounded-md bg-[#ffde59] text-[#0A0A0F]",
+  "rounded-full bg-[#ff66c4] text-white ring-2 ring-white/40",
   "rounded-md bg-white/10 text-white ring-1 ring-white/40 backdrop-blur",
 ];
 
