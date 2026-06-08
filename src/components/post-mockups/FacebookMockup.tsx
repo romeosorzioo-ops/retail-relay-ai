@@ -1,14 +1,18 @@
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe2 } from "lucide-react";
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe2, RefreshCw } from "lucide-react";
 import { EditableText, initials } from "./shared";
+import { PromoVisualMockup } from "./PromoVisualMockup";
+import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
   storeName: string;
   postText: string;
   imageUrl?: string;
+  visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
+  onRegenerateImage?: () => void;
 };
 
-export function FacebookMockup({ storeName, postText, imageUrl, onTextChange }: Props) {
+export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage }: Props) {
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#3A3B3C] bg-[#1C1E21] text-[#E4E6EB] shadow-xl">
       {/* Header */}
@@ -33,13 +37,23 @@ export function FacebookMockup({ storeName, postText, imageUrl, onTextChange }: 
       </div>
 
       {/* Image 16:9 */}
-      <div className="aspect-video w-full bg-[#0d0d0f]">
+      <div className="relative aspect-video w-full bg-[#0d0d0f]">
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        ) : visualMock ? (
+          <PromoVisualMockup visual={{ ...visualMock, format: "16:9" }} storeName={storeName} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#2a2a30] to-[#1a1a1f] text-xs text-[#7c7f86]">
             Image 16:9
           </div>
+        )}
+        {onRegenerateImage && (
+          <button
+            onClick={onRegenerateImage}
+            className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Régénérer le visuel
+          </button>
         )}
       </div>
 

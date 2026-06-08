@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw } from "lucide-react";
 import { EditableText, initials } from "./shared";
+import { PromoVisualMockup } from "./PromoVisualMockup";
+import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
   storeName: string;
   postText: string;
   imageUrl?: string;
+  visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
 };
@@ -21,7 +24,7 @@ function renderWithHashtags(text: string) {
   );
 }
 
-export function InstagramMockup({ storeName, postText, imageUrl, onTextChange, onRegenerateImage }: Props) {
+export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage }: Props) {
   const [hover, setHover] = useState(false);
 
   return (
@@ -47,6 +50,8 @@ export function InstagramMockup({ storeName, postText, imageUrl, onTextChange, o
       >
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        ) : visualMock ? (
+          <PromoVisualMockup visual={{ ...visualMock, format: "1:1" }} storeName={storeName} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1a1f] to-[#2a2a30] text-xs text-[#7c7f86]">
             Image 1:1
@@ -57,7 +62,7 @@ export function InstagramMockup({ storeName, postText, imageUrl, onTextChange, o
             onClick={onRegenerateImage}
             className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm font-medium text-white backdrop-blur-sm"
           >
-            <RefreshCw className="h-4 w-4" /> Régénérer l'image
+            <RefreshCw className="h-4 w-4" /> Régénérer le visuel
           </button>
         )}
       </div>

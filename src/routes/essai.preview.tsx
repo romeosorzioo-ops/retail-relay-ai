@@ -13,30 +13,53 @@ import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
 import { LinkedInMockup } from "@/components/post-mockups/LinkedInMockup";
 import { ArrowLeft, ArrowRight, RefreshCw, Plus } from "lucide-react";
+import { PROMO_GRADIENTS } from "@/components/post-mockups/PromoVisualMockup";
 
 export const Route = createFileRoute("/essai/preview")({
   component: PreviewPage,
 });
 
 const MOCK_DETECTED: TunnelProduct[] = [
-  { id: "m1", product_name: "Côte de bœuf", promo_price: 14.9, category: "Boucherie" },
-  { id: "m2", product_name: "Tomates grappes", promo_price: 2.99, category: "Fruits et légumes" },
-  { id: "m3", product_name: "Saumon fumé", promo_price: 5.95, category: "Poissonnerie" },
-  { id: "m4", product_name: "Pack Coca-Cola", promo_price: 6.5, category: "Boissons" },
-  { id: "m5", product_name: "Fromage local", promo_price: 3.8, category: "Produits locaux" },
+  { id: "m1", product_name: "Côte de bœuf", promo_price: 14.9, old_price: 19.9, discount_percent: 25, category: "Boucherie" },
+  { id: "m2", product_name: "Tomates grappes", promo_price: 2.99, old_price: 3.99, discount_percent: 25, category: "Fruits et légumes" },
+  { id: "m3", product_name: "Saumon fumé", promo_price: 5.95, old_price: 7.95, discount_percent: 25, category: "Poissonnerie" },
+  { id: "m4", product_name: "Pack Coca-Cola", promo_price: 6.5, old_price: 8.9, discount_percent: 27, category: "Boissons" },
+  { id: "m5", product_name: "Fromage local", promo_price: 3.8, old_price: 4.9, discount_percent: 22, category: "Produits locaux" },
 ];
 
 const PLATFORMS: TunnelPlatform[] = ["facebook", "instagram", "linkedin"];
 
+const FORMAT_BY_PLATFORM: Record<TunnelPlatform, "16:9" | "1:1" | "1.91:1"> = {
+  facebook: "16:9",
+  instagram: "1:1",
+  linkedin: "1.91:1",
+};
+
+const BADGE_TEXTS = ["Offre catalogue", "Promo de la semaine", "Bon plan", "À ne pas manquer"];
+
 function buildMockPosts(products: TunnelProduct[]): TunnelPost[] {
-  return products.slice(0, 3).map((p, i) => ({
-    id: `seed-${p.id}`,
-    product_name: p.product_name,
-    platform: PLATFORMS[i],
-    selected: true,
-    imageUrl: null,
-    caption: `🛒 Bon plan ${p.product_name} à seulement ${p.promo_price?.toFixed(2)}€ ! Profitez-en cette semaine. #promo #${p.category?.toLowerCase().replace(/\s+/g, "")}`,
-  }));
+  return products.slice(0, 3).map((p, i) => {
+    const platform = PLATFORMS[i];
+    return {
+      id: `seed-${p.id}`,
+      product_name: p.product_name,
+      platform,
+      selected: true,
+      imageUrl: null,
+      visualMock: {
+        productName: p.product_name,
+        promoPrice: p.promo_price ?? null,
+        oldPrice: p.old_price ?? null,
+        discount: p.discount_percent ?? null,
+        category: p.category ?? null,
+        backgroundGradient: PROMO_GRADIENTS[i % PROMO_GRADIENTS.length],
+        badgeText: BADGE_TEXTS[0],
+        format: FORMAT_BY_PLATFORM[platform],
+        variant: 0,
+      },
+      caption: `🛒 Bon plan ${p.product_name} à seulement ${p.promo_price?.toFixed(2)}€ ! Profitez-en cette semaine. #promo #${p.category?.toLowerCase().replace(/\s+/g, "")}`,
+    };
+  });
 }
 
 function PreviewPage() {
@@ -107,12 +130,33 @@ function PreviewPage() {
     }
   };
 
+  const regenerateVisual = (id: string) => {
+    setGeneratedPosts(
+      generatedPosts.map((p) => {
+        if (p.id !== id || !p.visualMock) return p;
+        const nextVariant = (p.visualMock.variant ?? 0) + 1;
+        return {
+          ...p,
+          visualMock: {
+            ...p.visualMock,
+            variant: nextVariant,
+            backgroundGradient:
+              PROMO_GRADIENTS[nextVariant % PROMO_GRADIENTS.length],
+            badgeText: BADGE_TEXTS[nextVariant % BADGE_TEXTS.length],
+          },
+        };
+      }),
+    );
+  };
+
   const renderMockup = (post: TunnelPost) => {
     const common = {
       storeName,
       postText: post.caption,
       imageUrl: post.imageUrl ?? undefined,
+      visualMock: post.visualMock ?? undefined,
       onTextChange: (t: string) => updateCaption(post.id, t),
+      onRegenerateImage: () => regenerateVisual(post.id),
     };
     if (network === "facebook") return <FacebookMockup key={post.id} {...common} />;
     if (network === "instagram") return <InstagramMockup key={post.id} {...common} />;
