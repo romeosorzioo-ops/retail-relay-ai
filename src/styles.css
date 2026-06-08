@@ -101,7 +101,7 @@
   --card-foreground: rgb(240, 239, 248);
   --popover: rgb(17, 17, 24);
   --popover-foreground: rgb(240, 239, 248);
-  --primary: rgb(107, 92, 246);
+  --primary: rgb(255, 102, 196);
   --primary-foreground: rgb(255, 255, 255);
   --secondary: rgb(26, 26, 36);
   --secondary-foreground: rgb(240, 239, 248);
@@ -113,15 +113,15 @@
   --destructive-foreground: rgb(255, 255, 255);
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: rgb(107, 92, 246);
+  --ring: rgb(255, 102, 196);
   --sidebar: rgb(17, 17, 24);
   --sidebar-foreground: rgb(240, 239, 248);
-  --sidebar-primary: rgb(107, 92, 246);
+  --sidebar-primary: rgb(255, 102, 196);
   --sidebar-primary-foreground: rgb(255, 255, 255);
   --sidebar-accent: rgb(26, 26, 36);
   --sidebar-accent-foreground: rgb(240, 239, 248);
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: rgb(107, 92, 246);
+  --sidebar-ring: rgb(255, 102, 196);
 }
 
 @layer base {
