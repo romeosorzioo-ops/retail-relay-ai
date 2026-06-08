@@ -49,12 +49,15 @@ const BADGE_TEXTS = ["Offre catalogue", "Promo de la semaine", "Bon plan", "À n
 function buildMockPosts(products: TunnelProduct[]): TunnelPost[] {
   return products.slice(0, 3).map((p, i) => {
     const platform = PLATFORMS[i];
+    const tpl = pickTemplateForCategory(p.category);
     return {
       id: `seed-${p.id}`,
       product_name: p.product_name,
       platform,
       selected: true,
       imageUrl: null,
+      visualTemplate: tpl,
+      visualStatus: "pending",
       visualMock: {
         productName: p.product_name,
         promoPrice: p.promo_price ?? null,
