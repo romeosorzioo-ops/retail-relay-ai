@@ -52,6 +52,11 @@ export type TunnelPost = {
   visualMock?: VisualMock | null;
   selected?: boolean;
   scheduled_at?: string | null;
+  sourceImageUrl?: string | null;
+  cutoutImageUrl?: string | null;
+  finalVisualUrl?: string | null;
+  visualTemplate?: string | null;
+  visualStatus?: VisualStatus;
 };
 
 export type TunnelStep = "import" | "analyse" | "preview" | "schedule";
