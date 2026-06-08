@@ -390,6 +390,27 @@ function PreviewPage() {
         </div>
       </div>
 
+      {extracting && (
+        <div className="fixed left-1/2 top-4 z-40 -translate-x-1/2 rounded-full border border-border bg-card/95 px-4 py-2 text-sm shadow-lg backdrop-blur">
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            Extraction des images produits…
+          </span>
+        </div>
+      )}
+
+      <ChangeImageModal
+        open={!!activePost}
+        onOpenChange={(v) => !v && setChangeImageFor(null)}
+        pdfBase64={pdfBase64 || undefined}
+        currentImageUrl={activePost?.imageUrl ?? activePost?.productImageUrl ?? null}
+        aspectRatio={activePost ? aspectByPlatform[activePost.platform ?? network] : "1/1"}
+        onSelect={(dataUrl) => {
+          if (activePost) setPostImage(activePost.id, dataUrl);
+          setChangeImageFor(null);
+        }}
+      />
+
       <TrialGateModal open={gateOpen} onOpenChange={setGateOpen} />
     </div>
   );
