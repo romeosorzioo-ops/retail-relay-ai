@@ -1,4 +1,4 @@
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe2, RefreshCw } from "lucide-react";
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe2, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import type { VisualMock } from "@/lib/tunnel-store";
@@ -10,9 +10,10 @@ type Props = {
   visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
+  onChangeImage?: () => void;
 };
 
-export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage }: Props) {
+export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage, onChangeImage }: Props) {
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#3A3B3C] bg-[#1C1E21] text-[#E4E6EB] shadow-xl">
       {/* Header */}
