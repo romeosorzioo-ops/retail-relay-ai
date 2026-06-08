@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import type { VisualMock } from "@/lib/tunnel-store";
@@ -11,6 +11,7 @@ type Props = {
   visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
+  onChangeImage?: () => void;
 };
 
 function renderWithHashtags(text: string) {
