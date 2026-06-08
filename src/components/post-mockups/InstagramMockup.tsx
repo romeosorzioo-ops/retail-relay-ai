@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw } from "lucide-react";
 import { EditableText, initials } from "./shared";
+import { PromoVisualMockup } from "./PromoVisualMockup";
+import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
   storeName: string;
   postText: string;
   imageUrl?: string;
+  visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
 };
