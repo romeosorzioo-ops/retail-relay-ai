@@ -12,9 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as EssaiRouteImport } from './routes/essai'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EssaiIndexRouteImport } from './routes/essai.index'
+import { Route as EssaiScheduleRouteImport } from './routes/essai.schedule'
+import { Route as EssaiPreviewRouteImport } from './routes/essai.preview'
+import { Route as EssaiImportRouteImport } from './routes/essai.import'
+import { Route as EssaiAnalyseRouteImport } from './routes/essai.analyse'
 import { Route as AuthenticatedStoreRouteImport } from './routes/_authenticated/store'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
@@ -48,6 +54,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EssaiRoute = EssaiRouteImport.update({
+  id: '/essai',
+  path: '/essai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -61,6 +72,31 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const EssaiIndexRoute = EssaiIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiScheduleRoute = EssaiScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiPreviewRoute = EssaiPreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiImportRoute = EssaiImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiAnalyseRoute = EssaiAnalyseRouteImport.update({
+  id: '/analyse',
+  path: '/analyse',
+  getParentRoute: () => EssaiRoute,
 } as any)
 const AuthenticatedStoreRoute = AuthenticatedStoreRouteImport.update({
   id: '/store',
@@ -157,6 +193,7 @@ const AuthenticatedAdminBrandGuidelinesRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/essai': typeof EssaiRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -170,6 +207,11 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/import': typeof EssaiImportRoute
+  '/essai/preview': typeof EssaiPreviewRoute
+  '/essai/schedule': typeof EssaiScheduleRoute
+  '/essai/': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
   '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
@@ -193,6 +235,11 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/import': typeof EssaiImportRoute
+  '/essai/preview': typeof EssaiPreviewRoute
+  '/essai/schedule': typeof EssaiScheduleRoute
+  '/essai': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
   '/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
@@ -206,6 +253,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/essai': typeof EssaiRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -219,6 +267,11 @@ export interface FileRoutesById {
   '/_authenticated/library': typeof AuthenticatedLibraryRouteWithChildren
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
+  '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/import': typeof EssaiImportRoute
+  '/essai/preview': typeof EssaiPreviewRoute
+  '/essai/schedule': typeof EssaiScheduleRoute
+  '/essai/': typeof EssaiIndexRoute
   '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/_authenticated/admin/fonts': typeof AuthenticatedAdminFontsRoute
   '/_authenticated/admin/graphics': typeof AuthenticatedAdminGraphicsRoute
@@ -232,6 +285,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/essai'
     | '/onboarding'
     | '/pricing'
     | '/sitemap.xml'
@@ -245,6 +299,11 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/essai/analyse'
+    | '/essai/import'
+    | '/essai/preview'
+    | '/essai/schedule'
+    | '/essai/'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
     | '/admin/graphics'
@@ -268,6 +327,11 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/essai/analyse'
+    | '/essai/import'
+    | '/essai/preview'
+    | '/essai/schedule'
+    | '/essai'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
     | '/admin/graphics'
@@ -280,6 +344,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/essai'
     | '/onboarding'
     | '/pricing'
     | '/sitemap.xml'
@@ -293,6 +358,11 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/promotions'
     | '/_authenticated/store'
+    | '/essai/analyse'
+    | '/essai/import'
+    | '/essai/preview'
+    | '/essai/schedule'
+    | '/essai/'
     | '/_authenticated/admin/brand-guidelines'
     | '/_authenticated/admin/fonts'
     | '/_authenticated/admin/graphics'
@@ -306,6 +376,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  EssaiRoute: typeof EssaiRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   PricingRoute: typeof PricingRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -334,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/essai': {
+      id: '/essai'
+      path: '/essai'
+      fullPath: '/essai'
+      preLoaderRoute: typeof EssaiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -354,6 +432,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/essai/': {
+      id: '/essai/'
+      path: '/'
+      fullPath: '/essai/'
+      preLoaderRoute: typeof EssaiIndexRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/schedule': {
+      id: '/essai/schedule'
+      path: '/schedule'
+      fullPath: '/essai/schedule'
+      preLoaderRoute: typeof EssaiScheduleRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/preview': {
+      id: '/essai/preview'
+      path: '/preview'
+      fullPath: '/essai/preview'
+      preLoaderRoute: typeof EssaiPreviewRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/import': {
+      id: '/essai/import'
+      path: '/import'
+      fullPath: '/essai/import'
+      preLoaderRoute: typeof EssaiImportRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/analyse': {
+      id: '/essai/analyse'
+      path: '/analyse'
+      fullPath: '/essai/analyse'
+      preLoaderRoute: typeof EssaiAnalyseRouteImport
+      parentRoute: typeof EssaiRoute
     }
     '/_authenticated/store': {
       id: '/_authenticated/store'
@@ -539,10 +652,29 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface EssaiRouteChildren {
+  EssaiAnalyseRoute: typeof EssaiAnalyseRoute
+  EssaiImportRoute: typeof EssaiImportRoute
+  EssaiPreviewRoute: typeof EssaiPreviewRoute
+  EssaiScheduleRoute: typeof EssaiScheduleRoute
+  EssaiIndexRoute: typeof EssaiIndexRoute
+}
+
+const EssaiRouteChildren: EssaiRouteChildren = {
+  EssaiAnalyseRoute: EssaiAnalyseRoute,
+  EssaiImportRoute: EssaiImportRoute,
+  EssaiPreviewRoute: EssaiPreviewRoute,
+  EssaiScheduleRoute: EssaiScheduleRoute,
+  EssaiIndexRoute: EssaiIndexRoute,
+}
+
+const EssaiRouteWithChildren = EssaiRoute._addFileChildren(EssaiRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  EssaiRoute: EssaiRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   PricingRoute: PricingRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -550,3 +682,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
