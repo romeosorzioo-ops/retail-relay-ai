@@ -1,6 +1,9 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { TunnelProgress } from "@/components/tunnel-progress";
 import { Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useTunnelStore } from "@/lib/tunnel-store";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/essai")({
   head: () => ({
@@ -18,6 +21,22 @@ export const Route = createFileRoute("/essai")({
 });
 
 function EssaiLayout() {
+  const navigate = useNavigate();
+  const generatedPosts = useTunnelStore((s) => s.generatedPosts);
+  const currentStep = useTunnelStore((s) => s.currentStep);
+
+  useEffect(() => {
+    if (generatedPosts.length > 0 && currentStep !== "import") {
+      toast("Vos publications vous attendent", {
+        description: `Vous avez ${generatedPosts.length} publication${generatedPosts.length > 1 ? "s" : ""} en cours de création.`,
+        action: {
+          label: "Reprendre",
+          onClick: () => navigate({ to: "/essai/preview" }),
+        },
+      });
+    }
+  }, [generatedPosts.length, currentStep, navigate]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background bg-grid">
       <header className="border-b border-border/60">
