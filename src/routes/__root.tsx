@@ -146,8 +146,8 @@ function RootComponent() {
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <defs>
           <linearGradient id="komaag-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#6B5CF6" />
-            <stop offset="100%" stopColor="#8B7CFA" />
+            <stop offset="0%" stopColor="#ff66c4" />
+            <stop offset="100%" stopColor="#ffde59" />
           </linearGradient>
         </defs>
       </svg>
