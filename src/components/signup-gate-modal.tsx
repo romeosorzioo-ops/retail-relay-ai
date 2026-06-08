@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,15 @@ export function SignupGateModal({
   const [storeName, setStoreName] = useState("");
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    const pending = localStorage.getItem("komaag-pending-email");
+    if (pending) setEmail(pending);
+  }, []);
+
+  useEffect(() => {
+    if (email) localStorage.setItem("komaag-pending-email", email);
+  }, [email]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -40,6 +49,7 @@ export function SignupGateModal({
       });
       if (error) throw error;
       toast.success("Compte créé !");
+      localStorage.removeItem("komaag-pending-email");
       onSuccess?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur");

@@ -69,7 +69,7 @@ export const useTunnelStore = create<TunnelState>()(
         }),
     }),
     {
-      name: "komaag.tunnel.v1",
+      name: "komaag-tunnel-v1",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         pdfName: s.pdfName,

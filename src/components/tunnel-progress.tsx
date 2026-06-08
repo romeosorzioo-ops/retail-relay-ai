@@ -1,7 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useTunnelStore, type TunnelStep } from "@/lib/tunnel-store";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const STEPS: { key: TunnelStep; label: string; to: string }[] = [
   { key: "import", label: "Import", to: "/essai/import" },
@@ -10,7 +12,9 @@ const STEPS: { key: TunnelStep; label: string; to: string }[] = [
 ];
 
 export function TunnelProgress() {
+  const navigate = useNavigate();
   const currentStep = useTunnelStore((s) => s.currentStep);
+  const reset = useTunnelStore((s) => s.reset);
   const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
   const activeIndex = currentIndex === -1 ? 2 : currentIndex; // schedule = past preview
 
@@ -55,6 +59,19 @@ export function TunnelProgress() {
             </div>
           );
         })}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            reset();
+            navigate({ to: "/essai/import" });
+            toast.info("Tunnel réinitialisé");
+          }}
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Recommencer</span>
+        </Button>
       </div>
     </div>
   );
