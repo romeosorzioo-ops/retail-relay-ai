@@ -130,12 +130,33 @@ function PreviewPage() {
     }
   };
 
+  const regenerateVisual = (id: string) => {
+    setGeneratedPosts(
+      generatedPosts.map((p) => {
+        if (p.id !== id || !p.visualMock) return p;
+        const nextVariant = (p.visualMock.variant ?? 0) + 1;
+        return {
+          ...p,
+          visualMock: {
+            ...p.visualMock,
+            variant: nextVariant,
+            backgroundGradient:
+              PROMO_GRADIENTS[nextVariant % PROMO_GRADIENTS.length],
+            badgeText: BADGE_TEXTS[nextVariant % BADGE_TEXTS.length],
+          },
+        };
+      }),
+    );
+  };
+
   const renderMockup = (post: TunnelPost) => {
     const common = {
       storeName,
       postText: post.caption,
       imageUrl: post.imageUrl ?? undefined,
+      visualMock: post.visualMock ?? undefined,
       onTextChange: (t: string) => updateCaption(post.id, t),
+      onRegenerateImage: () => regenerateVisual(post.id),
     };
     if (network === "facebook") return <FacebookMockup key={post.id} {...common} />;
     if (network === "instagram") return <InstagramMockup key={post.id} {...common} />;
