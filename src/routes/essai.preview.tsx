@@ -88,6 +88,8 @@ function PreviewPage() {
   const [network, setNetwork] = useState<TunnelPlatform>("facebook");
   const [extracting, setExtracting] = useState(false);
   const [changeImageFor, setChangeImageFor] = useState<string | null>(null);
+  const [sourceImageFor, setSourceImageFor] = useState<string | null>(null);
+  const [templateVariants, setTemplateVariants] = useState<Record<string, number>>({});
   const pdfUrlRef = useRef<string | null>(null);
   const storeName =
     typeof window !== "undefined"
