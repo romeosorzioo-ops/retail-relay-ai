@@ -242,6 +242,8 @@ function PreviewPage() {
   };
 
   const regenerateVisual = (id: string) => {
+    setTemplateVariants((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    // Also cycle the visualMock variant for fallback rendering parity.
     setGeneratedPosts(
       generatedPosts.map((p) => {
         if (p.id !== id || !p.visualMock) return p;
@@ -262,16 +264,59 @@ function PreviewPage() {
 
   const setPostImage = (id: string, dataUrl: string) => {
     setGeneratedPosts(
-      generatedPosts.map((p) => (p.id === id ? { ...p, imageUrl: dataUrl } : p)),
+      generatedPosts.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              cutoutImageUrl: dataUrl,
+              sourceImageUrl: p.sourceImageUrl ?? dataUrl,
+              visualStatus: "template_generated",
+            }
+          : p,
+      ),
     );
   };
 
+  const buildTemplateData = (post: TunnelPost) => {
+    const product = detectedProducts.find(
+      (d) => d.product_name === post.product_name,
+    );
+    const template = (post.visualTemplate as TemplateKey | undefined) ??
+      pickTemplateForCategory(product?.category ?? post.visualMock?.category);
+    const tplKeys = Object.keys(TEMPLATES) as TemplateKey[];
+    const variantOffset = templateVariants[post.id] ?? 0;
+    // Each regenerate cycles to a different template
+    const effectiveTemplate =
+      variantOffset === 0
+        ? template
+        : tplKeys[(tplKeys.indexOf(template) + variantOffset) % tplKeys.length];
+    return {
+      productName: post.product_name,
+      promoPrice: product?.promo_price ?? post.visualMock?.promoPrice ?? null,
+      oldPrice: product?.old_price ?? post.visualMock?.oldPrice ?? null,
+      discount: product?.discount_percent ?? post.visualMock?.discount ?? null,
+      category: product?.category ?? post.visualMock?.category ?? null,
+      storeName,
+      template: effectiveTemplate,
+      format: FORMAT_BY_PLATFORM[post.platform ?? network],
+      variant: variantOffset,
+      cutoutImageUrl: post.cutoutImageUrl ?? null,
+      sourceImageUrl: post.sourceImageUrl ?? null,
+      fallback: post.visualStatus === "fallback" || !post.sourceImageUrl,
+      onShowSource: post.sourceImageUrl
+        ? () => setSourceImageFor(post.id)
+        : undefined,
+      onRegenerateTemplate: () => regenerateVisual(post.id),
+    };
+  };
+
   const renderMockup = (post: TunnelPost) => {
+    const templateData = buildTemplateData(post);
     const common = {
       storeName,
       postText: post.caption,
-      imageUrl: post.imageUrl ?? undefined,
       visualMock: post.visualMock ?? undefined,
+      templateData,
       onTextChange: (t: string) => updateCaption(post.id, t),
       onRegenerateImage: () => regenerateVisual(post.id),
       onChangeImage: () => setChangeImageFor(post.id),
