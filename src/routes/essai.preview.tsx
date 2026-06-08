@@ -470,13 +470,35 @@ function PreviewPage() {
         open={!!activePost}
         onOpenChange={(v) => !v && setChangeImageFor(null)}
         pdfBase64={pdfBase64 || undefined}
-        currentImageUrl={activePost?.imageUrl ?? activePost?.productImageUrl ?? null}
+        currentImageUrl={activePost?.cutoutImageUrl ?? activePost?.sourceImageUrl ?? null}
         aspectRatio={activePost ? aspectByPlatform[activePost.platform ?? network] : "1/1"}
         onSelect={(dataUrl) => {
           if (activePost) setPostImage(activePost.id, dataUrl);
           setChangeImageFor(null);
         }}
       />
+
+      <Dialog
+        open={!!sourcePost}
+        onOpenChange={(v) => !v && setSourceImageFor(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Image source du catalogue</DialogTitle>
+          </DialogHeader>
+          {sourcePost?.sourceImageUrl ? (
+            <img
+              src={sourcePost.sourceImageUrl}
+              alt="Source catalogue"
+              className="max-h-[70vh] w-full object-contain"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Aucune image source disponible.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <TrialGateModal open={gateOpen} onOpenChange={setGateOpen} />
     </div>
