@@ -483,6 +483,15 @@ function PreviewPage() {
         pdfBase64={pdfBase64 || undefined}
         currentImageUrl={activePost?.cutoutImageUrl ?? activePost?.sourceImageUrl ?? null}
         aspectRatio={activePost ? aspectByPlatform[activePost.platform ?? network] : "1/1"}
+        productName={activePost?.product_name}
+        category={
+          activePost
+            ? detectedProducts.find(
+                (d) => d.product_name === activePost.product_name,
+              )?.category ?? activePost.visualMock?.category ?? null
+            : null
+        }
+        storeContext={storeName}
         onSelect={(dataUrl) => {
           if (activePost) setPostImage(activePost.id, dataUrl);
           setChangeImageFor(null);

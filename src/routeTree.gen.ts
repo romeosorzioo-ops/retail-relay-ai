@@ -21,6 +21,7 @@ import { Route as EssaiScheduleRouteImport } from './routes/essai.schedule'
 import { Route as EssaiPreviewRouteImport } from './routes/essai.preview'
 import { Route as EssaiImportRouteImport } from './routes/essai.import'
 import { Route as EssaiAnalyseRouteImport } from './routes/essai.analyse'
+import { Route as ApiGenerateProductImageRouteImport } from './routes/api/generate-product-image'
 import { Route as AuthenticatedStoreRouteImport } from './routes/_authenticated/store'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
@@ -97,6 +98,11 @@ const EssaiAnalyseRoute = EssaiAnalyseRouteImport.update({
   id: '/analyse',
   path: '/analyse',
   getParentRoute: () => EssaiRoute,
+} as any)
+const ApiGenerateProductImageRoute = ApiGenerateProductImageRouteImport.update({
+  id: '/api/generate-product-image',
+  path: '/api/generate-product-image',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedStoreRoute = AuthenticatedStoreRouteImport.update({
   id: '/store',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/import': typeof EssaiImportRoute
   '/essai/preview': typeof EssaiPreviewRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/import': typeof EssaiImportRoute
   '/essai/preview': typeof EssaiPreviewRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/_authenticated/library': typeof AuthenticatedLibraryRouteWithChildren
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
+  '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/import': typeof EssaiImportRoute
   '/essai/preview': typeof EssaiPreviewRoute
@@ -299,6 +308,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/import'
     | '/essai/preview'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/import'
     | '/essai/preview'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/promotions'
     | '/_authenticated/store'
+    | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/import'
     | '/essai/preview'
@@ -380,6 +392,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PricingRoute: typeof PricingRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiGenerateProductImageRoute: typeof ApiGenerateProductImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -467,6 +480,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/essai/analyse'
       preLoaderRoute: typeof EssaiAnalyseRouteImport
       parentRoute: typeof EssaiRoute
+    }
+    '/api/generate-product-image': {
+      id: '/api/generate-product-image'
+      path: '/api/generate-product-image'
+      fullPath: '/api/generate-product-image'
+      preLoaderRoute: typeof ApiGenerateProductImageRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/store': {
       id: '/_authenticated/store'
@@ -678,6 +698,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PricingRoute: PricingRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiGenerateProductImageRoute: ApiGenerateProductImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
