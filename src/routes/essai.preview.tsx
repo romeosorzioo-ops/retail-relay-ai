@@ -327,6 +327,7 @@ function PreviewPage() {
   };
 
   const activePost = generatedPosts.find((p) => p.id === changeImageFor) || null;
+  const sourcePost = generatedPosts.find((p) => p.id === sourceImageFor) || null;
   const aspectByPlatform: Record<TunnelPlatform, string> = {
     facebook: "16/9",
     instagram: "1/1",
