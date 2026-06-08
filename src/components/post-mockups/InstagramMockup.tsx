@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
+import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
   postText: string;
   imageUrl?: string;
   visualMock?: VisualMock | null;
+  templateData?: KomaagTemplateVisualProps | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
@@ -25,7 +27,7 @@ function renderWithHashtags(text: string) {
   );
 }
 
-export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function InstagramMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
   const [hover, setHover] = useState(false);
 
   return (
@@ -49,7 +51,9 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onT
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
-        {imageUrl ? (
+        {templateData ? (
+          <KomaagTemplateVisual {...templateData} format="1:1" />
+        ) : imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <PromoVisualMockup
@@ -69,7 +73,7 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onT
                 <ImageIcon className="h-4 w-4" /> Changer l'image
               </button>
             )}
-            {onRegenerateImage && !imageUrl && (
+            {onRegenerateImage && !templateData && !imageUrl && (
               <button onClick={onRegenerateImage} className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-2 hover:bg-white/25">
                 <RefreshCw className="h-4 w-4" /> Régénérer
               </button>

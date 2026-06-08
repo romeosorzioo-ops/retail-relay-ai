@@ -1,6 +1,7 @@
 import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe2, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
+import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
@@ -8,12 +9,13 @@ type Props = {
   postText: string;
   imageUrl?: string;
   visualMock?: VisualMock | null;
+  templateData?: KomaagTemplateVisualProps | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
 };
 
-export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function FacebookMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#3A3B3C] bg-[#1C1E21] text-[#E4E6EB] shadow-xl">
       {/* Header */}
@@ -39,7 +41,9 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTe
 
       {/* Image 16:9 */}
       <div className="relative aspect-video w-full bg-[#0d0d0f]">
-        {imageUrl ? (
+        {templateData ? (
+          <KomaagTemplateVisual {...templateData} format="16:9" />
+        ) : imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <PromoVisualMockup
@@ -52,7 +56,7 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTe
             storeName={storeName}
           />
         )}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+        <div className="absolute top-2 right-2 flex items-center gap-1.5">
           {onChangeImage && (
             <button
               onClick={onChangeImage}
@@ -61,7 +65,7 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, onTe
               <ImageIcon className="h-3.5 w-3.5" /> Changer l'image
             </button>
           )}
-          {onRegenerateImage && !imageUrl && (
+          {onRegenerateImage && !templateData && !imageUrl && (
             <button
               onClick={onRegenerateImage}
               className="inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"

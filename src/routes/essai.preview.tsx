@@ -16,6 +16,13 @@ import { ArrowLeft, ArrowRight, RefreshCw, Plus, Loader2 } from "lucide-react";
 import { PROMO_GRADIENTS } from "@/components/post-mockups/PromoVisualMockup";
 import { ChangeImageModal } from "@/components/change-image-modal";
 import { base64ToBlobUrl, renderPdfPageToDataUrl } from "@/lib/pdf-browser";
+import { pickTemplateForCategory, TEMPLATES, type TemplateKey } from "@/lib/promo-templates";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/essai/preview")({
   component: PreviewPage,
@@ -42,12 +49,15 @@ const BADGE_TEXTS = ["Offre catalogue", "Promo de la semaine", "Bon plan", "À n
 function buildMockPosts(products: TunnelProduct[]): TunnelPost[] {
   return products.slice(0, 3).map((p, i) => {
     const platform = PLATFORMS[i];
+    const tpl = pickTemplateForCategory(p.category);
     return {
       id: `seed-${p.id}`,
       product_name: p.product_name,
       platform,
       selected: true,
       imageUrl: null,
+      visualTemplate: tpl,
+      visualStatus: "pending",
       visualMock: {
         productName: p.product_name,
         promoPrice: p.promo_price ?? null,
@@ -78,6 +88,8 @@ function PreviewPage() {
   const [network, setNetwork] = useState<TunnelPlatform>("facebook");
   const [extracting, setExtracting] = useState(false);
   const [changeImageFor, setChangeImageFor] = useState<string | null>(null);
+  const [sourceImageFor, setSourceImageFor] = useState<string | null>(null);
+  const [templateVariants, setTemplateVariants] = useState<Record<string, number>>({});
   const pdfUrlRef = useRef<string | null>(null);
   const storeName =
     typeof window !== "undefined"
@@ -100,9 +112,7 @@ function PreviewPage() {
   useEffect(() => {
     const url = pdfUrlRef.current;
     if (!url) return;
-    const targets = generatedPosts.filter(
-      (p) => !p.productImageUrl && (p.pageNumber || true),
-    );
+    const targets = generatedPosts.filter((p) => !p.sourceImageUrl);
     if (targets.length === 0) return;
     let cancelled = false;
     (async () => {
@@ -124,13 +134,24 @@ function PreviewPage() {
             console.warn("Page render failed", page, e);
           }
         }
-        if (cancelled || Object.keys(updates).length === 0) return;
+        if (cancelled) return;
         setGeneratedPosts(
-          generatedPosts.map((p) =>
-            updates[p.id]
-              ? { ...p, productImageUrl: updates[p.id], imageUrl: p.imageUrl ?? updates[p.id] }
-              : p,
-          ),
+          generatedPosts.map((p) => {
+            if (p.sourceImageUrl) return p;
+            const src = updates[p.id];
+            if (!src) {
+              // Render failed → fallback state, no source image
+              return { ...p, visualStatus: "fallback" };
+            }
+            // Simulated cutout = same source for now; structure ready for real BG removal.
+            return {
+              ...p,
+              sourceImageUrl: src,
+              cutoutImageUrl: src,
+              finalVisualUrl: null,
+              visualStatus: "template_generated",
+            };
+          }),
         );
       } finally {
         if (!cancelled) setExtracting(false);
@@ -153,28 +174,39 @@ function PreviewPage() {
     if (generatedPosts.length === 0) {
       setGeneratedPosts(buildMockPosts(products));
     } else {
-      // Backfill visualMock for posts persisted before the feature shipped
-      const needsBackfill = generatedPosts.some((p) => !p.visualMock);
+      // Backfill visualMock / template / migrate legacy productImageUrl→sourceImageUrl.
+      const needsBackfill = generatedPosts.some(
+        (p) => !p.visualMock || !p.visualTemplate || (!p.sourceImageUrl && p.productImageUrl),
+      );
       if (needsBackfill) {
         setGeneratedPosts(
           generatedPosts.map((p, i) => {
-            if (p.visualMock) return p;
             const match = products.find((d) => d.product_name === p.product_name);
             const platform = p.platform ?? PLATFORMS[i % PLATFORMS.length];
+            const tpl =
+              (p.visualTemplate as TemplateKey | undefined) ??
+              pickTemplateForCategory(match?.category ?? p.visualMock?.category);
+            const legacySource = p.sourceImageUrl ?? p.productImageUrl ?? null;
             return {
               ...p,
               platform,
-              visualMock: {
-                productName: p.product_name,
-                promoPrice: match?.promo_price ?? null,
-                oldPrice: match?.old_price ?? null,
-                discount: match?.discount_percent ?? null,
-                category: match?.category ?? null,
-                backgroundGradient: PROMO_GRADIENTS[i % PROMO_GRADIENTS.length],
-                badgeText: BADGE_TEXTS[0],
-                format: FORMAT_BY_PLATFORM[platform],
-                variant: 0,
-              },
+              visualTemplate: tpl,
+              sourceImageUrl: legacySource,
+              cutoutImageUrl: p.cutoutImageUrl ?? legacySource,
+              visualStatus:
+                p.visualStatus ?? (legacySource ? "template_generated" : "pending"),
+              visualMock:
+                p.visualMock ?? {
+                  productName: p.product_name,
+                  promoPrice: match?.promo_price ?? null,
+                  oldPrice: match?.old_price ?? null,
+                  discount: match?.discount_percent ?? null,
+                  category: match?.category ?? null,
+                  backgroundGradient: PROMO_GRADIENTS[i % PROMO_GRADIENTS.length],
+                  badgeText: BADGE_TEXTS[0],
+                  format: FORMAT_BY_PLATFORM[platform],
+                  variant: 0,
+                },
             };
           }),
         );
@@ -221,6 +253,8 @@ function PreviewPage() {
   };
 
   const regenerateVisual = (id: string) => {
+    setTemplateVariants((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    // Also cycle the visualMock variant for fallback rendering parity.
     setGeneratedPosts(
       generatedPosts.map((p) => {
         if (p.id !== id || !p.visualMock) return p;
@@ -241,16 +275,59 @@ function PreviewPage() {
 
   const setPostImage = (id: string, dataUrl: string) => {
     setGeneratedPosts(
-      generatedPosts.map((p) => (p.id === id ? { ...p, imageUrl: dataUrl } : p)),
+      generatedPosts.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              cutoutImageUrl: dataUrl,
+              sourceImageUrl: p.sourceImageUrl ?? dataUrl,
+              visualStatus: "template_generated",
+            }
+          : p,
+      ),
     );
   };
 
+  const buildTemplateData = (post: TunnelPost) => {
+    const product = detectedProducts.find(
+      (d) => d.product_name === post.product_name,
+    );
+    const template = (post.visualTemplate as TemplateKey | undefined) ??
+      pickTemplateForCategory(product?.category ?? post.visualMock?.category);
+    const tplKeys = Object.keys(TEMPLATES) as TemplateKey[];
+    const variantOffset = templateVariants[post.id] ?? 0;
+    // Each regenerate cycles to a different template
+    const effectiveTemplate =
+      variantOffset === 0
+        ? template
+        : tplKeys[(tplKeys.indexOf(template) + variantOffset) % tplKeys.length];
+    return {
+      productName: post.product_name,
+      promoPrice: product?.promo_price ?? post.visualMock?.promoPrice ?? null,
+      oldPrice: product?.old_price ?? post.visualMock?.oldPrice ?? null,
+      discount: product?.discount_percent ?? post.visualMock?.discount ?? null,
+      category: product?.category ?? post.visualMock?.category ?? null,
+      storeName,
+      template: effectiveTemplate,
+      format: FORMAT_BY_PLATFORM[post.platform ?? network],
+      variant: variantOffset,
+      cutoutImageUrl: post.cutoutImageUrl ?? null,
+      sourceImageUrl: post.sourceImageUrl ?? null,
+      fallback: post.visualStatus === "fallback" || !post.sourceImageUrl,
+      onShowSource: post.sourceImageUrl
+        ? () => setSourceImageFor(post.id)
+        : undefined,
+      onRegenerateTemplate: () => regenerateVisual(post.id),
+    };
+  };
+
   const renderMockup = (post: TunnelPost) => {
+    const templateData = buildTemplateData(post);
     const common = {
       storeName,
       postText: post.caption,
-      imageUrl: post.imageUrl ?? undefined,
       visualMock: post.visualMock ?? undefined,
+      templateData,
       onTextChange: (t: string) => updateCaption(post.id, t),
       onRegenerateImage: () => regenerateVisual(post.id),
       onChangeImage: () => setChangeImageFor(post.id),
@@ -261,6 +338,7 @@ function PreviewPage() {
   };
 
   const activePost = generatedPosts.find((p) => p.id === changeImageFor) || null;
+  const sourcePost = generatedPosts.find((p) => p.id === sourceImageFor) || null;
   const aspectByPlatform: Record<TunnelPlatform, string> = {
     facebook: "16/9",
     instagram: "1/1",
@@ -403,13 +481,35 @@ function PreviewPage() {
         open={!!activePost}
         onOpenChange={(v) => !v && setChangeImageFor(null)}
         pdfBase64={pdfBase64 || undefined}
-        currentImageUrl={activePost?.imageUrl ?? activePost?.productImageUrl ?? null}
+        currentImageUrl={activePost?.cutoutImageUrl ?? activePost?.sourceImageUrl ?? null}
         aspectRatio={activePost ? aspectByPlatform[activePost.platform ?? network] : "1/1"}
         onSelect={(dataUrl) => {
           if (activePost) setPostImage(activePost.id, dataUrl);
           setChangeImageFor(null);
         }}
       />
+
+      <Dialog
+        open={!!sourcePost}
+        onOpenChange={(v) => !v && setSourceImageFor(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Image source du catalogue</DialogTitle>
+          </DialogHeader>
+          {sourcePost?.sourceImageUrl ? (
+            <img
+              src={sourcePost.sourceImageUrl}
+              alt="Source catalogue"
+              className="max-h-[70vh] w-full object-contain"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Aucune image source disponible.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <TrialGateModal open={gateOpen} onOpenChange={setGateOpen} />
     </div>

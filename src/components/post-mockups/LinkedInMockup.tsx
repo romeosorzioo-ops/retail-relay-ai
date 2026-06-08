@@ -1,6 +1,7 @@
 import { ThumbsUp, MessageSquare, Repeat2, Send, MoreHorizontal, Globe2, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
+import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
 
 type Props = {
@@ -9,12 +10,13 @@ type Props = {
   imageUrl?: string;
   sector?: string;
   visualMock?: VisualMock | null;
+  templateData?: KomaagTemplateVisualProps | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
 };
 
-export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMock, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#38434F] bg-[#1B1F23] text-[#E7E9EA] shadow-xl">
       {/* Header */}
@@ -41,7 +43,9 @@ export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMo
 
       {/* Image 1.91:1 */}
       <div className="relative w-full bg-[#0d0d0f]" style={{ aspectRatio: "1.91 / 1" }}>
-        {imageUrl ? (
+        {templateData ? (
+          <KomaagTemplateVisual {...templateData} format="1.91:1" />
+        ) : imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <PromoVisualMockup
@@ -54,7 +58,7 @@ export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMo
             storeName={storeName}
           />
         )}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+        <div className="absolute top-2 right-2 flex items-center gap-1.5">
           {onChangeImage && (
             <button
               onClick={onChangeImage}
@@ -63,7 +67,7 @@ export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMo
               <ImageIcon className="h-3.5 w-3.5" /> Changer l'image
             </button>
           )}
-          {onRegenerateImage && !imageUrl && (
+          {onRegenerateImage && !templateData && !imageUrl && (
             <button
               onClick={onRegenerateImage}
               className="inline-flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"
