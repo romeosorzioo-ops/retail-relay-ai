@@ -239,6 +239,12 @@ function PreviewPage() {
     );
   };
 
+  const setPostImage = (id: string, dataUrl: string) => {
+    setGeneratedPosts(
+      generatedPosts.map((p) => (p.id === id ? { ...p, imageUrl: dataUrl } : p)),
+    );
+  };
+
   const renderMockup = (post: TunnelPost) => {
     const common = {
       storeName,
@@ -247,10 +253,18 @@ function PreviewPage() {
       visualMock: post.visualMock ?? undefined,
       onTextChange: (t: string) => updateCaption(post.id, t),
       onRegenerateImage: () => regenerateVisual(post.id),
+      onChangeImage: () => setChangeImageFor(post.id),
     };
     if (network === "facebook") return <FacebookMockup key={post.id} {...common} />;
     if (network === "instagram") return <InstagramMockup key={post.id} {...common} />;
     return <LinkedInMockup key={post.id} {...common} />;
+  };
+
+  const activePost = generatedPosts.find((p) => p.id === changeImageFor) || null;
+  const aspectByPlatform: Record<TunnelPlatform, string> = {
+    facebook: "16/9",
+    instagram: "1/1",
+    linkedin: "1.91/1",
   };
 
   return (
