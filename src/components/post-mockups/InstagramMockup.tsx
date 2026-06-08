@@ -73,7 +73,7 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, tem
                 <ImageIcon className="h-4 w-4" /> Changer l'image
               </button>
             )}
-            {onRegenerateImage && !imageUrl && (
+            {onRegenerateImage && !templateData && !imageUrl && (
               <button onClick={onRegenerateImage} className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-2 hover:bg-white/25">
                 <RefreshCw className="h-4 w-4" /> Régénérer
               </button>
