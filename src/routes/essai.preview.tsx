@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,8 +12,10 @@ import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
 import { LinkedInMockup } from "@/components/post-mockups/LinkedInMockup";
-import { ArrowLeft, ArrowRight, RefreshCw, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Plus, Loader2 } from "lucide-react";
 import { PROMO_GRADIENTS } from "@/components/post-mockups/PromoVisualMockup";
+import { ChangeImageModal } from "@/components/change-image-modal";
+import { base64ToBlobUrl, renderPdfPageToDataUrl } from "@/lib/pdf-browser";
 
 export const Route = createFileRoute("/essai/preview")({
   component: PreviewPage,
