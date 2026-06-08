@@ -16,7 +16,7 @@ type Props = {
   onChangeImage?: () => void;
 };
 
-export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMock, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function LinkedInMockup({ storeName, postText, imageUrl, sector, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#38434F] bg-[#1B1F23] text-[#E7E9EA] shadow-xl">
       {/* Header */}
