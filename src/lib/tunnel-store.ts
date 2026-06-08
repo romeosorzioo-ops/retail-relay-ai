@@ -8,6 +8,10 @@ export type TunnelProduct = {
   old_price?: number | null;
   discount_percent?: number | null;
   category?: string | null;
+  pageNumber?: number | null;
+  imageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  cropCoordinates?: { x: number; y: number; width: number; height: number } | null;
 };
 
 export type TunnelPlatform = "facebook" | "instagram" | "linkedin";
@@ -32,6 +36,8 @@ export type TunnelPost = {
   caption: string;
   platform?: TunnelPlatform;
   imageUrl?: string | null;
+  productImageUrl?: string | null;
+  pageNumber?: number | null;
   visualMock?: VisualMock | null;
   selected?: boolean;
   scheduled_at?: string | null;

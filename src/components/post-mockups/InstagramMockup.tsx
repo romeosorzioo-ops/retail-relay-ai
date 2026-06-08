@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, RefreshCw, ImageIcon } from "lucide-react";
 import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import type { VisualMock } from "@/lib/tunnel-store";
@@ -11,6 +11,7 @@ type Props = {
   visualMock?: VisualMock | null;
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
+  onChangeImage?: () => void;
 };
 
 function renderWithHashtags(text: string) {
@@ -24,7 +25,7 @@ function renderWithHashtags(text: string) {
   );
 }
 
-export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage }: Props) {
+export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onTextChange, onRegenerateImage, onChangeImage }: Props) {
   const [hover, setHover] = useState(false);
 
   return (
@@ -61,13 +62,19 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, onT
             storeName={storeName}
           />
         )}
-        {hover && onRegenerateImage && (
-          <button
-            onClick={onRegenerateImage}
-            className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm font-medium text-white backdrop-blur-sm"
-          >
-            <RefreshCw className="h-4 w-4" /> Régénérer le visuel
-          </button>
+        {hover && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 text-sm font-medium text-white backdrop-blur-sm">
+            {onChangeImage && (
+              <button onClick={onChangeImage} className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-2 hover:bg-white/25">
+                <ImageIcon className="h-4 w-4" /> Changer l'image
+              </button>
+            )}
+            {onRegenerateImage && !imageUrl && (
+              <button onClick={onRegenerateImage} className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-2 hover:bg-white/25">
+                <RefreshCw className="h-4 w-4" /> Régénérer
+              </button>
+            )}
+          </div>
         )}
       </div>
 

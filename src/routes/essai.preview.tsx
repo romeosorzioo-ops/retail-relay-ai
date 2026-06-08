@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,8 +12,10 @@ import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
 import { LinkedInMockup } from "@/components/post-mockups/LinkedInMockup";
-import { ArrowLeft, ArrowRight, RefreshCw, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Plus, Loader2 } from "lucide-react";
 import { PROMO_GRADIENTS } from "@/components/post-mockups/PromoVisualMockup";
+import { ChangeImageModal } from "@/components/change-image-modal";
+import { base64ToBlobUrl, renderPdfPageToDataUrl } from "@/lib/pdf-browser";
 
 export const Route = createFileRoute("/essai/preview")({
   component: PreviewPage,
@@ -67,17 +69,78 @@ function PreviewPage() {
   const {
     detectedProducts,
     generatedPosts,
+    pdfBase64,
     setDetectedProducts,
     setGeneratedPosts,
     setStep,
   } = useTunnelStore();
   const [gateOpen, setGateOpen] = useState(false);
   const [network, setNetwork] = useState<TunnelPlatform>("facebook");
+  const [extracting, setExtracting] = useState(false);
+  const [changeImageFor, setChangeImageFor] = useState<string | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
   const storeName =
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("komaag-trial-account") || "{}")
           .storeName || "Mon magasin"
       : "Mon magasin";
+
+  // Build a stable blob URL from the in-memory pdfBase64 (not persisted).
+  useEffect(() => {
+    if (!pdfBase64) return;
+    const url = base64ToBlobUrl(pdfBase64);
+    pdfUrlRef.current = url;
+    return () => {
+      URL.revokeObjectURL(url);
+      pdfUrlRef.current = null;
+    };
+  }, [pdfBase64]);
+
+  // Lazy extract product images for SELECTED posts only (max 3).
+  useEffect(() => {
+    const url = pdfUrlRef.current;
+    if (!url) return;
+    const targets = generatedPosts.filter(
+      (p) => !p.productImageUrl && (p.pageNumber || true),
+    );
+    if (targets.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setExtracting(true);
+      try {
+        const updates: Record<string, string> = {};
+        for (let i = 0; i < targets.length; i++) {
+          const post = targets[i];
+          const page =
+            post.pageNumber ??
+            detectedProducts.find((d) => d.product_name === post.product_name)
+              ?.pageNumber ??
+            i + 1;
+          try {
+            const dataUrl = await renderPdfPageToDataUrl(url, page, 1200);
+            if (cancelled) return;
+            updates[post.id] = dataUrl;
+          } catch (e) {
+            console.warn("Page render failed", page, e);
+          }
+        }
+        if (cancelled || Object.keys(updates).length === 0) return;
+        setGeneratedPosts(
+          generatedPosts.map((p) =>
+            updates[p.id]
+              ? { ...p, productImageUrl: updates[p.id], imageUrl: p.imageUrl ?? updates[p.id] }
+              : p,
+          ),
+        );
+      } finally {
+        if (!cancelled) setExtracting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfBase64, generatedPosts.length]);
 
   useEffect(() => {
     setStep("preview");
@@ -176,6 +239,12 @@ function PreviewPage() {
     );
   };
 
+  const setPostImage = (id: string, dataUrl: string) => {
+    setGeneratedPosts(
+      generatedPosts.map((p) => (p.id === id ? { ...p, imageUrl: dataUrl } : p)),
+    );
+  };
+
   const renderMockup = (post: TunnelPost) => {
     const common = {
       storeName,
@@ -184,10 +253,18 @@ function PreviewPage() {
       visualMock: post.visualMock ?? undefined,
       onTextChange: (t: string) => updateCaption(post.id, t),
       onRegenerateImage: () => regenerateVisual(post.id),
+      onChangeImage: () => setChangeImageFor(post.id),
     };
     if (network === "facebook") return <FacebookMockup key={post.id} {...common} />;
     if (network === "instagram") return <InstagramMockup key={post.id} {...common} />;
     return <LinkedInMockup key={post.id} {...common} />;
+  };
+
+  const activePost = generatedPosts.find((p) => p.id === changeImageFor) || null;
+  const aspectByPlatform: Record<TunnelPlatform, string> = {
+    facebook: "16/9",
+    instagram: "1/1",
+    linkedin: "1.91/1",
   };
 
   return (
@@ -312,6 +389,27 @@ function PreviewPage() {
           </Button>
         </div>
       </div>
+
+      {extracting && (
+        <div className="fixed left-1/2 top-4 z-40 -translate-x-1/2 rounded-full border border-border bg-card/95 px-4 py-2 text-sm shadow-lg backdrop-blur">
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            Extraction des images produits…
+          </span>
+        </div>
+      )}
+
+      <ChangeImageModal
+        open={!!activePost}
+        onOpenChange={(v) => !v && setChangeImageFor(null)}
+        pdfBase64={pdfBase64 || undefined}
+        currentImageUrl={activePost?.imageUrl ?? activePost?.productImageUrl ?? null}
+        aspectRatio={activePost ? aspectByPlatform[activePost.platform ?? network] : "1/1"}
+        onSelect={(dataUrl) => {
+          if (activePost) setPostImage(activePost.id, dataUrl);
+          setChangeImageFor(null);
+        }}
+      />
 
       <TrialGateModal open={gateOpen} onOpenChange={setGateOpen} />
     </div>
