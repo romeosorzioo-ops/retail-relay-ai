@@ -205,9 +205,9 @@
 
 /* Komaag pill badge utility */
 @utility komaag-badge {
-  background-color: rgba(107, 92, 246, 0.15);
-  border: 1px solid rgba(107, 92, 246, 0.3);
-  color: #A89BF8;
+  background-color: rgba(255, 102, 196, 0.15);
+  border: 1px solid rgba(255, 102, 196, 0.35);
+  color: #ffd6ec;
   border-radius: 100px;
   padding: 4px 14px;
   font-size: 13px;
