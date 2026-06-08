@@ -1,39 +1,89 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useTunnelStore } from "@/lib/tunnel-store";
-import { SignupGateModal } from "@/components/signup-gate-modal";
+import {
+  useTunnelStore,
+  type TunnelPost,
+  type TunnelProduct,
+  type TunnelPlatform,
+} from "@/lib/tunnel-store";
+import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
 import { LinkedInMockup } from "@/components/post-mockups/LinkedInMockup";
-import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
-import { useRouter } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight, RefreshCw, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/essai/preview")({
   component: PreviewPage,
 });
 
-type Network = "facebook" | "instagram" | "linkedin";
+const MOCK_DETECTED: TunnelProduct[] = [
+  { id: "m1", product_name: "Côte de bœuf", promo_price: 14.9, category: "Boucherie" },
+  { id: "m2", product_name: "Tomates grappes", promo_price: 2.99, category: "Fruits et légumes" },
+  { id: "m3", product_name: "Saumon fumé", promo_price: 5.95, category: "Poissonnerie" },
+  { id: "m4", product_name: "Pack Coca-Cola", promo_price: 6.5, category: "Boissons" },
+  { id: "m5", product_name: "Fromage local", promo_price: 3.8, category: "Produits locaux" },
+];
+
+const PLATFORMS: TunnelPlatform[] = ["facebook", "instagram", "linkedin"];
+
+function buildMockPosts(products: TunnelProduct[]): TunnelPost[] {
+  return products.slice(0, 3).map((p, i) => ({
+    id: `seed-${p.id}`,
+    product_name: p.product_name,
+    platform: PLATFORMS[i],
+    selected: true,
+    imageUrl: null,
+    caption: `🛒 Bon plan ${p.product_name} à seulement ${p.promo_price?.toFixed(2)}€ ! Profitez-en cette semaine. #promo #${p.category?.toLowerCase().replace(/\s+/g, "")}`,
+  }));
+}
 
 function PreviewPage() {
   const router = useRouter();
-  const { detectedProducts, generatedPosts, setGeneratedPosts, setStep } =
-    useTunnelStore();
+  const {
+    detectedProducts,
+    generatedPosts,
+    setDetectedProducts,
+    setGeneratedPosts,
+    setStep,
+  } = useTunnelStore();
   const [gateOpen, setGateOpen] = useState(false);
-  const [network, setNetwork] = useState<Network>("facebook");
-  const [selectedIds, setSelectedIds] = useState<string[]>(() =>
-    generatedPosts.slice(0, 3).map((p) => p.id),
-  );
-  const storeName = "Mon magasin";
+  const [network, setNetwork] = useState<TunnelPlatform>("facebook");
+  const storeName =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("komaag-trial-account") || "{}")
+          .storeName || "Mon magasin"
+      : "Mon magasin";
 
   useEffect(() => {
     setStep("preview");
-  }, [setStep]);
+    // Seed mock data if needed
+    let products = detectedProducts;
+    if (products.length === 0) {
+      products = MOCK_DETECTED;
+      setDetectedProducts(products);
+    }
+    if (generatedPosts.length === 0) {
+      setGeneratedPosts(buildMockPosts(products));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Sync selected ids with generated posts on first load / changes in length
+  useEffect(() => {
+    setSelectedIds(generatedPosts.map((p) => p.id));
+  }, [generatedPosts.length]);
 
   const visiblePosts = useMemo(
-    () => generatedPosts.filter((p) => selectedIds.includes(p.id)),
-    [generatedPosts, selectedIds],
+    () =>
+      generatedPosts.filter(
+        (p) =>
+          selectedIds.includes(p.id) &&
+          (p.platform === network || !p.platform),
+      ),
+    [generatedPosts, selectedIds, network],
   );
 
   const remaining = Math.max(0, 3 - generatedPosts.length);
@@ -44,18 +94,24 @@ function PreviewPage() {
     );
   };
 
-  const toggleProduct = (id: string) => {
+  const toggleProduct = (postId: string) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.includes(postId) ? prev.filter((x) => x !== postId) : [...prev, postId],
     );
   };
 
-  const triggerGate = () => setGateOpen(true);
+  const tryAddPost = () => {
+    if (generatedPosts.length >= 3) {
+      setGateOpen(true);
+      return;
+    }
+  };
 
-  const renderMockup = (post: (typeof generatedPosts)[number]) => {
+  const renderMockup = (post: TunnelPost) => {
     const common = {
       storeName,
       postText: post.caption,
+      imageUrl: post.imageUrl ?? undefined,
       onTextChange: (t: string) => updateCaption(post.id, t),
     };
     if (network === "facebook") return <FacebookMockup key={post.id} {...common} />;
@@ -68,7 +124,7 @@ function PreviewPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Vos publications</h1>
+            <h1 className="font-display text-2xl font-bold">Vos publications</h1>
             <p className="text-sm text-muted-foreground">
               Modifiez vos textes en ligne, puis planifiez.
             </p>
@@ -77,7 +133,7 @@ function PreviewPage() {
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
               remaining <= 1
                 ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
-                : "border-primary/30 bg-primary/15 text-primary-foreground/90"
+                : "border-primary/30 bg-primary/15 text-primary"
             }`}
           >
             {remaining} publication{remaining > 1 ? "s" : ""} restante
@@ -90,15 +146,19 @@ function PreviewPage() {
             gateOpen ? "opacity-40 pointer-events-none" : ""
           }`}
         >
-          {/* Left panel: products */}
           <aside className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-3 text-sm font-semibold">Produits détectés</div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-semibold">Produits détectés</div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 text-xs"
+                onClick={tryAddPost}
+              >
+                <Plus className="h-3.5 w-3.5" /> Ajouter
+              </Button>
+            </div>
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-              {detectedProducts.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Aucun produit détecté.
-                </p>
-              )}
               {detectedProducts.map((p) => {
                 const matched = generatedPosts.find(
                   (gp) => gp.product_name === p.product_name,
@@ -119,11 +179,9 @@ function PreviewPage() {
                       <div className="font-medium">{p.product_name}</div>
                       {p.promo_price != null && (
                         <div className="text-muted-foreground">
-                          {p.promo_price}€
-                          {p.old_price ? (
-                            <span className="ml-1 line-through opacity-60">
-                              {p.old_price}€
-                            </span>
+                          {p.promo_price.toFixed(2)}€
+                          {p.category ? (
+                            <span className="ml-1 opacity-60">· {p.category}</span>
                           ) : null}
                         </div>
                       )}
@@ -134,10 +192,9 @@ function PreviewPage() {
             </div>
           </aside>
 
-          {/* Right panel: tabs + mockups */}
           <section>
             <div className="mb-4 inline-flex rounded-lg border border-border bg-card p-1">
-              {(["facebook", "instagram", "linkedin"] as Network[]).map((n) => (
+              {PLATFORMS.map((n) => (
                 <button
                   key={n}
                   onClick={() => setNetwork(n)}
@@ -155,7 +212,7 @@ function PreviewPage() {
             <div className="space-y-6">
               {visiblePosts.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                  Sélectionnez un produit à gauche pour afficher la prévisualisation.
+                  Aucune publication pour ce réseau. Choisissez un autre onglet.
                 </div>
               ) : (
                 visiblePosts.map(renderMockup)
@@ -165,7 +222,6 @@ function PreviewPage() {
         </div>
       </div>
 
-      {/* Sticky bottom bar */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <Button
@@ -180,13 +236,13 @@ function PreviewPage() {
           >
             <RefreshCw className="h-4 w-4" /> Régénérer
           </Button>
-          <Button onClick={triggerGate}>
+          <Button onClick={() => router.navigate({ to: "/essai/schedule" })}>
             Planifier <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <SignupGateModal open={gateOpen} onOpenChange={setGateOpen} />
+      <TrialGateModal open={gateOpen} onOpenChange={setGateOpen} />
     </div>
   );
 }

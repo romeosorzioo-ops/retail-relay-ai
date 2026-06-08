@@ -10,10 +10,15 @@ export type TunnelProduct = {
   category?: string | null;
 };
 
+export type TunnelPlatform = "facebook" | "instagram" | "linkedin";
+
 export type TunnelPost = {
   id: string;
   product_name: string;
   caption: string;
+  platform?: TunnelPlatform;
+  imageUrl?: string | null;
+  selected?: boolean;
   scheduled_at?: string | null;
 };
 
