@@ -76,13 +76,11 @@ export function InstagramMockup({ storeName, postText, imageUrl, onTextChange, o
 
       {/* Caption */}
       <div className="px-3 pb-3 text-[14px] leading-[1.4]">
-        <span className="mr-1 font-semibold">{storeName || "mon_magasin"}</span>
-        <EditableText
-          value={postText}
-          onChange={onTextChange}
-          className="inline [&]:inline"
-        />
-        <div className="mt-1 whitespace-pre-wrap">{renderWithHashtags(postText)}</div>
+        <div className="mb-1 font-semibold">{storeName || "mon_magasin"}</div>
+        <EditableText value={postText} onChange={onTextChange} />
+        <div className="mt-1 whitespace-pre-wrap text-[#A1A5A9]">
+          {renderWithHashtags(postText)}
+        </div>
       </div>
     </div>
   );
