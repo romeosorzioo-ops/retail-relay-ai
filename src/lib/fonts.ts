@@ -23,9 +23,14 @@ export const FONT_NAMES = FONT_LIBRARY.map((f) => f.name);
 
 /** Build a single CSS URL that loads every library font in one request. */
 export function googleFontsUrl(): string {
-  const families = FONT_LIBRARY.filter((f) => f.googleHref)
-    .map((f) => `family=${encodeURIComponent(f.name).replace(/%20/g, "+")}:${f.googleHref}`)
-    .join("&");
+  // Komaag brand fonts (Sora for headings, DM Sans for body) + library fonts
+  const komaagFamilies = [
+    "family=Sora:wght@400;600;700",
+    "family=DM+Sans:wght@400;500",
+  ];
+  const libraryFamilies = FONT_LIBRARY.filter((f) => f.googleHref)
+    .map((f) => `family=${encodeURIComponent(f.name).replace(/%20/g, "+")}:${f.googleHref}`);
+  const families = [...komaagFamilies, ...libraryFamilies].join("&");
   return `https://fonts.googleapis.com/css2?${families}&display=swap`;
 }
 

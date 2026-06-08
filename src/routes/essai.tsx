@@ -19,7 +19,7 @@ export const Route = createFileRoute("/essai")({
 
 function EssaiLayout() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background bg-grid">
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <Link to="/" className="font-semibold text-brand-gradient">

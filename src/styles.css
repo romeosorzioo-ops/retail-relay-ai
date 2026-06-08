@@ -9,6 +9,11 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Komaag font tokens */
+  --font-display: "Sora", sans-serif;
+  --font-sans: "DM Sans", sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -46,75 +51,77 @@
 
 :root {
   /* === Komaag brand === */
-  --brand-primary: #ff66c4;
-  --brand-secondary: #ffde59;
-  --gradient-primary: linear-gradient(135deg, #ff66c4 0%, #ffde59 100%);
-  --gradient-primary-soft: linear-gradient(135deg, rgba(255, 102, 196, 0.12) 0%, rgba(255, 222, 89, 0.12) 100%);
-  --shadow-brand: 0 10px 24px -10px rgba(255, 102, 196, 0.55), 0 6px 14px -8px rgba(255, 222, 89, 0.45);
+  --brand-primary: #6B5CF6;
+  --brand-secondary: #A89BF8;
+  --gradient-primary: linear-gradient(135deg, #6B5CF6 0%, #8B7CFA 100%);
+  --gradient-primary-soft: linear-gradient(135deg, rgba(107, 92, 246, 0.12) 0%, rgba(139, 124, 250, 0.12) 100%);
+  --shadow-brand: 0 10px 24px -10px rgba(107, 92, 246, 0.55), 0 6px 14px -8px rgba(139, 124, 250, 0.45);
 
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.18 0.02 320);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 320);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 320);
-  --primary: oklch(0.72 0.22 348);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.97 0.005 320);
-  --secondary-foreground: oklch(0.25 0.02 320);
-  --muted: oklch(0.97 0.005 320);
-  --muted-foreground: oklch(0.5 0.02 320);
-  --accent: oklch(0.96 0.03 348);
-  --accent-foreground: oklch(0.45 0.2 348);
-  --destructive: oklch(0.6 0.22 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.005 320);
-  --input: oklch(0.93 0.005 320);
-  --ring: oklch(0.72 0.22 348);
-  --chart-1: oklch(0.72 0.22 348);
-  --chart-2: oklch(0.85 0.18 90);
-  --chart-3: oklch(0.7 0.18 150);
-  --chart-4: oklch(0.75 0.18 50);
-  --chart-5: oklch(0.65 0.2 30);
-  --sidebar: oklch(0.985 0.003 320);
-  --sidebar-foreground: oklch(0.25 0.02 320);
-  --sidebar-primary: oklch(0.72 0.22 348);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.96 0.03 348);
-  --sidebar-accent-foreground: oklch(0.45 0.2 348);
-  --sidebar-border: oklch(0.92 0.005 320);
-  --sidebar-ring: oklch(0.72 0.22 348);
+  --radius: 0.75rem;
+
+  /* Komaag dark theme tokens */
+  --background: rgb(10, 10, 15);
+  --foreground: rgb(240, 239, 248);
+  --card: rgb(17, 17, 24);
+  --card-foreground: rgb(240, 239, 248);
+  --popover: rgb(17, 17, 24);
+  --popover-foreground: rgb(240, 239, 248);
+  --primary: rgb(107, 92, 246);
+  --primary-foreground: rgb(255, 255, 255);
+  --secondary: rgb(26, 26, 36);
+  --secondary-foreground: rgb(240, 239, 248);
+  --muted: rgb(26, 26, 36);
+  --muted-foreground: rgb(130, 126, 145);
+  --accent: rgb(26, 26, 36);
+  --accent-foreground: rgb(240, 239, 248);
+  --destructive: rgb(239, 68, 68);
+  --destructive-foreground: rgb(255, 255, 255);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: rgb(107, 92, 246);
+  --chart-1: rgb(107, 92, 246);
+  --chart-2: rgb(139, 124, 250);
+  --chart-3: rgb(168, 155, 248);
+  --chart-4: rgb(199, 189, 250);
+  --chart-5: rgb(220, 214, 252);
+  --sidebar: rgb(17, 17, 24);
+  --sidebar-foreground: rgb(240, 239, 248);
+  --sidebar-primary: rgb(107, 92, 246);
+  --sidebar-primary-foreground: rgb(255, 255, 255);
+  --sidebar-accent: rgb(26, 26, 36);
+  --sidebar-accent-foreground: rgb(240, 239, 248);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgb(107, 92, 246);
 }
 
 .dark {
-  --background: oklch(0.15 0.015 320);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.2 0.018 320);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.2 0.018 320);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.78 0.22 348);
-  --primary-foreground: oklch(0.15 0.015 320);
-  --secondary: oklch(0.28 0.02 320);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.28 0.02 320);
-  --muted-foreground: oklch(0.7 0.02 320);
-  --accent: oklch(0.3 0.05 348);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.65 0.22 27);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.78 0.22 348);
-  --sidebar: oklch(0.2 0.018 320);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.78 0.22 348);
-  --sidebar-primary-foreground: oklch(0.15 0.015 320);
-  --sidebar-accent: oklch(0.3 0.05 348);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.78 0.22 348);
+  --background: rgb(10, 10, 15);
+  --foreground: rgb(240, 239, 248);
+  --card: rgb(17, 17, 24);
+  --card-foreground: rgb(240, 239, 248);
+  --popover: rgb(17, 17, 24);
+  --popover-foreground: rgb(240, 239, 248);
+  --primary: rgb(107, 92, 246);
+  --primary-foreground: rgb(255, 255, 255);
+  --secondary: rgb(26, 26, 36);
+  --secondary-foreground: rgb(240, 239, 248);
+  --muted: rgb(26, 26, 36);
+  --muted-foreground: rgb(130, 126, 145);
+  --accent: rgb(26, 26, 36);
+  --accent-foreground: rgb(240, 239, 248);
+  --destructive: rgb(239, 68, 68);
+  --destructive-foreground: rgb(255, 255, 255);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: rgb(107, 92, 246);
+  --sidebar: rgb(17, 17, 24);
+  --sidebar-foreground: rgb(240, 239, 248);
+  --sidebar-primary: rgb(107, 92, 246);
+  --sidebar-primary-foreground: rgb(255, 255, 255);
+  --sidebar-accent: rgb(26, 26, 36);
+  --sidebar-accent-foreground: rgb(240, 239, 248);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgb(107, 92, 246);
 }
 
 @layer base {
@@ -124,7 +131,11 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), system-ui, sans-serif;
   }
 }
 
@@ -160,16 +171,9 @@
   border: 1px solid color-mix(in srgb, white 60%, transparent);
 }
 
-/* Brand gradient icon — applies the Komaag pink→yellow gradient to
-   lucide icons via a global SVG <linearGradient id="komaag-gradient"/>
-   defined once in the root layout. */
+/* Brand gradient icon — applies the Komaag gradient to lucide icons */
 @utility icon-brand {
-  color: #ff66c4; /* fallback */
-}
-.icon-brand svg,
-svg.icon-brand {
-  stroke: url(#komaag-gradient);
-  color: transparent;
+  color: var(--brand-primary);
 }
 
 /* Brand button — gradient fill, white text, soft hover lift */
@@ -177,17 +181,37 @@ svg.icon-brand {
   background-image: var(--gradient-primary);
   background-color: var(--brand-primary);
   color: #ffffff;
-  box-shadow: 0 6px 18px -8px rgba(255, 102, 196, 0.55),
-              0 4px 10px -6px rgba(255, 222, 89, 0.4);
+  box-shadow: 0 6px 18px -8px rgba(107, 92, 246, 0.55),
+              0 4px 10px -6px rgba(139, 124, 250, 0.4);
   transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 .btn-brand:hover {
   transform: translateY(-1px);
   filter: brightness(1.03) saturate(1.05);
-  box-shadow: 0 12px 26px -10px rgba(255, 102, 196, 0.65),
-              0 8px 16px -8px rgba(255, 222, 89, 0.5);
+  box-shadow: 0 12px 26px -10px rgba(107, 92, 246, 0.65),
+              0 8px 16px -8px rgba(139, 124, 250, 0.5);
 }
 .btn-brand:active {
   transform: translateY(0);
 }
 
+/* Subtle grid background for landing & tunnel */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Komaag pill badge utility */
+@utility komaag-badge {
+  background-color: rgba(107, 92, 246, 0.15);
+  border: 1px solid rgba(107, 92, 246, 0.3);
+  color: #A89BF8;
+  border-radius: 100px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
