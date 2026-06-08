@@ -12,10 +12,17 @@ import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
 import { LinkedInMockup } from "@/components/post-mockups/LinkedInMockup";
-import { ArrowLeft, ArrowRight, RefreshCw, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Plus, Loader2, X } from "lucide-react";
 import { PROMO_GRADIENTS } from "@/components/post-mockups/PromoVisualMockup";
 import { ChangeImageModal } from "@/components/change-image-modal";
 import { base64ToBlobUrl, renderPdfPageToDataUrl } from "@/lib/pdf-browser";
+import { pickTemplateForCategory, TEMPLATES, type TemplateKey } from "@/lib/promo-templates";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/essai/preview")({
   component: PreviewPage,
