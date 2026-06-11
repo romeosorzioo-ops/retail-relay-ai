@@ -1055,15 +1055,22 @@ export function CreationEditor(props: CreationEditorProps = {}) {
               </Button>
             </div>
           )}
+          {isTrial && onBack && (
+            <Button variant="ghost" size="sm" onClick={onBack} className="h-8 gap-1 text-xs">
+              <ArrowLeft className="h-3.5 w-3.5" /> Précédent
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={downloadPng} className="h-8 gap-1 text-xs">
             <Download className="h-3.5 w-3.5" /> Télécharger
           </Button>
-          <Button variant="ghost" size="sm"
-            onClick={() => { if (currentItemId) setScheduleOpen(true); else toast.info("Validez d'abord le visuel pour le programmer."); }}
-            className="h-8 gap-1 text-xs">
-            <CalendarPlus className="h-3.5 w-3.5" /> Planifier
-          </Button>
-          {currentItemId && (
+          {!isTrial && (
+            <Button variant="ghost" size="sm"
+              onClick={() => { if (currentItemId) setScheduleOpen(true); else toast.info("Validez d'abord le visuel pour le programmer."); }}
+              className="h-8 gap-1 text-xs">
+              <CalendarPlus className="h-3.5 w-3.5" /> Planifier
+            </Button>
+          )}
+          {!isTrial && currentItemId && (
             <Button size="sm" className="h-8 gap-1 text-xs"
               onClick={() => validateItemMut.mutate()} disabled={validateItemMut.isPending}>
               {validateItemMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -1073,11 +1080,17 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           <Button size="sm"
             onClick={() => save.mutate()} disabled={save.isPending}
             className="h-8 gap-1 bg-brand-gradient text-xs font-semibold text-black shadow-md hover:opacity-90">
-            {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            Publier
+            {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+            {isTrial ? "Valider ce visuel" : "Publier"}
           </Button>
+          {isTrial && onContinue && (
+            <Button size="sm" variant="brand" onClick={onContinue} className="h-8 gap-1 text-xs">
+              Continuer <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
+
 
       {(search.campaign || currentItemId) && (
         <div className="shrink-0 border-b border-zinc-800 bg-zinc-900 px-3 py-2">
