@@ -301,10 +301,12 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const tunnelPosts = useTunnelStore((s) => s.generatedPosts);
   const setTunnelPosts = useTunnelStore((s) => s.setGeneratedPosts);
 
-  const trialQueue: TunnelProduct[] = useMemo(
-    () => (isTrial ? tunnelDetected.filter((p) => (p as any).selected).slice(0, 3) : []),
-    [isTrial, tunnelDetected],
-  );
+  const trialQueue: TunnelProduct[] = useMemo(() => {
+    if (!isTrial) return [];
+    const flagged = tunnelDetected.filter((p) => (p as any).selected);
+    return (flagged.length ? flagged : tunnelDetected).slice(0, 3);
+  }, [isTrial, tunnelDetected]);
+
   const [trialCurrentId, setTrialCurrentId] = useState<string | null>(
     isTrial ? trialQueue[0]?.id ?? null : null,
   );
