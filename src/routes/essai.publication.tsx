@@ -217,7 +217,12 @@ function PublicationPage() {
 
           {generatedPosts.map((post) => {
             const visual =
-              post.finalVisualUrl ?? post.imageUrl ?? post.productImageUrl ?? null;
+              post.finalVisualUrl ||
+              post.imageUrl ||
+              post.productImageUrl ||
+              post.sourceImageUrl ||
+              post.cutoutImageUrl ||
+              null;
             const platforms = post.platforms ?? { facebook: true, instagram: true };
             const captionDraft = editingCaption[post.id];
             const isEditing = typeof captionDraft === "string";
