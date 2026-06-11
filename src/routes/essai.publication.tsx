@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { useTunnelStore, type TunnelPost } from "@/lib/tunnel-store";
 import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
@@ -20,21 +22,13 @@ import {
   CalendarClock,
   ArrowLeft,
   CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/essai/publication")({
   component: PublicationPage,
 });
-
-type PostMeta = {
-  date: string; // yyyy-mm-dd
-  time: string; // HH:mm
-  facebook: boolean;
-  instagram: boolean;
-  status: "draft" | "scheduled";
-  caption: string;
-  preview: "facebook" | "instagram";
-};
 
 function defaultDateTime(i: number) {
   const d = new Date();
@@ -59,55 +53,46 @@ function fmtDateLong(iso: string) {
 
 function PublicationPage() {
   const router = useRouter();
-  const { generatedPosts, setStep } = useTunnelStore();
+  const { generatedPosts, updatePost, setStep } = useTunnelStore();
   const [open, setOpen] = useState(false);
   const [redirectTo, setRedirectTo] =
     useState<"/calendar" | "/dashboard">("/calendar");
-  const [metas, setMetas] = useState<Record<string, PostMeta>>({});
+  const [editingCaption, setEditingCaption] = useState<Record<string, string | null>>(
+    {},
+  );
+  const [previewNetwork, setPreviewNetwork] = useState<
+    Record<string, "facebook" | "instagram">
+  >({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setStep("publication");
   }, [setStep]);
 
-  // Initialize default metadata for each post.
+  // Seed defaults onto persisted posts the first time we see them.
   useEffect(() => {
-    setMetas((prev) => {
-      const next = { ...prev };
-      generatedPosts.forEach((p, i) => {
-        if (!next[p.id]) {
-          const { date, time } = defaultDateTime(i);
-          next[p.id] = {
-            date,
-            time,
-            facebook: true,
-            instagram: true,
-            status: "draft",
-            caption:
-              p.caption ||
-              `✨ Profitez vite de notre offre sur ${p.product_name} !`,
-            preview: "facebook",
-          };
-        }
-      });
-      return next;
+    generatedPosts.forEach((p, i) => {
+      const patch: Partial<TunnelPost> = {};
+      if (!p.scheduledDate || !p.scheduledTime) {
+        const { date, time } = defaultDateTime(i);
+        if (!p.scheduledDate) patch.scheduledDate = date;
+        if (!p.scheduledTime) patch.scheduledTime = time;
+      }
+      if (!p.platforms) patch.platforms = { facebook: true, instagram: true };
+      if (!p.caption)
+        patch.caption = `✨ Profitez vite de notre offre sur ${p.product_name} !`;
+      if (Object.keys(patch).length) updatePost(p.id, patch);
     });
-  }, [generatedPosts]);
-
-  const updateMeta = (id: string, patch: Partial<PostMeta>) =>
-    setMetas((m) => ({ ...m, [id]: { ...m[id], ...patch } }));
-
-  const openGate = (target: "/calendar" | "/dashboard") => {
-    setRedirectTo(target);
-    setOpen(true);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedPosts.length]);
 
   const summary = useMemo(() => {
-    const fb = generatedPosts.filter((p) => metas[p.id]?.facebook).length;
-    const ig = generatedPosts.filter((p) => metas[p.id]?.instagram).length;
+    const fb = generatedPosts.filter((p) => p.platforms?.facebook).length;
+    const ig = generatedPosts.filter((p) => p.platforms?.instagram).length;
     const dates = generatedPosts
-      .map((p) => metas[p.id]?.date)
+      .map((p) => p.scheduledDate)
       .filter(Boolean)
-      .sort();
+      .sort() as string[];
     return {
       total: generatedPosts.length,
       fb,
@@ -115,13 +100,50 @@ function PublicationPage() {
       first: dates[0] ?? "",
       last: dates[dates.length - 1] ?? "",
     };
-  }, [generatedPosts, metas]);
+  }, [generatedPosts]);
+
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    generatedPosts.forEach((p) => {
+      const visual = p.finalVisualUrl ?? p.imageUrl ?? p.productImageUrl;
+      if (!p.caption?.trim()) next[p.id] = "Ajoutez une description.";
+      else if (!p.scheduledDate) next[p.id] = "Choisissez une date.";
+      else if (!p.scheduledTime) next[p.id] = "Choisissez une heure.";
+      else if (!p.platforms?.facebook && !p.platforms?.instagram)
+        next[p.id] = "Sélectionnez au moins un réseau.";
+      else if (!visual) next[p.id] = "Visuel manquant.";
+    });
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const openGate = (target: "/calendar" | "/dashboard") => {
+    if (!validate()) {
+      toast.error("Corrigez les erreurs avant de continuer.");
+      return;
+    }
+    setRedirectTo(target);
+    setOpen(true);
+  };
 
   const editPost = (post: TunnelPost) => {
     router.navigate({
       to: "/essai/creation",
       search: { item: post.id } as never,
     });
+  };
+
+  const startEdit = (p: TunnelPost) =>
+    setEditingCaption((s) => ({ ...s, [p.id]: p.caption ?? "" }));
+  const cancelEdit = (id: string) =>
+    setEditingCaption((s) => ({ ...s, [id]: null }));
+  const saveEdit = (p: TunnelPost) => {
+    const v = editingCaption[p.id];
+    if (typeof v === "string") {
+      updatePost(p.id, { caption: v });
+      toast.success("Description enregistrée");
+    }
+    setEditingCaption((s) => ({ ...s, [p.id]: null }));
   };
 
   return (
@@ -133,8 +155,8 @@ function PublicationPage() {
             Programmer et publier
           </h1>
           <p className="text-sm text-muted-foreground">
-            Vérifiez l'aperçu, ajustez la date et les réseaux puis programmez
-            votre campagne.
+            Vérifiez l'aperçu, ajustez la description, l'horaire et les réseaux
+            avant de programmer votre campagne.
           </p>
         </div>
 
@@ -186,10 +208,17 @@ function PublicationPage() {
           )}
 
           {generatedPosts.map((post) => {
-            const meta = metas[post.id];
-            if (!meta) return null;
             const visual =
               post.finalVisualUrl ?? post.imageUrl ?? post.productImageUrl ?? null;
+            const platforms = post.platforms ?? { facebook: true, instagram: true };
+            const captionDraft = editingCaption[post.id];
+            const isEditing = typeof captionDraft === "string";
+            const status: "draft" | "scheduled" =
+              post.scheduled_at ? "scheduled" : "draft";
+            const preview =
+              previewNetwork[post.id] ??
+              (platforms.facebook ? "facebook" : "instagram");
+            const err = errors[post.id];
 
             return (
               <div
@@ -216,31 +245,30 @@ function PublicationPage() {
                         <Badge
                           variant="outline"
                           className={
-                            meta.status === "scheduled"
+                            status === "scheduled"
                               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
                               : "bg-muted text-muted-foreground"
                           }
                         >
-                          {meta.status === "scheduled"
-                            ? "Programmé"
-                            : "Brouillon"}
+                          {status === "scheduled" ? "Programmé" : "Brouillon"}
                         </Badge>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5" />
-                          {fmtDateLong(meta.date)}
+                          {fmtDateLong(post.scheduledDate ?? "")}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" /> {meta.time}
+                          <Clock className="h-3.5 w-3.5" />{" "}
+                          {post.scheduledTime ?? "--:--"}
                         </span>
-                        {meta.facebook && (
+                        {platforms.facebook && (
                           <span className="flex items-center gap-1">
                             <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />{" "}
                             Facebook
                           </span>
                         )}
-                        {meta.instagram && (
+                        {platforms.instagram && (
                           <span className="flex items-center gap-1">
                             <Instagram className="h-3.5 w-3.5 text-[#E1306C]" />{" "}
                             Instagram
@@ -250,19 +278,74 @@ function PublicationPage() {
                     </div>
                   </div>
 
-                  <p className="line-clamp-3 whitespace-pre-wrap text-sm text-foreground/90">
-                    {meta.caption}
-                  </p>
+                  {/* Caption editor */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <Label className="text-xs font-semibold">
+                        Description
+                      </Label>
+                      {!isEditing ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEdit(post)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Modifier
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => cancelEdit(post.id)}
+                          >
+                            <X className="h-3.5 w-3.5" /> Annuler
+                          </Button>
+                          <Button
+                            variant="brand"
+                            size="sm"
+                            onClick={() => saveEdit(post)}
+                          >
+                            <Save className="h-3.5 w-3.5" /> Enregistrer
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {isEditing ? (
+                      <Textarea
+                        autoFocus
+                        rows={5}
+                        value={captionDraft as string}
+                        onChange={(e) =>
+                          setEditingCaption((s) => ({
+                            ...s,
+                            [post.id]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <p
+                        className="cursor-text whitespace-pre-wrap text-sm text-foreground/90"
+                        onClick={() => startEdit(post)}
+                      >
+                        {post.caption || (
+                          <span className="text-muted-foreground italic">
+                            Aucune description. Cliquez pour ajouter.
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
 
-                  {/* Controls */}
+                  {/* Date / time pickers */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Date</Label>
                       <Input
                         type="date"
-                        value={meta.date}
+                        value={post.scheduledDate ?? ""}
                         onChange={(e) =>
-                          updateMeta(post.id, { date: e.target.value })
+                          updatePost(post.id, { scheduledDate: e.target.value })
                         }
                       />
                     </div>
@@ -270,34 +353,45 @@ function PublicationPage() {
                       <Label className="text-xs">Heure</Label>
                       <Input
                         type="time"
-                        value={meta.time}
+                        value={post.scheduledTime ?? ""}
                         onChange={(e) =>
-                          updateMeta(post.id, { time: e.target.value })
+                          updatePost(post.id, { scheduledTime: e.target.value })
                         }
                       />
                     </div>
                   </div>
 
+                  {/* Networks */}
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
                     <label className="flex items-center gap-2 text-sm">
                       <Facebook className="h-4 w-4 text-[#1877F2]" /> Facebook
                       <Switch
-                        checked={meta.facebook}
+                        checked={platforms.facebook}
                         onCheckedChange={(v) =>
-                          updateMeta(post.id, { facebook: v })
+                          updatePost(post.id, {
+                            platforms: { ...platforms, facebook: v },
+                          })
                         }
                       />
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <Instagram className="h-4 w-4 text-[#E1306C]" /> Instagram
                       <Switch
-                        checked={meta.instagram}
+                        checked={platforms.instagram}
                         onCheckedChange={(v) =>
-                          updateMeta(post.id, { instagram: v })
+                          updatePost(post.id, {
+                            platforms: { ...platforms, instagram: v },
+                          })
                         }
                       />
                     </label>
                   </div>
+
+                  {err && (
+                    <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      <AlertCircle className="h-4 w-4" /> {err}
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -305,16 +399,7 @@ function PublicationPage() {
                       size="sm"
                       onClick={() => editPost(post)}
                     >
-                      <Pencil className="h-3.5 w-3.5" /> Modifier
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        updateMeta(post.id, { status: "scheduled" })
-                      }
-                    >
-                      <CalendarClock className="h-3.5 w-3.5" /> Marquer programmé
+                      <Pencil className="h-3.5 w-3.5" /> Modifier le visuel
                     </Button>
                   </div>
                 </div>
@@ -322,14 +407,17 @@ function PublicationPage() {
                 {/* Right: preview */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-1 self-end rounded-md border border-border bg-muted p-0.5 text-xs">
-                    {(meta.facebook || !meta.instagram) && (
+                    {platforms.facebook && (
                       <button
                         type="button"
                         onClick={() =>
-                          updateMeta(post.id, { preview: "facebook" })
+                          setPreviewNetwork((s) => ({
+                            ...s,
+                            [post.id]: "facebook",
+                          }))
                         }
                         className={`rounded px-2 py-1 ${
-                          meta.preview === "facebook"
+                          preview === "facebook"
                             ? "bg-background shadow"
                             : "text-muted-foreground"
                         }`}
@@ -337,14 +425,17 @@ function PublicationPage() {
                         Facebook
                       </button>
                     )}
-                    {meta.instagram && (
+                    {platforms.instagram && (
                       <button
                         type="button"
                         onClick={() =>
-                          updateMeta(post.id, { preview: "instagram" })
+                          setPreviewNetwork((s) => ({
+                            ...s,
+                            [post.id]: "instagram",
+                          }))
                         }
                         className={`rounded px-2 py-1 ${
-                          meta.preview === "instagram"
+                          preview === "instagram"
                             ? "bg-background shadow"
                             : "text-muted-foreground"
                         }`}
@@ -354,22 +445,24 @@ function PublicationPage() {
                     )}
                   </div>
                   <div className="rounded-lg bg-muted/20 p-2">
-                    {meta.preview === "instagram" && meta.instagram ? (
+                    {preview === "instagram" && platforms.instagram ? (
                       <InstagramMockup
                         storeName="Mon magasin"
-                        postText={meta.caption}
+                        postText={post.caption}
                         imageUrl={visual ?? undefined}
+                        format={post.format ?? undefined}
                         onTextChange={(t) =>
-                          updateMeta(post.id, { caption: t })
+                          updatePost(post.id, { caption: t })
                         }
                       />
                     ) : (
                       <FacebookMockup
                         storeName="Mon magasin"
-                        postText={meta.caption}
+                        postText={post.caption}
                         imageUrl={visual ?? undefined}
+                        format={post.format ?? undefined}
                         onTextChange={(t) =>
-                          updateMeta(post.id, { caption: t })
+                          updatePost(post.id, { caption: t })
                         }
                       />
                     )}
