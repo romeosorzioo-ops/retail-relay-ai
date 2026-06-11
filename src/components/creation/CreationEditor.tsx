@@ -441,11 +441,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     updateCampaignItemFn({ data: updates }).then(() =>
       qc.invalidateQueries({ queryKey: ["campaign-items"] }),
     ).catch(() => {});
-    navigate({
-      to: "/creation",
-      search: { campaign: search.campaign, tab: "editor", item: itemId } as never,
-      replace: true,
-    });
+    navigateSearch({ campaign: search.campaign, tab: "editor", item: itemId });
+
   }
 
   const validateItemMut = useMutation({
