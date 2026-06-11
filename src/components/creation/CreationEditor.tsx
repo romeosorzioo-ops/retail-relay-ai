@@ -970,11 +970,30 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       });
     },
     onSuccess: () => {
-      if (!isTrial) qc.invalidateQueries({ queryKey: ["created-visuals"] });
-      toast.success(isTrial ? "Visuel ajouté à votre essai" : "Visuel enregistré dans la bibliothèque");
+      if (!isTrial) {
+        qc.invalidateQueries({ queryKey: ["created-visuals"] });
+        toast.success("Visuel enregistré dans la bibliothèque");
+        return;
+      }
+      // Trial: advance to next pending promo, or move on to publication.
+      const validatedNames = new Set(
+        [...tunnelPosts.map((p) => p.product_name),
+         trialQueue.find((p) => p.id === trialCurrentId)?.product_name ?? ""]
+      );
+      const next = trialQueue.find(
+        (p) => p.id !== trialCurrentId && !validatedNames.has(p.product_name),
+      );
+      if (next) {
+        setTrialCurrentId(next.id);
+        toast.success("Visuel validé. Promotion suivante…");
+      } else {
+        toast.success("Toutes les promotions sont validées !");
+        onContinue?.();
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
 
   const stepperActive: CampaignStep = currentItem?.status === "scheduled"
