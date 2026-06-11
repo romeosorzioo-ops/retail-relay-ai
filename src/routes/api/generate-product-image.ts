@@ -1,18 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { classifyProductType } from "@/lib/brand-detection";
 
-const KNOWN_BRANDS = [
-  "coca-cola", "coca cola", "pepsi", "pringles", "nutella", "huggies", "pampers",
-  "danone", "nestle", "nestlé", "kinder", "ferrero", "oreo", "lay's", "lays",
-  "haribo", "lu", "président", "president", "lactel", "evian", "perrier",
-  "heineken", "kronenbourg", "1664", "ricard", "absolut", "jack daniel",
-  "kellogg", "milka", "lindt", "bonduelle", "knorr", "maggi", "barilla",
-  "panzani", "activia", "yoplait", "saint-michel",
-];
-
-export function isBrandedProduct(name: string): boolean {
-  const lower = name.toLowerCase();
-  return KNOWN_BRANDS.some((b) => lower.includes(b));
-}
 
 function buildPrompt(input: {
   productName: string;
