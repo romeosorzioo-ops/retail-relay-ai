@@ -106,7 +106,14 @@ function PublicationPage() {
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     generatedPosts.forEach((p) => {
-      const visual = p.finalVisualUrl ?? p.imageUrl ?? p.productImageUrl;
+      // Trust the preview: any visible image source counts as a valid visual.
+      const visual =
+        p.finalVisualUrl ||
+        p.imageUrl ||
+        p.productImageUrl ||
+        p.sourceImageUrl ||
+        p.cutoutImageUrl ||
+        null;
       if (!p.caption?.trim()) next[p.id] = "Ajoutez une description.";
       else if (!p.scheduledDate) next[p.id] = "Choisissez une date.";
       else if (!p.scheduledTime) next[p.id] = "Choisissez une heure.";
