@@ -3,19 +3,28 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useTunnelStore, type TunnelProduct } from "@/lib/tunnel-store";
 import {
   ArrowLeft,
   ArrowRight,
   Search,
-  CheckCheck,
-  Square,
   Tag,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/essai/selection")({
   component: SelectionPage,
 });
+
+const TRIAL_MAX = 3;
 
 const MOCK_DETECTED: TunnelProduct[] = [
   { id: "m1", product_name: "Côte de bœuf", promo_price: 14.9, old_price: 19.9, discount_percent: 25, category: "Boucherie" },
@@ -36,6 +45,7 @@ function SelectionPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [limitOpen, setLimitOpen] = useState(false);
 
   useEffect(() => {
     setStep("selection");
@@ -44,16 +54,16 @@ function SelectionPage() {
     }
   }, [setStep, setDetectedProducts, detectedProducts.length]);
 
-  // Default: pre-select products already linked to generated posts, else top 3
   useEffect(() => {
     if (selected.size > 0) return;
     const fromPosts = generatedPosts
       .map((p) => detectedProducts.find((d) => d.product_name === p.product_name)?.id)
-      .filter((x): x is string => !!x);
+      .filter((x): x is string => !!x)
+      .slice(0, TRIAL_MAX);
     if (fromPosts.length > 0) {
       setSelected(new Set(fromPosts));
     } else if (detectedProducts.length > 0) {
-      setSelected(new Set(detectedProducts.slice(0, 3).map((d) => d.id)));
+      setSelected(new Set(detectedProducts.slice(0, TRIAL_MAX).map((d) => d.id)));
     }
   }, [detectedProducts, generatedPosts, selected.size]);
 
@@ -75,25 +85,59 @@ function SelectionPage() {
   const toggle = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        return next;
+      }
+      if (next.size >= TRIAL_MAX) {
+        setLimitOpen(true);
+        return prev;
+      }
+      next.add(id);
       return next;
     });
 
-  const selectAll = () =>
-    setSelected(new Set(filtered.map((p) => p.id)));
+  const replaceOldest = () => {
+    setSelected((prev) => {
+      const arr = Array.from(prev);
+      arr.shift();
+      return new Set(arr);
+    });
+    setLimitOpen(false);
+  };
 
-  const clearAll = () => setSelected(new Set());
+  const count = selected.size;
+  const reachedMax = count >= TRIAL_MAX;
 
   return (
     <div className="relative pb-28">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="font-display text-3xl font-bold">
-            Sélectionnez vos promotions
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Choisissez les promotions à transformer en publications.
-          </p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-3xl font-bold">
+              Sélectionnez vos promotions
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {detectedProducts.length} promotion
+              {detectedProducts.length > 1 ? "s" : ""} détectée
+              {detectedProducts.length > 1 ? "s" : ""} dans votre catalogue.
+            </p>
+          </div>
+          <div
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+              reachedMax
+                ? "border-primary bg-brand-gradient text-white"
+                : "border-border bg-card text-foreground"
+            }`}
+          >
+            {count}/{TRIAL_MAX} promotions sélectionnées
+          </div>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-primary/30 bg-brand-gradient-soft px-3 py-2 text-xs text-foreground/80 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Version d'essai : vous pouvez créer jusqu'à 3 contenus gratuitement.
+          Toutes les promotions de votre catalogue restent visibles.
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -117,25 +161,28 @@ function SelectionPage() {
               </option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={selectAll}>
-            <CheckCheck className="h-4 w-4" /> Tout sélectionner
-          </Button>
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            <Square className="h-4 w-4" /> Tout désélectionner
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => {
             const checked = selected.has(p.id);
+            const disabled = !checked && reachedMax;
             return (
               <label
                 key={p.id}
-                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${
+                className={`flex items-start gap-3 rounded-xl border p-4 transition ${
                   checked
-                    ? "border-primary bg-brand-gradient-soft"
-                    : "border-border bg-card hover:bg-accent/30"
+                    ? "border-primary bg-brand-gradient-soft cursor-pointer"
+                    : disabled
+                      ? "border-border bg-card opacity-60 cursor-pointer"
+                      : "border-border bg-card hover:bg-accent/30 cursor-pointer"
                 }`}
+                onClick={(e) => {
+                  if (disabled) {
+                    e.preventDefault();
+                    setLimitOpen(true);
+                  }
+                }}
               >
                 <Checkbox
                   checked={checked}
@@ -198,12 +245,11 @@ function SelectionPage() {
             <ArrowLeft className="h-4 w-4" /> Précédent
           </Button>
           <div className="text-xs text-muted-foreground">
-            {selected.size} promotion{selected.size > 1 ? "s" : ""} sélectionnée
-            {selected.size > 1 ? "s" : ""}
+            {count}/{TRIAL_MAX} promotions sélectionnées
           </div>
           <Button
             variant="brand"
-            disabled={selected.size === 0}
+            disabled={count === 0}
             onClick={() => {
               setStep("creation");
               router.navigate({ to: "/essai/creation" });
@@ -213,6 +259,34 @@ function SelectionPage() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={limitOpen} onOpenChange={setLimitOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Limite de l'essai gratuit</DialogTitle>
+            <DialogDescription>
+              Version d'essai : vous pouvez créer jusqu'à 3 contenus
+              gratuitement. Pour sélectionner cette promotion, remplacez une
+              sélection existante ou continuez avec vos 3 promotions actuelles.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={replaceOldest}>
+              Remplacer une sélection
+            </Button>
+            <Button
+              variant="brand"
+              onClick={() => {
+                setLimitOpen(false);
+                setStep("creation");
+                router.navigate({ to: "/essai/creation" });
+              }}
+            >
+              Continuer avec mes 3 promotions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
