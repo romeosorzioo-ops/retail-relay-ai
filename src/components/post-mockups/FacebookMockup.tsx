@@ -88,9 +88,9 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, temp
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1877F2] text-[10px] text-white">
             👍
           </span>
-          42
+          0
         </div>
-        <div>3 commentaires · 1 partage</div>
+        <div>0 commentaire · 0 partage</div>
       </div>
 
       <div className="mx-4 border-t border-[#3A3B3C]" />
