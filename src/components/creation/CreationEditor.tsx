@@ -562,20 +562,56 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     setConfig((c) => (c.blocks.length === 0 ? { ...c, blocks: defaultBlocks(null) } : c));
   }, []);
 
-  // ---------- Trial promotion bridge: auto-fill canvas when current promo changes
+  // ---------- Trial promotion bridge: per-promo independent creative state.
+  // When the active promo changes, save the previous promo's config and
+  // load (or initialize) the next one. Never reuse another promo's render.
   const trialAppliedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isTrial) return;
     if (!trialCurrentId) return;
     if (trialAppliedRef.current === trialCurrentId) return;
+
+    // 1) Save outgoing promo state.
+    const prev = trialAppliedRef.current;
+    if (prev) {
+      setCreativeState(prev, {
+        bgImage: config.bgImage ?? null,
+        bgColor: config.bgColor ?? null,
+        visualMode: config.visualMode ?? "fullbleed",
+        blocks: config.blocks,
+        elements: config.elements ?? [],
+      });
+    }
+
     const p = trialQueue.find((x) => x.id === trialCurrentId);
     if (!p) return;
     trialAppliedRef.current = trialCurrentId;
+
+    // 2) Load saved state for this promo if present.
+    const saved = creativeStateByPromoId[trialCurrentId];
+    if (saved && saved.blocks) {
+      setConfig((c) => ({
+        ...c,
+        bgImage: saved.bgImage ?? null,
+        bgColor: saved.bgColor ?? c.bgColor,
+        visualMode: saved.visualMode ?? "fullbleed",
+        blocks: (saved.blocks as Block[]) ?? c.blocks,
+        elements: (saved.elements as GraphicEl[]) ?? c.elements ?? [],
+      }));
+      if (saved.bgImage) {
+        setSourceType("catalog");
+        setSourceImageUrl(saved.bgImage);
+      }
+      return;
+    }
+
+    // 3) Fresh init from the promo's own data.
     const img = p.imageUrl ?? p.thumbnailUrl ?? null;
     const tKey: TemplateKey = p.templateCategory ?? pickTemplateForCategory(p.category);
     const tpl = TEMPLATES[tKey];
+    const initialColor = saved?.catalogColor ?? "#1f2937";
     setConfig((c) => {
-      const baseBlocks = c.blocks.length ? c.blocks : defaultBlocks(brand as any);
+      const baseBlocks = defaultBlocks(brand as any);
       const blocks = baseBlocks.map((b) => {
         if ((b.role === "title" || b.role === "custom") && p.product_name)
           return { ...b, text: p.product_name };
@@ -589,13 +625,45 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return { ...b, text: `-${p.discount_percent}%`, bgColor: tpl.accent };
         return b;
       });
-      return { ...c, blocks, bgImage: img ?? c.bgImage, bgColor: tpl.background };
+      return {
+        ...c,
+        blocks,
+        bgImage: img,
+        bgColor: initialColor,
+        // Raw catalog image is full-bleed (it already has its own background).
+        // After cutout, the pipeline switches to "cutout" mode.
+        visualMode: img ? "fullbleed" : "cutout",
+      };
     });
     if (img) {
       setSourceType("catalog");
       setSourceImageUrl(img);
+      // Detect dominant background color from the catalog image (async).
+      void extractDominantColor(img).then((color) => {
+        if (!color) return;
+        setCreativeState(p.id, { catalogColor: color });
+        // Only apply if user hasn't changed promo in the meantime.
+        if (trialAppliedRef.current !== p.id) return;
+        setConfig((c) => ({ ...c, bgColor: color }));
+      });
     }
-  }, [isTrial, trialCurrentId, trialQueue, brand]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTrial, trialCurrentId, trialQueue]);
+
+  // Persist current config back to the active promo's creative state.
+  useEffect(() => {
+    if (!isTrial || !trialCurrentId) return;
+    if (trialAppliedRef.current !== trialCurrentId) return;
+    setCreativeState(trialCurrentId, {
+      bgImage: config.bgImage ?? null,
+      bgColor: config.bgColor ?? null,
+      visualMode: config.visualMode ?? "fullbleed",
+      blocks: config.blocks,
+      elements: config.elements ?? [],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.bgImage, config.bgColor, config.visualMode, config.blocks, config.elements, isTrial, trialCurrentId]);
+
 
 
   // ---------- AI visual pipeline (generation + cutout) ----------
