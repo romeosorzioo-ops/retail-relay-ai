@@ -60,9 +60,19 @@ function AnalysePage() {
           data: { file_name: pdfName || "catalogue.pdf", pdf_base64: pdfBase64 },
         });
         if (detected.length > 0) {
-          products = detected.slice(0, 6).map((p, i) => ({
+          products = detected.map((p, i) => ({
             id: String(i + 1),
-            ...p,
+            product_name: p.product_name,
+            productLabel: p.product_label ?? null,
+            promo_price: p.promo_price ?? null,
+            old_price: p.old_price ?? null,
+            discount_percent: p.discount_percent ?? null,
+            category: p.category ?? null,
+            pageNumber: p.page_number ?? null,
+            confidence: p.confidence ?? null,
+            missingFields: p.missing_fields ?? null,
+            start_date: p.start_date ?? null,
+            end_date: p.end_date ?? null,
           }));
           const top3 = products.slice(0, 3);
           const captions = await generate({
