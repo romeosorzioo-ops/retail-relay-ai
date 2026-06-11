@@ -66,7 +66,11 @@ export const Route = createFileRoute("/api/generate-product-image")({
             );
           }
 
-          const prompt = buildPrompt(body);
+          const prompt = buildPrompt({
+            productName: body.productName,
+            category: body.category,
+            rayon: body.rayon,
+          });
 
           const upstream = await fetch(
             "https://api.openai.com/v1/images/generations",
