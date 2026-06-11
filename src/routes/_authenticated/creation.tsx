@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import {
-  Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus, Save,
-  Sparkles, Tag as TagIcon, Trash2, Type, Upload, Image as ImageIcon,
+  Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus,
+  Sparkles, Trash2, Type, Upload, Image as ImageIcon,
   Shapes, Copy, RotateCw, Camera, Wand2, LayoutTemplate, Palette,
-  Send, ChevronLeft, ChevronRight,
+  Send, ChevronRight,
 } from "lucide-react";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import { Card, CardContent } from "@/components/ui/card";
