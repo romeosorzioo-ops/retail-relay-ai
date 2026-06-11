@@ -80,6 +80,21 @@ export type TunnelStep =
   | "creation"
   | "publication";
 
+export type CreativeState = {
+  promoId: string;
+  bgImage?: string | null;
+  bgColor?: string | null;
+  visualMode?: "cutout" | "fullbleed";
+  cutoutImageUrl?: string | null;
+  generatedImageUrl?: string | null;
+  catalogColor?: string | null;
+  templateCategory?: TemplateKey | null;
+  blocks?: unknown;
+  elements?: unknown;
+  isValidated?: boolean;
+  updatedAt?: number;
+};
+
 type TunnelState = {
   // pdfFile is intentionally NOT persisted (File can't be serialized)
   pdfFile: File | null;
@@ -88,6 +103,8 @@ type TunnelState = {
   detectedProducts: TunnelProduct[];
   generatedPosts: TunnelPost[];
   currentStep: TunnelStep;
+  creativeStateByPromoId: Record<string, CreativeState>;
+  setCreativeState: (promoId: string, patch: Partial<CreativeState>) => void;
   setPdf: (file: File | null, base64?: string) => void;
   setDetectedProducts: (p: TunnelProduct[]) => void;
   setGeneratedPosts: (p: TunnelPost[]) => void;
