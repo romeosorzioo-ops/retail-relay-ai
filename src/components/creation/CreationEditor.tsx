@@ -1,4 +1,3 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,7 +6,7 @@ import {
   Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus,
   Sparkles, Trash2, Type, Upload, Image as ImageIcon,
   Shapes, Copy, RotateCw, Camera, Wand2, LayoutTemplate, Palette,
-  Send, ChevronRight,
+  Send, ChevronRight, ArrowLeft, ArrowRight, CheckCircle,
 } from "lucide-react";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,20 +38,37 @@ import { ScheduleItemModal } from "@/components/schedule-item-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
+import { useTunnelStore, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
 
-export const Route = createFileRoute("/_authenticated/creation")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    cp: typeof s.cp === "string" ? s.cp : undefined,
-    mode:
-      s.mode === "catalog_visual" || s.mode === "field_photo"
-        ? (s.mode as "catalog_visual" | "field_photo")
-        : undefined,
-    campaign: typeof s.campaign === "string" ? s.campaign : undefined,
-    tab: s.tab === "queue" || s.tab === "editor" ? (s.tab as "queue" | "editor") : undefined,
-    item: typeof s.item === "string" ? s.item : undefined,
-  }),
-  component: CreationPage,
-});
+export type CreationEditorMode = "app" | "trial";
+
+export type CreationEditorSearch = {
+  cp?: string;
+  mode?: "catalog_visual" | "field_photo";
+  campaign?: string;
+  tab?: "queue" | "editor";
+  item?: string;
+};
+
+export type CreationEditorProps = {
+  mode?: CreationEditorMode;
+  search?: CreationEditorSearch;
+  onSearchChange?: (next: CreationEditorSearch) => void;
+  onBack?: () => void;
+  onContinue?: () => void;
+  onTrialSignupRequired?: () => void;
+};
+
+const TRIAL_BRAND_DEFAULT = {
+  font_primary: "Montserrat",
+  font_secondary: "Inter",
+  font_price: "Bebas Neue",
+  primary_color: "#E11D48",
+  secondary_color: "#FACC15",
+  slogan: "Le bon plan du moment",
+  logo_url: null as string | null,
+};
+
 
 import { POST_FORMATS, POST_FORMAT_LIST, DEFAULT_POST_FORMAT, type PostFormatKey } from "@/lib/post-formats";
 type FormatKey = PostFormatKey;
