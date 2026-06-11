@@ -538,7 +538,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     setPromotionCreationModeFn({
       data: { promotion_id: catalogPromo.id, creation_mode: mode },
     }).catch(() => {});
-    navigate({ to: "/creation", search: { cp: catalogPromo.id, mode } as never, replace: true });
+    navigateSearch({ cp: catalogPromo.id, mode });
   }
 
   // Apply catalog promo when loaded
