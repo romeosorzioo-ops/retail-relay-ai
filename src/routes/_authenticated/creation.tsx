@@ -868,785 +868,714 @@ function CreationPage() {
     : currentItem?.status === "validated" ? "validate"
     : activeTab === "queue" ? "create" : "create";
 
+  const NAV_ITEMS = [
+    { key: "templates" as const, icon: LayoutTemplate, label: "Modèles" },
+    { key: "text" as const,      icon: Type,           label: "Texte" },
+    { key: "elements" as const,  icon: Shapes,         label: "Éléments" },
+    { key: "import" as const,    icon: Upload,         label: "Importer" },
+    { key: "brand" as const,     icon: Palette,        label: "Marque" },
+    { key: "ai" as const,        icon: Sparkles,       label: "Outils IA" },
+  ];
+
+  const brandColors = [
+    brand?.primary_color,
+    brand?.secondary_color,
+    (brand as { accent_color?: string } | null | undefined)?.accent_color,
+    (brand as { tertiary_color?: string } | null | undefined)?.tertiary_color,
+  ].filter(Boolean) as string[];
+
+  const showRightPanel = !!selected || !!selectedElement;
+
   return (
-    <div className="mx-auto max-w-7xl space-y-4 p-6">
-      {(search.campaign || currentItemId) && <CampaignStepper active={stepperActive} />}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Création</h1>
-          <p className="text-sm text-muted-foreground">Composez un visuel social-media en quelques clics.</p>
+    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-zinc-950 text-foreground">
+      {/* ============== TOP BAR ============== */}
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-900 px-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="rounded-md bg-brand-gradient px-2 py-1 text-xs font-bold text-black">K</span>
+          <Input
+            value={visualName}
+            onChange={(e) => setVisualName(e.target.value)}
+            className="h-8 max-w-[260px] border-transparent bg-transparent text-sm font-medium hover:border-zinc-700 focus-visible:border-zinc-600"
+          />
         </div>
-        <div className="flex gap-2 flex-wrap">
+
+        <div className="flex items-center gap-2">
+          <Select
+            value={format}
+            onValueChange={(v) => {
+              const next = v as FormatKey;
+              if (next === format) return;
+              const hasContent = (config.blocks?.length ?? 0) > 0 || !!config.bgImage || !!sourceImageUrl;
+              setFormat(next);
+              if (hasContent) {
+                toast.message("Le changement de format peut nécessiter un ajustement.", {
+                  description: "Vos éléments sont conservés. Repositionnez-les si besoin.",
+                });
+              }
+            }}
+          >
+            <SelectTrigger className="h-8 w-[180px] border-zinc-700 bg-zinc-800 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {POST_FORMAT_LIST.map((v) => (
+                <SelectItem key={v.key} value={v.key}>
+                  {v.short} — {v.w}×{v.h}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {search.campaign && (
-            <div className="inline-flex rounded-md border bg-background p-0.5">
-              <Button size="sm" variant={activeTab === "editor" ? "default" : "ghost"} className="h-8 text-xs gap-1"
+            <div className="hidden md:inline-flex rounded-md border border-zinc-700 bg-zinc-800 p-0.5">
+              <Button size="sm" variant={activeTab === "editor" ? "default" : "ghost"} className="h-7 text-xs gap-1"
                 onClick={() => setActiveTab("editor")}>
                 <Layout className="h-3.5 w-3.5" /> Éditeur
               </Button>
-              <Button size="sm" variant={activeTab === "queue" ? "default" : "ghost"} className="h-8 text-xs gap-1"
+              <Button size="sm" variant={activeTab === "queue" ? "default" : "ghost"} className="h-7 text-xs gap-1"
                 onClick={() => setActiveTab("queue")}>
-                <ListChecks className="h-3.5 w-3.5" /> File d'attente
+                <ListChecks className="h-3.5 w-3.5" /> File
                 {queueData?.items?.length ? (
                   <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">{queueData.items.length}</Badge>
                 ) : null}
               </Button>
             </div>
           )}
-          <Button variant="outline" onClick={downloadPng}><Download className="h-4 w-4" /> PNG</Button>
+          <Button variant="ghost" size="sm" onClick={downloadPng} className="h-8 gap-1 text-xs">
+            <Download className="h-3.5 w-3.5" /> Télécharger
+          </Button>
+          <Button variant="ghost" size="sm"
+            onClick={() => { if (currentItemId) setScheduleOpen(true); else toast.info("Validez d'abord le visuel pour le programmer."); }}
+            className="h-8 gap-1 text-xs">
+            <CalendarPlus className="h-3.5 w-3.5" /> Planifier
+          </Button>
           {currentItemId && (
-            <Button variant="brand"
+            <Button size="sm" className="h-8 gap-1 text-xs"
               onClick={() => validateItemMut.mutate()} disabled={validateItemMut.isPending}>
-              {validateItemMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Valider le visuel
+              {validateItemMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              Valider
             </Button>
           )}
-          <Button variant="brand" onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Enregistrer
+          <Button size="sm"
+            onClick={() => save.mutate()} disabled={save.isPending}
+            className="h-8 gap-1 bg-brand-gradient text-xs font-semibold text-black shadow-md hover:opacity-90">
+            {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Publier
           </Button>
         </div>
       </div>
 
-      {activeTab === "queue" && (
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <h2 className="text-base font-semibold">File d'attente ({queueData?.items?.length ?? 0})</h2>
-            {(!queueData?.items || queueData.items.length === 0) && (
-              <p className="text-sm text-muted-foreground italic">Aucune promo en file. Importez un catalogue et générez une campagne.</p>
-            )}
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {(queueData?.items ?? []).map((it: any) => (
-                <div key={it.id} className="rounded-lg border p-3 space-y-2">
-                  <div className="flex gap-2">
-                    <div className="h-16 w-16 flex-shrink-0 rounded border overflow-hidden bg-muted">
-                      {(it.thumbnail_url ?? it.source_image_url) ? (
-                        <img src={it.thumbnail_url ?? it.source_image_url} alt={it.product_name ?? ""} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                          <ImageIcon className="h-5 w-5" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{it.product_name}</p>
-                      <div className="flex items-baseline gap-1 flex-wrap">
-                        {it.promo_price != null && (
-                          <span className="text-sm font-bold text-primary">{String(it.promo_price).replace(".", ",")} €</span>
-                        )}
-                        {it.old_price != null && (
-                          <span className="text-[10px] line-through text-muted-foreground">{String(it.old_price).replace(".", ",")} €</span>
-                        )}
-                        {it.discount_percent != null && (
-                          <Badge className="bg-red-100 text-red-700 text-[10px]">-{it.discount_percent}%</Badge>
-                        )}
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {statusBadge(it.status)}
-                        {it.category && <Badge variant="outline" className="text-[10px]">{it.category}</Badge>}
-                      </div>
-                      {(it.start_date || it.end_date) && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {it.start_date ?? "—"} → {it.end_date ?? "—"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <Button size="sm" variant={it.creation_mode === "catalog_visual" ? "default" : "outline"}
-                      className="h-8 text-[11px] gap-1"
-                      onClick={() => openQueueItem(it.id, "catalog_visual")}
-                      disabled={!it.source_image_url}>
-                      <Layout className="h-3 w-3" /> Visuel catalogue
-                    </Button>
-                    <Button size="sm" variant={it.creation_mode === "field_photo" ? "default" : "outline"}
-                      className="h-8 text-[11px] gap-1"
-                      onClick={() => openQueueItem(it.id, "field_photo")}>
-                      <Camera className="h-3 w-3" /> Photo terrain
-                    </Button>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground mb-0.5 block">Format recommandé</Label>
-                    <Select
-                      value={(it.recommended_format && it.recommended_format in FORMATS) ? it.recommended_format : DEFAULT_POST_FORMAT}
-                      onValueChange={(v) => {
-                        updateCampaignItemFn({ data: { id: it.id, recommended_format: v } })
-                          .then(() => qc.invalidateQueries({ queryKey: ["campaign-items"] }))
-                          .catch((e: Error) => toast.error(e.message));
-                      }}
-                      disabled={it.status === "scheduled"}
-                    >
-                      <SelectTrigger className="h-8 text-[11px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {POST_FORMAT_LIST.map((f) => (
-                          <SelectItem key={f.key} value={f.key}>{f.short} — {f.w}×{f.h}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="flex-1 h-8 text-xs"
-                      onClick={() => openQueueItem(it.id)}>
-                      Ouvrir
-                    </Button>
-                    {it.status === "validated" && (
-                      <Button size="sm" className="h-8 text-xs gap-1"
-                        onClick={() => { setCurrentItemId(it.id); setScheduleOpen(true); }}>
-                        <CalendarPlus className="h-3 w-3" /> Programmer
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {activeTab === "editor" && (
-      <>
-
-
-      {catalogPromo && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-primary/5 p-3">
-          <div className="flex-1 min-w-[200px]">
-            <p className="text-xs text-muted-foreground">Promo catalogue</p>
-            <p className="text-sm font-semibold">
-              {catalogPromo.product_name}
-              {catalogPromo.promo_price != null && (
-                <span className="ml-2 text-primary">
-                  {String(catalogPromo.promo_price).replace(".", ",")} €
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="inline-flex rounded-md border bg-background p-0.5">
-            <Button
-              size="sm"
-              variant={catalogMode === "catalog_visual" ? "default" : "ghost"}
-              className="h-7 text-xs gap-1"
-              onClick={() => switchCatalogMode("catalog_visual")}
-              disabled={!catalogPromo.product_image_url}
-              title={catalogPromo.product_image_url ? "Visuel catalogue" : "Aucun visuel extrait"}
-            >
-              <ImageIcon className="h-3 w-3" /> Visuel catalogue
-            </Button>
-            <Button
-              size="sm"
-              variant={catalogMode === "field_photo" ? "default" : "ghost"}
-              className="h-7 text-xs gap-1"
-              onClick={() => switchCatalogMode("field_photo")}
-            >
-              <Camera className="h-3 w-3" /> Photo terrain
-            </Button>
-          </div>
+      {(search.campaign || currentItemId) && (
+        <div className="shrink-0 border-b border-zinc-800 bg-zinc-900 px-3 py-2">
+          <CampaignStepper active={stepperActive} />
         </div>
       )}
 
-
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px]">
-        {/* LEFT — canvas / format / background / add blocks */}
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
-              <Label className="flex items-center gap-1 text-xs font-semibold">
-                <Camera className="h-3.5 w-3.5" /> Création terrain
-              </Label>
-              <p className="text-[11px] text-muted-foreground leading-tight">
-                Transformez une photo prise en magasin en visuel promo.
-              </p>
-              <label
-                className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed bg-background px-3 py-3 text-center text-[11px] hover:bg-accent"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const f = e.dataTransfer.files?.[0];
-                  if (f) uploadFieldPhoto(f);
-                }}
-              >
-                {uploadingField
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Camera className="h-4 w-4 text-primary" />}
-                <span>{uploadingField ? "Envoi…" : "Glissez la photo ici ou cliquez"}</span>
-                <input type="file" accept="image/*" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFieldPhoto(f); }} />
-              </label>
-              {sourceType === "field_photo" && sourceImageUrl && (
-                <div className="flex items-center gap-2">
-                  <img src={sourceImageUrl} alt="" className="h-10 w-10 rounded object-cover" />
-                  <Button size="sm" variant="outline" className="text-xs"
-                    onClick={() => { setCropSrc(sourceImageUrl); setCropOpen(true); }}>
-                    Recadrer
-                  </Button>
-                </div>
+      {activeTab === "queue" ? (
+        <div className="flex-1 overflow-auto p-6">
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h2 className="text-base font-semibold">File d'attente ({queueData?.items?.length ?? 0})</h2>
+              {(!queueData?.items || queueData.items.length === 0) && (
+                <p className="text-sm text-muted-foreground italic">Aucune promo en file. Importez un catalogue et générez une campagne.</p>
               )}
-              <div className="pt-1">
-                <Label className="mb-1 block text-[11px] font-semibold flex items-center gap-1">
-                  <Wand2 className="h-3 w-3" /> Presets rapides
-                </Label>
-                <div className="grid grid-cols-1 gap-1">
-                  {FIELD_PRESETS.map((p) => (
-                    <button
-                      key={p.key}
-                      type="button"
-                      onClick={() => applyFieldPreset(p.key)}
-                      className="flex items-center gap-1 rounded border bg-background px-2 py-1 text-left text-[11px] hover:border-primary hover:bg-accent"
-                    >
-                      <span>{p.emoji}</span>
-                      <span className="truncate">{p.label}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {(queueData?.items ?? []).map((it: any) => (
+                  <div key={it.id} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <div className="h-16 w-16 flex-shrink-0 rounded border overflow-hidden bg-muted">
+                        {(it.thumbnail_url ?? it.source_image_url) ? (
+                          <img src={it.thumbnail_url ?? it.source_image_url} alt={it.product_name ?? ""} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <ImageIcon className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{it.product_name}</p>
+                        <div className="flex items-baseline gap-1 flex-wrap">
+                          {it.promo_price != null && <span className="text-sm font-bold text-primary">{String(it.promo_price).replace(".", ",")} €</span>}
+                          {it.old_price != null && <span className="text-[10px] line-through text-muted-foreground">{String(it.old_price).replace(".", ",")} €</span>}
+                          {it.discount_percent != null && <Badge className="bg-red-100 text-red-700 text-[10px]">-{it.discount_percent}%</Badge>}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {statusBadge(it.status)}
+                          {it.category && <Badge variant="outline" className="text-[10px]">{it.category}</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <Button size="sm" variant={it.creation_mode === "catalog_visual" ? "default" : "outline"}
+                        className="h-8 text-[11px] gap-1" onClick={() => openQueueItem(it.id, "catalog_visual")}
+                        disabled={!it.source_image_url}>
+                        <Layout className="h-3 w-3" /> Visuel
+                      </Button>
+                      <Button size="sm" variant={it.creation_mode === "field_photo" ? "default" : "outline"}
+                        className="h-8 text-[11px] gap-1" onClick={() => openQueueItem(it.id, "field_photo")}>
+                        <Camera className="h-3 w-3" /> Terrain
+                      </Button>
+                    </div>
+                    <Button size="sm" variant="ghost" className="w-full h-8 text-xs"
+                      onClick={() => openQueueItem(it.id)}>Ouvrir</Button>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div>
-              <Label className="mb-1 block text-xs">Format</Label>
-              <Select
-                value={format}
-                onValueChange={(v) => {
-                  const next = v as FormatKey;
-                  if (next === format) return;
-                  const hasContent = (config.blocks?.length ?? 0) > 0 || !!config.bgImage || !!sourceImageUrl;
-                  setFormat(next);
-                  if (hasContent) {
-                    toast.message("Le changement de format peut nécessiter un ajustement du visuel.", {
-                      description: "Vos éléments sont conservés. Repositionnez-les si besoin, ou recadrez l'image.",
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {POST_FORMAT_LIST.map((v) => (
-                    <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {sourceImageUrl && (
-                <Button
-                  type="button" variant="ghost" size="sm"
-                  className="mt-1 h-7 text-[11px] gap-1"
-                  onClick={() => { setCropSrc(sourceImageUrl); setCropOpen(true); }}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="flex flex-1 overflow-hidden">
+          {/* ============== LEFT NAV (icons + labels) ============== */}
+          <nav className="flex w-[88px] shrink-0 flex-col items-stretch gap-1 border-r border-zinc-800 bg-zinc-900 p-2">
+            {NAV_ITEMS.map((it) => {
+              const Icon = it.icon;
+              const active = leftNav === it.key;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  onClick={() => setLeftNav(it.key)}
+                  className={cn(
+                    "group flex flex-col items-center justify-center gap-1 rounded-lg px-1 py-3 text-[10px] font-medium transition-all",
+                    active
+                      ? "bg-brand-gradient text-black shadow-md"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
+                  )}
                 >
-                  Recadrer l'image pour ce format
-                </Button>
-              )}
-            </div>
+                  <Icon className="h-5 w-5" />
+                  <span className="truncate">{it.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-            <div>
-              <Label className="mb-1 block text-xs">Couleur de fond</Label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={config.bgColor ?? "#1f2937"}
-                  onChange={(e) => setConfig((c) => ({ ...c, bgColor: e.target.value }))}
-                  className="h-9 w-12 cursor-pointer rounded border" />
-                <Input value={config.bgColor ?? ""}
-                  onChange={(e) => setConfig((c) => ({ ...c, bgColor: e.target.value }))} />
-              </div>
-            </div>
-
-            <UploadField label="Image de fond" uploading={uploadingBg} currentUrl={config.bgImage ?? null}
-              onClear={() => setConfig((c) => ({ ...c, bgImage: null }))} onFile={(f) => uploadImage(f, "bg")} />
-            <UploadField label="Logo" uploading={uploadingLogo} currentUrl={config.logoUrl ?? null}
-              onClear={() => setConfig((c) => ({ ...c, logoUrl: null }))} onFile={(f) => uploadImage(f, "logo")} />
-
-            <div>
-              <Label className="mb-1 block text-xs">Ajouter un bloc</Label>
-              <div className="grid grid-cols-2 gap-1">
-                {(Object.keys(ROLE_LABEL) as BlockRole[]).map((r) => (
-                  <Button key={r} variant="outline" size="sm" onClick={() => addBlock(r)}>
-                    <Plus className="h-3 w-3" /> {ROLE_LABEL[r]}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-1 block text-xs">Blocs</Label>
-              <ul className="space-y-1">
-                {config.blocks.map((b) => (
-                  <li key={b.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(b.id)}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded border px-2 py-1 text-left text-xs",
-                        selectedId === b.id ? "border-primary bg-accent" : "hover:bg-accent",
-                      )}
-                    >
-                      <span className="truncate">
-                        <Type className="mr-1 inline h-3 w-3" />
-                        {ROLE_LABEL[b.role]} — {b.text || "(vide)"}
-                      </span>
-                      <Trash2
-                        className="h-3 w-3 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); deleteBlock(b.id); }}
-                      />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* CENTER — preview */}
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-2 p-4">
-            <div className="flex w-full items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowCropDebug((v) => !v)}
-                className="rounded border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
-                title="Afficher les coordonnées du dernier recadrage"
-              >
-                {showCropDebug ? "Masquer debug crop" : "Debug crop"}
-              </button>
-            </div>
-            <div
-              ref={canvasWrapRef}
-              onPointerMove={onPointerMoveCanvas}
-              onPointerUp={onPointerUpCanvas}
-              onClick={() => { setSelectedId(null); setSelectedElementId(null); }}
-              className="relative overflow-hidden rounded-md border shadow-sm"
-              style={{
-                width: previewWidth,
-                height: previewHeight,
-                background: config.bgColor ?? "#1f2937",
-              }}
-            >
-              {config.bgImage && (
-                <img
-                  src={config.bgImage}
-                  alt=""
-                  draggable={false}
-                  crossOrigin="anonymous"
-                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
-                  style={{ objectFit: "fill", objectPosition: "top left" }}
-                />
-              )}
-              {showCropDebug && config.lastCrop && (
-                <div className="pointer-events-none absolute right-1 top-1 z-50 rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow">
-                  <div>crop_x: {config.lastCrop.x.toFixed(4)}</div>
-                  <div>crop_y: {config.lastCrop.y.toFixed(4)}</div>
-                  <div>crop_w: {config.lastCrop.width.toFixed(4)}</div>
-                  <div>crop_h: {config.lastCrop.height.toFixed(4)}</div>
-                  <div>zoom: ×{config.lastCrop.zoom.toFixed(2)}</div>
-                  <div>rotation: {config.lastCrop.rotation}°</div>
-                  <div>src: {config.lastCrop.naturalW}×{config.lastCrop.naturalH}</div>
-                  <div>out: {config.lastCrop.targetW}×{config.lastCrop.targetH}</div>
+          {/* ============== CONTEXTUAL PANEL ============== */}
+          <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-zinc-800 bg-zinc-900/60 p-3">
+            {leftNav === "templates" && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Modèles de l'enseigne</h3>
+                <p className="text-[11px] text-muted-foreground">Choisissez un modèle prêt à personnaliser.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {templates.map((t) => {
+                    const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
+                    return (
+                      <button key={t.id} onClick={() => applyTemplate(t)}
+                        className={cn(
+                          "group flex flex-col gap-1 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800/40 p-1.5 text-left transition hover:border-primary hover:scale-[1.02]",
+                          templateId === t.id && "border-primary ring-1 ring-primary",
+                        )}>
+                        <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
+                          style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
+                          {t.name}
+                        </div>
+                        <span className="truncate text-[10px]">{t.name}</span>
+                      </button>
+                    );
+                  })}
+                  {templates.length === 0 && (
+                    <p className="col-span-2 text-[11px] italic text-muted-foreground">Aucun modèle disponible.</p>
+                  )}
                 </div>
-              )}
-              {config.blocks.map((b) => {
-                const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
-                  ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
-                  : undefined;
-                const stroke = b.strokeColor && b.strokeWidth
-                  ? `${b.strokeWidth * scale}px ${b.strokeColor}`
-                  : undefined;
-                const decorations = [
-                  b.underline ? "underline" : "",
-                  b.strikethrough ? "line-through" : "",
-                ].filter(Boolean).join(" ");
-                return (
-                  <div
-                    key={b.id}
-                    onPointerDown={(e) => onPointerDownBlock(e, b)}
-                    onClick={(e) => { e.stopPropagation(); setSelectedId(b.id); }}
-                    className={cn("absolute cursor-move select-none", selectedId === b.id && "outline outline-2 outline-primary/80")}
-                    style={{
-                      left: `${b.x}%`,
-                      top: `${b.y}%`,
-                      width: `${b.width}%`,
-                      fontFamily: `"${b.fontFamily}", system-ui, sans-serif`,
-                      fontSize: `${b.fontSize * scale}px`,
-                      color: b.color,
-                      fontWeight: b.bold ? 900 : 400,
-                      fontStyle: b.italic ? "italic" : "normal",
-                      textDecoration: decorations || undefined,
-                      textAlign: b.align,
-                      lineHeight: 1.1,
-                      textShadow,
-                      WebkitTextStroke: stroke,
-                      background: b.bgColor,
-                      borderRadius: b.rounded != null ? `${b.rounded}px` : undefined,
-                      padding: b.padding != null ? `${b.padding * scale}px ${(b.padding ?? 0) * 1.5 * scale}px` : undefined,
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {b.text || " "}
-                  </div>
-                );
-              })}
-              {elements.map((el) => {
-                const wPx = (el.width / 100) * previewWidth;
-                const hPx = (el.height / 100) * previewWidth;
-                const svg = renderElementSvg(el.key, {
-                  color: el.color, stroke: el.strokeWidth, secondary: el.secondary,
-                  width: wPx, height: hPx, opacity: el.opacity, rotation: 0,
-                });
-                const isSel = selectedElementId === el.id;
-                return (
-                  <div
-                    key={el.id}
-                    onPointerDown={(e) => onPointerDownElement(e, el, "move")}
-                    onClick={(e) => { e.stopPropagation(); setSelectedId(null); setSelectedElementId(el.id); }}
-                    className={cn("absolute cursor-move select-none", isSel && "outline outline-2 outline-primary/80")}
-                    style={{
-                      left: `${el.x}%`,
-                      top: `${el.y}%`,
-                      width: wPx,
-                      height: hPx,
-                      transform: `rotate(${el.rotation}deg)`,
-                      transformOrigin: "center",
-                      opacity: el.opacity,
-                    }}
-                    dangerouslySetInnerHTML={{ __html: svg }}
-                  />
-                );
-              })}
-              {selectedElement && (() => {
-                const el = selectedElement;
-                const wPx = (el.width / 100) * previewWidth;
-                const hPx = (el.height / 100) * previewWidth;
-                return (
-                  <div
-                    className="pointer-events-none absolute"
-                    style={{
-                      left: `${el.x}%`,
-                      top: `${el.y}%`,
-                      width: wPx,
-                      height: hPx,
-                      transform: `rotate(${el.rotation}deg)`,
-                      transformOrigin: "center",
-                    }}
-                  >
-                    {/* resize handle (bottom-right) */}
-                    <div
-                      onPointerDown={(e) => onPointerDownElement(e, el, "resize")}
-                      className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-nwse-resize rounded-sm border bg-primary"
-                    />
-                    {/* rotate handle (top) */}
-                    <div
-                      onPointerDown={(e) => onPointerDownElement(e, el, "rotate")}
-                      className="pointer-events-auto absolute left-1/2 -top-5 -translate-x-1/2 h-3 w-3 cursor-grab rounded-full border bg-primary"
-                    />
-                  </div>
-                );
-              })()}
-              {config.logoUrl && (
-                <img
-                  src={config.logoUrl}
-                  alt="Logo"
-                  className="absolute"
-                  style={{
-                    right: `${20 * scale}px`,
-                    bottom: `${20 * scale}px`,
-                    width: `${160 * scale}px`,
-                    objectFit: "contain",
-                  }}
-                />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* RIGHT — block properties + templates */}
-        <Card>
-          <CardContent className="p-3">
-            <Tabs defaultValue="props">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="props"><Type className="h-3.5 w-3.5" /> Bloc</TabsTrigger>
-                <TabsTrigger value="elements"><Shapes className="h-3.5 w-3.5" /> Éléments</TabsTrigger>
-                <TabsTrigger value="templates"><Sparkles className="h-3.5 w-3.5" /> Modèles</TabsTrigger>
-                <TabsTrigger value="link"><TagIcon className="h-3.5 w-3.5" /> Promo</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="props">
-                <ScrollArea className="h-[560px] pr-2">
-                  {!selected ? (
-                    <p className="px-1 py-4 text-xs text-muted-foreground">
-                      Sélectionnez un bloc dans le canvas ou la liste pour modifier ses propriétés.
-                    </p>
-                  ) : (
-                    <div className="space-y-3 py-2">
-                      <div>
-                        <Label className="mb-1 block text-xs">Rôle</Label>
-                        <Select value={selected.role} onValueChange={(v) => updateBlock(selected.id, { role: v as BlockRole })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {(Object.keys(ROLE_LABEL) as BlockRole[]).map((r) => (
-                              <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Texte</Label>
-                        <Input value={selected.text} onChange={(e) => updateBlock(selected.id, { text: e.target.value })} />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Police</Label>
-                        <Select value={allFontNames.includes(selected.fontFamily) ? selected.fontFamily : "Inter"}
-                          onValueChange={(v) => updateBlock(selected.id, { fontFamily: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            {FONT_LIBRARY.map((f) => (
-                              <SelectItem key={f.name} value={f.name}>
-                                <span style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}>{f.name}</span>
-                              </SelectItem>
-                            ))}
-                            {brandFonts.map((f) => (
-                              <SelectItem key={f.id} value={f.name}>
-                                <span style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}>
-                                  {f.name} (importée)
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="mb-1 block text-xs">Taille</Label>
-                          <Input type="number" value={selected.fontSize}
-                            onChange={(e) => updateBlock(selected.id, { fontSize: Number(e.target.value) || 12 })} />
-                        </div>
-                        <div>
-                          <Label className="mb-1 block text-xs">Largeur (%)</Label>
-                          <Input type="number" value={selected.width}
-                            onChange={(e) => updateBlock(selected.id, { width: Math.max(5, Math.min(100, Number(e.target.value) || 60)) })} />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Couleur</Label>
-                        <div className="flex items-center gap-2">
-                          <input type="color" value={selected.color}
-                            onChange={(e) => updateBlock(selected.id, { color: e.target.value })}
-                            className="h-9 w-12 cursor-pointer rounded border" />
-                          <Input value={selected.color}
-                            onChange={(e) => updateBlock(selected.id, { color: e.target.value })} />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Style</Label>
-                        <div className="flex flex-wrap gap-1">
-                          <Toggle on={selected.bold} onClick={() => updateBlock(selected.id, { bold: !selected.bold })}><Bold className="h-3.5 w-3.5" /></Toggle>
-                          <Toggle on={selected.italic} onClick={() => updateBlock(selected.id, { italic: !selected.italic })}><Italic className="h-3.5 w-3.5" /></Toggle>
-                          <Toggle on={selected.underline} onClick={() => updateBlock(selected.id, { underline: !selected.underline })}><Underline className="h-3.5 w-3.5" /></Toggle>
-                          <Toggle on={selected.strikethrough} onClick={() => updateBlock(selected.id, { strikethrough: !selected.strikethrough })}><Strikethrough className="h-3.5 w-3.5" /></Toggle>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Alignement</Label>
-                        <Select value={selected.align} onValueChange={(v) => updateBlock(selected.id, { align: v as Block["align"] })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="left">Gauche</SelectItem>
-                            <SelectItem value="center">Centre</SelectItem>
-                            <SelectItem value="right">Droite</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="mb-1 block text-xs">Contour</Label>
-                          <input type="color" value={selected.strokeColor ?? "#000000"}
-                            onChange={(e) => updateBlock(selected.id, { strokeColor: e.target.value })}
-                            className="h-9 w-full cursor-pointer rounded border" />
-                        </div>
-                        <div>
-                          <Label className="mb-1 block text-xs">Épaisseur</Label>
-                          <Input type="number" value={selected.strokeWidth ?? 0}
-                            onChange={(e) => updateBlock(selected.id, { strokeWidth: Number(e.target.value) || 0 })} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="mb-1 block text-xs">Ombre</Label>
-                          <input type="color" value={selected.shadowColor?.startsWith("#") ? selected.shadowColor : "#000000"}
-                            onChange={(e) => updateBlock(selected.id, { shadowColor: e.target.value })}
-                            className="h-9 w-full cursor-pointer rounded border" />
-                        </div>
-                        <div>
-                          <Label className="mb-1 block text-xs">Flou ombre</Label>
-                          <Input type="number" value={selected.shadowBlur ?? 0}
-                            onChange={(e) => updateBlock(selected.id, { shadowBlur: Number(e.target.value) || 0 })} />
-                        </div>
-                      </div>
-                      {(selected.role === "badge") && (
-                        <div className="rounded-md border p-2">
-                          <Label className="mb-1 block text-xs">Fond du badge</Label>
-                          <input type="color" value={selected.bgColor ?? "#FACC15"}
-                            onChange={(e) => updateBlock(selected.id, { bgColor: e.target.value })}
-                            className="h-9 w-full cursor-pointer rounded border" />
-                          <div className="mt-2 grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="mb-1 block text-xs">Rayon</Label>
-                              <Input type="number" value={selected.rounded ?? 0}
-                                onChange={(e) => updateBlock(selected.id, { rounded: Number(e.target.value) || 0 })} />
-                            </div>
-                            <div>
-                              <Label className="mb-1 block text-xs">Padding</Label>
-                              <Input type="number" value={selected.padding ?? 0}
-                                onChange={(e) => updateBlock(selected.id, { padding: Number(e.target.value) || 0 })} />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <Button variant="destructive" size="sm" onClick={() => deleteBlock(selected.id)}>
-                        <Trash2 className="h-3.5 w-3.5" /> Supprimer le bloc
+                {catalogPromo && (
+                  <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px]">
+                    <p className="text-muted-foreground">Promo catalogue</p>
+                    <p className="font-semibold">{catalogPromo.product_name}</p>
+                    <div className="mt-1 inline-flex rounded-md border border-zinc-700 bg-background p-0.5">
+                      <Button size="sm" variant={catalogMode === "catalog_visual" ? "default" : "ghost"}
+                        className="h-6 text-[10px] gap-1" onClick={() => switchCatalogMode("catalog_visual")}
+                        disabled={!catalogPromo.product_image_url}>
+                        <ImageIcon className="h-3 w-3" /> Visuel
+                      </Button>
+                      <Button size="sm" variant={catalogMode === "field_photo" ? "default" : "ghost"}
+                        className="h-6 text-[10px] gap-1" onClick={() => switchCatalogMode("field_photo")}>
+                        <Camera className="h-3 w-3" /> Terrain
                       </Button>
                     </div>
-                  )}
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="elements">
-                <ScrollArea className="h-[560px] pr-2">
-                  {selectedElement ? (
-                    <div className="space-y-3 py-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium">{getElementDef(selectedElement.key)?.name ?? "Élément"}</p>
-                        <div className="flex gap-1">
-                          <Button variant="outline" size="sm" onClick={() => duplicateElement(selectedElement.id)}>
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => deleteElement(selectedElement.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Couleur</Label>
-                        <div className="flex items-center gap-2">
-                          <input type="color" value={selectedElement.color}
-                            onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })}
-                            className="h-9 w-12 cursor-pointer rounded border" />
-                          <Input value={selectedElement.color}
-                            onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })} />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Épaisseur du trait ({selectedElement.strokeWidth})</Label>
-                        <Slider value={[selectedElement.strokeWidth]} min={0} max={20} step={0.5}
-                          onValueChange={(v) => updateElement(selectedElement.id, { strokeWidth: v[0] })} />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs">Opacité ({Math.round(selectedElement.opacity * 100)}%)</Label>
-                        <Slider value={[selectedElement.opacity * 100]} min={10} max={100} step={1}
-                          onValueChange={(v) => updateElement(selectedElement.id, { opacity: v[0] / 100 })} />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-xs flex items-center gap-1"><RotateCw className="h-3 w-3" /> Rotation ({selectedElement.rotation}°)</Label>
-                        <Slider value={[selectedElement.rotation]} min={-180} max={180} step={1}
-                          onValueChange={(v) => updateElement(selectedElement.id, { rotation: v[0] })} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="mb-1 block text-xs">Largeur (%)</Label>
-                          <Input type="number" value={Math.round(selectedElement.width)}
-                            onChange={(e) => {
-                              const w = Math.max(3, Math.min(120, Number(e.target.value) || 10));
-                              const ratio = selectedElement.width > 0 ? selectedElement.height / selectedElement.width : 1;
-                              updateElement(selectedElement.id, { width: w, height: w * ratio });
-                            }} />
-                        </div>
-                        <div>
-                          <Label className="mb-1 block text-xs">Hauteur (%)</Label>
-                          <Input type="number" value={Math.round(selectedElement.height)}
-                            onChange={(e) => updateElement(selectedElement.id, { height: Math.max(3, Math.min(120, Number(e.target.value) || 10)) })} />
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedElementId(null)}>
-                        Retour à la bibliothèque
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 py-2">
-                      {ELEMENT_CATEGORIES.map((cat) => (
-                        <div key={cat.key}>
-                          <p className="mb-2 text-xs font-semibold text-muted-foreground">{cat.label}</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            {GRAPHIC_ELEMENTS.filter((e) => e.category === cat.key).map((el) => {
-                              const svg = renderElementSvg(el.key, {
-                                color: el.defaultColor, stroke: el.defaultStroke,
-                                secondary: el.defaultSecondary, width: 60, height: 60, opacity: 1, rotation: 0,
-                              });
-                              return (
-                                <button
-                                  key={el.key}
-                                  type="button"
-                                  title={el.name}
-                                  onClick={() => addElement(el.key)}
-                                  className="flex aspect-square items-center justify-center rounded-md border bg-muted/30 p-1 transition hover:border-primary hover:bg-accent"
-                                  dangerouslySetInnerHTML={{ __html: svg }}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </TabsContent>
-
-
-
-              <TabsContent value="templates">
-                <ScrollArea className="h-[560px] pr-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    {templates.map((t) => {
-                      const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
-                      return (
-                        <button key={t.id} onClick={() => applyTemplate(t)}
-                          className={cn(
-                            "group flex flex-col gap-1 rounded-md border p-2 text-left transition hover:border-primary",
-                            templateId === t.id && "border-primary",
-                          )}>
-                          <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
-                            style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
-                            {t.name}
-                          </div>
-                          <span className="truncate text-[11px]">{t.name}</span>
-                        </button>
-                      );
-                    })}
                   </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="link" className="space-y-3">
-                <div>
-                  <Label className="mb-1 block text-xs">Pré-remplir depuis une promotion</Label>
+                )}
+                <div className="mt-3 space-y-2">
+                  <Label className="text-[11px] font-semibold">Lier à une promotion</Label>
                   <Select value={promotionId ?? ""} onValueChange={(v) => applyPromotion(v)}>
-                    <SelectTrigger><SelectValue placeholder="Choisir une promo" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choisir une promo" /></SelectTrigger>
                     <SelectContent>
                       {promotions.map((p) => <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Lier ce visuel à une promotion permet de le retrouver dans la bibliothèque et de le programmer depuis le calendrier.
-                </p>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+            )}
+
+            {leftNav === "text" && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Texte</h3>
+                <Button onClick={() => addBlock("custom")} className="w-full gap-1" size="sm">
+                  <Plus className="h-3.5 w-3.5" /> Ajouter un paragraphe
+                </Button>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold">Presets</Label>
+                  {(Object.keys(ROLE_LABEL) as BlockRole[]).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => addBlock(r)}
+                      className="flex w-full items-center justify-between rounded-md border border-zinc-800 bg-zinc-800/40 px-2 py-2 text-left text-xs transition hover:border-primary hover:bg-zinc-800"
+                    >
+                      <span className="font-medium">{ROLE_LABEL[r]}</span>
+                      <Plus className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold">Blocs sur le canvas</Label>
+                  <ul className="space-y-1">
+                    {config.blocks.map((b) => (
+                      <li key={b.id}>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedId(b.id); setSelectedElementId(null); }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded border px-2 py-1 text-left text-xs",
+                            selectedId === b.id ? "border-primary bg-primary/10" : "border-zinc-800 hover:bg-zinc-800",
+                          )}
+                        >
+                          <span className="truncate">{ROLE_LABEL[b.role]} — {b.text || "(vide)"}</span>
+                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={(e) => { e.stopPropagation(); deleteBlock(b.id); }} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {leftNav === "elements" && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">Éléments graphiques</h3>
+                {ELEMENT_CATEGORIES.map((cat) => (
+                  <div key={cat.key}>
+                    <p className="mb-2 text-[11px] font-semibold text-muted-foreground">{cat.label}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {GRAPHIC_ELEMENTS.filter((e) => e.category === cat.key).map((el) => {
+                        const svg = renderElementSvg(el.key, {
+                          color: el.defaultColor, stroke: el.defaultStroke,
+                          secondary: el.defaultSecondary, width: 56, height: 56, opacity: 1, rotation: 0,
+                        });
+                        return (
+                          <button key={el.key} type="button" title={el.name}
+                            onClick={() => addElement(el.key)}
+                            className="flex aspect-square items-center justify-center rounded-md border border-zinc-800 bg-zinc-800/40 p-1 transition hover:border-primary hover:bg-zinc-800"
+                            dangerouslySetInnerHTML={{ __html: svg }} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {leftNav === "import" && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Importer</h3>
+                <UploadField label="Image de fond" uploading={uploadingBg} currentUrl={config.bgImage ?? null}
+                  onClear={() => setConfig((c) => ({ ...c, bgImage: null }))} onFile={(f) => uploadImage(f, "bg")} />
+                <UploadField label="Logo" uploading={uploadingLogo} currentUrl={config.logoUrl ?? null}
+                  onClear={() => setConfig((c) => ({ ...c, logoUrl: null }))} onFile={(f) => uploadImage(f, "logo")} />
+                <div>
+                  <Label className="mb-1 block text-xs flex items-center gap-1">
+                    <Camera className="h-3 w-3" /> Photo terrain
+                  </Label>
+                  <label
+                    className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-zinc-700 bg-zinc-800/40 px-3 py-4 text-center text-[11px] hover:bg-zinc-800"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) uploadFieldPhoto(f); }}
+                  >
+                    {uploadingField ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 text-primary" />}
+                    <span>{uploadingField ? "Envoi…" : "Glissez une image / PNG / SVG"}</span>
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFieldPhoto(f); }} />
+                  </label>
+                </div>
+                <div>
+                  <Label className="mb-1 block text-[11px] font-semibold flex items-center gap-1">
+                    <Wand2 className="h-3 w-3" /> Presets photo terrain
+                  </Label>
+                  <div className="grid grid-cols-1 gap-1">
+                    {FIELD_PRESETS.map((p) => (
+                      <button key={p.key} type="button" onClick={() => applyFieldPreset(p.key)}
+                        className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-800/40 px-2 py-1.5 text-left text-[11px] hover:border-primary hover:bg-zinc-800">
+                        <span>{p.emoji}</span><span className="truncate">{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {leftNav === "brand" && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Identité de marque</h3>
+                {brand?.logo_url && (
+                  <div>
+                    <Label className="mb-1 block text-[11px] font-semibold">Logo</Label>
+                    <div className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-800/40 p-2">
+                      <img src={brand.logo_url} alt="Logo" className="h-12 w-12 rounded object-contain bg-white" />
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={() => setConfig((c) => ({ ...c, logoUrl: brand?.logo_url ?? null }))}>
+                        Utiliser
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {brandColors.length > 0 && (
+                  <div>
+                    <Label className="mb-1 block text-[11px] font-semibold">Couleurs de l'enseigne</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {brandColors.map((c, i) => (
+                        <button key={i} title={c}
+                          onClick={() => {
+                            if (selected) updateBlock(selected.id, { color: c });
+                            else if (selectedElement) updateElement(selectedElement.id, { color: c });
+                            else setConfig((cc) => ({ ...cc, bgColor: c }));
+                          }}
+                          className="h-9 w-9 rounded-md border-2 border-zinc-700 shadow-sm hover:scale-110 transition"
+                          style={{ background: c }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <Label className="mb-1 block text-[11px] font-semibold">Couleur de fond</Label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={config.bgColor ?? "#1f2937"}
+                      onChange={(e) => setConfig((c) => ({ ...c, bgColor: e.target.value }))}
+                      className="h-9 w-12 cursor-pointer rounded border" />
+                    <Input value={config.bgColor ?? ""} className="h-8 text-xs"
+                      onChange={(e) => setConfig((c) => ({ ...c, bgColor: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-1 block text-[11px] font-semibold">Polices</Label>
+                  <ul className="space-y-1 text-xs">
+                    {brand?.font_primary && <li className="rounded border border-zinc-800 bg-zinc-800/40 px-2 py-1.5" style={{ fontFamily: `"${brand.font_primary}"` }}>Titre — {brand.font_primary}</li>}
+                    {brand?.font_secondary && <li className="rounded border border-zinc-800 bg-zinc-800/40 px-2 py-1.5" style={{ fontFamily: `"${brand.font_secondary}"` }}>Texte — {brand.font_secondary}</li>}
+                    {brand?.font_price && <li className="rounded border border-zinc-800 bg-zinc-800/40 px-2 py-1.5" style={{ fontFamily: `"${brand.font_price}"` }}>Prix — {brand.font_price}</li>}
+                    {!brand?.font_primary && !brand?.font_secondary && !brand?.font_price && (
+                      <li className="text-[11px] italic text-muted-foreground">Aucune police configurée.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {leftNav === "ai" && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold flex items-center gap-1">
+                  <Sparkles className="h-4 w-4 text-primary" /> Outils IA
+                </h3>
+                <p className="text-[11px] text-muted-foreground">Boostez votre visuel avec l'intelligence artificielle.</p>
+                {[
+                  { label: "Générer une image produit", icon: ImageIcon },
+                  { label: "Supprimer le fond", icon: Wand2 },
+                  { label: "Améliorer une photo", icon: Sparkles },
+                  { label: "Recentrer automatiquement", icon: RotateCw },
+                  { label: "Générer un texte", icon: Type },
+                  { label: "Générer plusieurs variantes", icon: Copy },
+                ].map((t) => {
+                  const Icon = t.icon;
+                  return (
+                    <button key={t.label}
+                      onClick={() => toast.info(`${t.label} — bientôt disponible`)}
+                      className="flex w-full items-center gap-2 rounded-md border border-zinc-800 bg-zinc-800/40 px-3 py-2.5 text-left text-xs transition hover:border-primary hover:bg-zinc-800">
+                      <Icon className="h-4 w-4 text-primary shrink-0" />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </aside>
+
+          {/* ============== CANVAS ============== */}
+          <main className="relative flex flex-1 items-center justify-center overflow-auto bg-zinc-800/50 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.05)_1px,transparent_0)] [background-size:24px_24px] p-8">
+            <div className="flex flex-col items-center gap-3">
+              <div
+                ref={canvasWrapRef}
+                onPointerMove={onPointerMoveCanvas}
+                onPointerUp={onPointerUpCanvas}
+                onClick={() => { setSelectedId(null); setSelectedElementId(null); }}
+                className="relative overflow-hidden rounded-lg border border-zinc-700 shadow-2xl"
+                style={{ width: previewWidth, height: previewHeight, background: config.bgColor ?? "#1f2937" }}
+              >
+                {config.bgImage && (
+                  <img src={config.bgImage} alt="" draggable={false} crossOrigin="anonymous"
+                    className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                    style={{ objectFit: "fill", objectPosition: "top left" }} />
+                )}
+                {showCropDebug && config.lastCrop && (
+                  <div className="pointer-events-none absolute right-1 top-1 z-50 rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow">
+                    <div>crop: {config.lastCrop.x.toFixed(3)}, {config.lastCrop.y.toFixed(3)} — {config.lastCrop.width.toFixed(3)}×{config.lastCrop.height.toFixed(3)}</div>
+                  </div>
+                )}
+                {config.blocks.map((b) => {
+                  const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
+                    ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
+                    : undefined;
+                  const stroke = b.strokeColor && b.strokeWidth
+                    ? `${b.strokeWidth * scale}px ${b.strokeColor}` : undefined;
+                  const decorations = [b.underline ? "underline" : "", b.strikethrough ? "line-through" : ""].filter(Boolean).join(" ");
+                  return (
+                    <div key={b.id}
+                      onPointerDown={(e) => onPointerDownBlock(e, b)}
+                      onClick={(e) => { e.stopPropagation(); setSelectedId(b.id); setSelectedElementId(null); }}
+                      className={cn("absolute cursor-move select-none", selectedId === b.id && "outline outline-2 outline-primary/80")}
+                      style={{
+                        left: `${b.x}%`, top: `${b.y}%`, width: `${b.width}%`,
+                        fontFamily: `"${b.fontFamily}", system-ui, sans-serif`,
+                        fontSize: `${b.fontSize * scale}px`, color: b.color,
+                        fontWeight: b.bold ? 900 : 400, fontStyle: b.italic ? "italic" : "normal",
+                        textDecoration: decorations || undefined, textAlign: b.align,
+                        lineHeight: 1.1, textShadow, WebkitTextStroke: stroke,
+                        background: b.bgColor,
+                        borderRadius: b.rounded != null ? `${b.rounded}px` : undefined,
+                        padding: b.padding != null ? `${b.padding * scale}px ${(b.padding ?? 0) * 1.5 * scale}px` : undefined,
+                        whiteSpace: "pre-wrap", wordBreak: "break-word",
+                      }}>
+                      {b.text || " "}
+                    </div>
+                  );
+                })}
+                {elements.map((el) => {
+                  const wPx = (el.width / 100) * previewWidth;
+                  const hPx = (el.height / 100) * previewWidth;
+                  const svg = renderElementSvg(el.key, {
+                    color: el.color, stroke: el.strokeWidth, secondary: el.secondary,
+                    width: wPx, height: hPx, opacity: el.opacity, rotation: 0,
+                  });
+                  const isSel = selectedElementId === el.id;
+                  return (
+                    <div key={el.id}
+                      onPointerDown={(e) => onPointerDownElement(e, el, "move")}
+                      onClick={(e) => { e.stopPropagation(); setSelectedId(null); setSelectedElementId(el.id); }}
+                      className={cn("absolute cursor-move select-none", isSel && "outline outline-2 outline-primary/80")}
+                      style={{
+                        left: `${el.x}%`, top: `${el.y}%`, width: wPx, height: hPx,
+                        transform: `rotate(${el.rotation}deg)`, transformOrigin: "center", opacity: el.opacity,
+                      }}
+                      dangerouslySetInnerHTML={{ __html: svg }} />
+                  );
+                })}
+                {selectedElement && (() => {
+                  const el = selectedElement;
+                  const wPx = (el.width / 100) * previewWidth;
+                  const hPx = (el.height / 100) * previewWidth;
+                  return (
+                    <div className="pointer-events-none absolute"
+                      style={{ left: `${el.x}%`, top: `${el.y}%`, width: wPx, height: hPx,
+                        transform: `rotate(${el.rotation}deg)`, transformOrigin: "center" }}>
+                      <div onPointerDown={(e) => onPointerDownElement(e, el, "resize")}
+                        className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-nwse-resize rounded-sm border bg-primary" />
+                      <div onPointerDown={(e) => onPointerDownElement(e, el, "rotate")}
+                        className="pointer-events-auto absolute left-1/2 -top-5 -translate-x-1/2 h-3 w-3 cursor-grab rounded-full border bg-primary" />
+                    </div>
+                  );
+                })()}
+                {config.logoUrl && (
+                  <img src={config.logoUrl} alt="Logo" className="absolute"
+                    style={{ right: `${20 * scale}px`, bottom: `${20 * scale}px`,
+                      width: `${160 * scale}px`, objectFit: "contain" }} />
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span>{dims.w} × {dims.h} px</span>
+                <span>·</span>
+                <span>{Math.round(scale * 100)}%</span>
+                {sourceImageUrl && (
+                  <>
+                    <span>·</span>
+                    <button type="button" onClick={() => { setCropSrc(sourceImageUrl); setCropOpen(true); }}
+                      className="text-primary hover:underline">Recadrer pour ce format</button>
+                  </>
+                )}
+                <span>·</span>
+                <button type="button" onClick={() => setShowCropDebug((v) => !v)} className="hover:underline">
+                  {showCropDebug ? "Masquer debug" : "Debug crop"}
+                </button>
+              </div>
+            </div>
+          </main>
+
+          {/* ============== RIGHT PROPERTIES PANEL ============== */}
+          {showRightPanel && (
+            <aside className="w-[300px] shrink-0 overflow-y-auto border-l border-zinc-800 bg-zinc-900/60 p-3">
+              <ScrollArea className="h-full pr-1">
+                {selected && (
+                  <div className="space-y-3 py-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold">Propriétés du bloc</h3>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setSelectedId(null)}>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Rôle</Label>
+                      <Select value={selected.role} onValueChange={(v) => updateBlock(selected.id, { role: v as BlockRole })}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(ROLE_LABEL) as BlockRole[]).map((r) => (
+                            <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Texte</Label>
+                      <Input value={selected.text} onChange={(e) => updateBlock(selected.id, { text: e.target.value })} className="h-8 text-xs" />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Police</Label>
+                      <Select value={allFontNames.includes(selected.fontFamily) ? selected.fontFamily : "Inter"}
+                        onValueChange={(v) => updateBlock(selected.id, { fontFamily: v })}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          {FONT_LIBRARY.map((f) => (
+                            <SelectItem key={f.name} value={f.name}>
+                              <span style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}>{f.name}</span>
+                            </SelectItem>
+                          ))}
+                          {brandFonts.map((f) => (
+                            <SelectItem key={f.id} value={f.name}>
+                              <span style={{ fontFamily: `"${f.name}", system-ui, sans-serif` }}>{f.name} (importée)</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="mb-1 block text-xs">Taille</Label>
+                        <Input type="number" className="h-8 text-xs" value={selected.fontSize}
+                          onChange={(e) => updateBlock(selected.id, { fontSize: Number(e.target.value) || 12 })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs">Largeur %</Label>
+                        <Input type="number" className="h-8 text-xs" value={selected.width}
+                          onChange={(e) => updateBlock(selected.id, { width: Math.max(5, Math.min(100, Number(e.target.value) || 60)) })} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Couleur</Label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={selected.color}
+                          onChange={(e) => updateBlock(selected.id, { color: e.target.value })}
+                          className="h-8 w-10 cursor-pointer rounded border" />
+                        <Input value={selected.color} className="h-8 text-xs"
+                          onChange={(e) => updateBlock(selected.id, { color: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Style</Label>
+                      <div className="flex flex-wrap gap-1">
+                        <Toggle on={selected.bold} onClick={() => updateBlock(selected.id, { bold: !selected.bold })}><Bold className="h-3.5 w-3.5" /></Toggle>
+                        <Toggle on={selected.italic} onClick={() => updateBlock(selected.id, { italic: !selected.italic })}><Italic className="h-3.5 w-3.5" /></Toggle>
+                        <Toggle on={selected.underline} onClick={() => updateBlock(selected.id, { underline: !selected.underline })}><Underline className="h-3.5 w-3.5" /></Toggle>
+                        <Toggle on={selected.strikethrough} onClick={() => updateBlock(selected.id, { strikethrough: !selected.strikethrough })}><Strikethrough className="h-3.5 w-3.5" /></Toggle>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Alignement</Label>
+                      <Select value={selected.align} onValueChange={(v) => updateBlock(selected.id, { align: v as Block["align"] })}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="left">Gauche</SelectItem>
+                          <SelectItem value="center">Centre</SelectItem>
+                          <SelectItem value="right">Droite</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selected.role === "badge" && (
+                      <div className="rounded-md border border-zinc-800 bg-zinc-800/40 p-2 space-y-2">
+                        <Label className="block text-xs">Fond du badge</Label>
+                        <input type="color" value={selected.bgColor ?? "#FACC15"}
+                          onChange={(e) => updateBlock(selected.id, { bgColor: e.target.value })}
+                          className="h-8 w-full cursor-pointer rounded border" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="mb-1 block text-xs">Rayon</Label>
+                            <Input type="number" className="h-8 text-xs" value={selected.rounded ?? 0}
+                              onChange={(e) => updateBlock(selected.id, { rounded: Number(e.target.value) || 0 })} />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-xs">Padding</Label>
+                            <Input type="number" className="h-8 text-xs" value={selected.padding ?? 0}
+                              onChange={(e) => updateBlock(selected.id, { padding: Number(e.target.value) || 0 })} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Button variant="destructive" size="sm" className="w-full" onClick={() => deleteBlock(selected.id)}>
+                      <Trash2 className="h-3.5 w-3.5" /> Supprimer le bloc
+                    </Button>
+                  </div>
+                )}
+                {selectedElement && !selected && (
+                  <div className="space-y-3 py-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold">{getElementDef(selectedElement.key)?.name ?? "Élément"}</h3>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => duplicateElement(selectedElement.id)}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="destructive" size="sm" className="h-7 w-7 p-0" onClick={() => deleteElement(selectedElement.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Couleur</Label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={selectedElement.color}
+                          onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })}
+                          className="h-8 w-10 cursor-pointer rounded border" />
+                        <Input value={selectedElement.color} className="h-8 text-xs"
+                          onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Épaisseur ({selectedElement.strokeWidth})</Label>
+                      <Slider value={[selectedElement.strokeWidth]} min={0} max={20} step={0.5}
+                        onValueChange={(v) => updateElement(selectedElement.id, { strokeWidth: v[0] })} />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">Opacité ({Math.round(selectedElement.opacity * 100)}%)</Label>
+                      <Slider value={[selectedElement.opacity * 100]} min={10} max={100} step={1}
+                        onValueChange={(v) => updateElement(selectedElement.id, { opacity: v[0] / 100 })} />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs flex items-center gap-1"><RotateCw className="h-3 w-3" /> Rotation ({selectedElement.rotation}°)</Label>
+                      <Slider value={[selectedElement.rotation]} min={-180} max={180} step={1}
+                        onValueChange={(v) => updateElement(selectedElement.id, { rotation: v[0] })} />
+                    </div>
+                  </div>
+                )}
+              </ScrollArea>
+            </aside>
+          )}
+        </div>
+      )}
+
       <CropModal
         open={cropOpen}
         onOpenChange={setCropOpen}
         imageUrl={cropSrc}
-        title="Recadrer la photo terrain"
+        title="Recadrer la photo"
         aspectRatio={`${dims.w}/${dims.h}`}
         initial={{ x: 0.05, y: 0.05, width: 0.9, height: 0.9 }}
         onConfirm={handleCropConfirm}
       />
-      </>
-      )}
+
 
       <ScheduleItemModal
         open={scheduleOpen}
