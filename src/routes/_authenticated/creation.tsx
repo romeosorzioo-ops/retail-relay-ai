@@ -315,6 +315,8 @@ function CreationPage() {
   const [currentItemId, setCurrentItemId] = useState<string | null>(search.item ?? null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [postValidateOpen, setPostValidateOpen] = useState(false);
+  const [leftNav, setLeftNav] = useState<"templates" | "text" | "elements" | "import" | "brand" | "ai">("templates");
+  const [visualName, setVisualName] = useState<string>("Visuel sans titre");
 
   const { data: queueData } = useQuery({
     queryKey: ["campaign-items", search.campaign ?? null],
