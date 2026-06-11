@@ -352,6 +352,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const tunnelPosts = useTunnelStore((s) => s.generatedPosts);
   const setTunnelPosts = useTunnelStore((s) => s.setGeneratedPosts);
   const setTunnelDetected = useTunnelStore((s) => s.setDetectedProducts);
+  const creativeStateByPromoId = useTunnelStore((s) => s.creativeStateByPromoId);
+  const setCreativeState = useTunnelStore((s) => s.setCreativeState);
 
 
   const trialQueue: TunnelProduct[] = useMemo(() => {
