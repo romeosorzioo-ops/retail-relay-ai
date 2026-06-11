@@ -1179,6 +1179,46 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
           {/* ============== CONTEXTUAL PANEL ============== */}
           <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-zinc-800 bg-zinc-900/60 p-3">
+            {isTrial && trialQueue.length > 0 && (
+              <div className="mb-3 rounded-md border border-primary/30 bg-primary/5 p-2">
+                <p className="mb-2 text-[11px] font-semibold text-foreground">
+                  Mes promotions ({trialQueue.length}/3)
+                </p>
+                <div className="space-y-1">
+                  {trialQueue.map((p) => {
+                    const active = trialCurrentId === p.id;
+                    const done = tunnelPosts.some((tp) => tp.product_name === p.product_name);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setTrialCurrentId(p.id)}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition",
+                          active
+                            ? "border-primary bg-primary/10"
+                            : "border-zinc-800 bg-zinc-800/40 hover:bg-zinc-800",
+                        )}
+                      >
+                        <span className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+                          done ? "bg-emerald-500 text-white" : "border border-zinc-600 text-zinc-500",
+                        )}>
+                          {done ? <CheckCircle className="h-3 w-3" /> : null}
+                        </span>
+                        <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
+                          {(p.thumbnailUrl ?? p.imageUrl) ? (
+                            <img src={p.thumbnailUrl ?? p.imageUrl ?? ""} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <span className="flex-1 truncate font-medium">{p.product_name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {leftNav === "templates" && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">Modèles de l'enseigne</h3>
