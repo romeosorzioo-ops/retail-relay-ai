@@ -1,97 +1,91 @@
-# Workflow unifié Komaag — 5 étapes partagées
-
 ## Objectif
-Un seul workflow, une seule barre de progression, mêmes écrans, mêmes CTA — peu importe si l'utilisateur est dans `/essai` (anonyme) ou dans `/app` (connecté). La seule différence : à l'étape **Publication**, l'anonyme voit le `TrialGateModal` avant publish/programme/sauvegarde.
 
-## Les 5 étapes (canoniques)
+Unifier l'étape **Création** : faire fonctionner le même éditeur (`/_authenticated/creation`) à la fois pour les clients connectés et dans le tunnel d'essai gratuit, avec un panneau de file d'attente des promotions sélectionnées dans les deux modes.
+
+## Architecture
+
+L'éditeur actuel (`src/routes/_authenticated/creation.tsx`, 1650 lignes) est monolithique et dépend de 8+ server functions Supabase. On l'extrait en composant réutilisable contrôlé par un "data source" pluggable, et on garde deux routes fines qui montent ce composant avec des sources différentes.
 
 ```text
-1. Import      → upload PDF/JPG/PNG, aperçu, "Analyser"
-2. Analyse     → progression IA, promos/produits/prix/visuels détectés, "Continuer"
-3. Sélection   → grille promos (miniature, produit, prix, remise, rayon), filtres + sélection, "Créer mes contenus"
-4. Création    → éditeur Canva existant, préchargé depuis la sélection, "Valider"
-5. Publication → calendrier/date/heure/réseau, "Programmer / Publier / Brouillon"
+src/components/creation/
+  CreationEditor.tsx       <- ex-CreationPage, accepte props (mode, dataSource, queue)
+  PromotionQueuePanel.tsx  <- nouveau panneau "✓ Apéricube / ✓ Pringles ..."
+  data-source.ts           <- interface CreationDataSource
+  data-source-supabase.ts  <- impl pour utilisateurs connectés (queries existantes)
+  data-source-trial.ts     <- impl pour tunnel (lit useTunnelStore, no-op pour save)
+
+src/routes/_authenticated/creation.tsx  <- monte <CreationEditor mode="app" dataSource={supabase} />
+src/routes/essai.creation.tsx           <- remplacé : monte <CreationEditor mode="trial" dataSource={trial} />
 ```
 
-## Architecture cible
+## Étapes d'implémentation
 
-### Composants partagés (nouveaux, sous `src/components/workflow/`)
-- `WorkflowProgress.tsx` — barre 5 étapes, remplace `TunnelProgress` et `CampaignStepper`. Props : `active: WorkflowStep`, `mode: "trial" | "app"`. Adapte les `to` selon le mode (`/essai/...` vs `/app/...`).
-- `ImportStep.tsx` — drag&drop, aperçu, validation, CTA "Analyser". Extrait depuis `essai.import.tsx`.
-- `AnalyseStep.tsx` — progression + listes détectées + CTA "Continuer". Extrait depuis `essai.analyse.tsx`.
-- `SelectionStep.tsx` — grille promos sélectionnables avec filtres. NOUVEAU (remplace l'aperçu pré-formaté de `essai.preview.tsx`).
-- `PublicationStep.tsx` — calendrier + CTA programmer/publier/brouillon. Réutilise `ScheduleItemModal` et la logique de `essai.schedule.tsx` / `calendar.tsx`.
+1. **Extraire l'éditeur en composant**
+   - Déplacer le contenu de `_authenticated/creation.tsx` vers `src/components/creation/CreationEditor.tsx` (export `CreationEditor`).
+   - Identifier toutes les `useQuery`/`useMutation` dépendantes de Supabase (brand profile, guidelines, fonts, templates, promotions, campaign items, save visual) et les router via une interface `CreationDataSource` injectée en prop.
+   - L'UI (canvas, panneaux Modèles/Texte/Éléments/Importer/Marque/IA, toolbar) reste inchangée.
 
-Chaque composant reçoit un `mode: "trial" | "app"` + des callbacks (`onNext`, `onPublishGate`).
+2. **Définir `CreationDataSource`**
+   ```ts
+   type CreationDataSource = {
+     mode: "app" | "trial";
+     useBrandProfile(): { data; isLoading };
+     useBrandGuideline(): { data; isLoading };
+     useBrandFonts(): { data; isLoading };
+     useTemplates(): { data; isLoading };
+     useCurrentPromotion(promotionId): { data; isLoading };
+     saveVisual(payload): Promise<...>;     // no-op en trial
+     uploadImage(file): Promise<{url}>;     // base64 dataURL en trial
+     // panneau IA Gateway : autorisé dans les deux modes (LOVABLE_API_KEY est côté serveur)
+   };
+   ```
 
-### Store partagé
-- Renommer/étendre `useTunnelStore` en `useWorkflowStore` (`src/lib/workflow-store.ts`) avec la séquence à 5 étapes (`import | analyse | selection | creation | publication`).
-- En mode connecté, le store reste utile comme buffer client (sélection en cours) avant persistance via les server functions existantes (`catalog.functions.ts`, `promotions.functions.ts`, `campaigns.functions.ts`).
+3. **Implémentation trial (`data-source-trial.ts`)**
+   - Brand profile : objet par défaut (fonts Montserrat/Inter/Bebas Neue, couleurs neutres).
+   - Templates : utilise `src/lib/promo-templates.ts` (déjà présent côté client).
+   - Promotion courante : lue dans `useTunnelStore.detectedProducts` filtrée par `selected` (le tunnel marque les 3 sélectionnées en étape Sélection).
+   - `saveVisual` : pousse un `TunnelPost` dans `useTunnelStore.generatedPosts` (déjà cappé à 3).
+   - `uploadImage` : convertit le `File` en dataURL et le retourne.
+   - Fonctionnalités serveur indisponibles (sauvegarde campagne, fonts custom uploadées) : panneaux affichés mais boutons remplacés par une bannière "Disponible après création du compte".
 
-### Routes tunnel (anonyme)
-Restructurer en miroir des 5 étapes :
-- `src/routes/essai.import.tsx` — utilise `<ImportStep mode="trial" />`
-- `src/routes/essai.analyse.tsx` — `<AnalyseStep mode="trial" />`
-- `src/routes/essai.selection.tsx` — **NOUVEAU**, `<SelectionStep mode="trial" />`
-- `src/routes/essai.creation.tsx` — **NOUVEAU**, monte l'éditeur de `creation.tsx` en mode léger (sans auth)
-- `src/routes/essai.publication.tsx` — `<PublicationStep mode="trial" onPublishGate={openTrialModal} />`
-- Supprimer : `essai.preview.tsx`, `essai.schedule.tsx` (remplacés).
+4. **Panneau file d'attente**
+   - Nouveau composant `PromotionQueuePanel.tsx` : liste verticale des promotions sélectionnées avec coche verte, miniature, libellé.
+   - Au clic : recharge le canvas avec les données de la promo (nom, prix, ancien prix, %, rayon, image) **sans réinitialiser** le template courant ni les déplacements/édits faits sur les blocs textuels génériques.
+   - Stratégie : un "préset de remplissage" qui ne touche qu'aux blocs dont `role ∈ {title, price_main, price_old, badge}` + `bgImage`. Les `custom` et `elements` ajoutés manuellement restent intacts.
+   - Sauvegarde de l'état par-promo (`Record<promoId, Config>`) en mémoire pour ne rien perdre quand on revient sur une promo précédente.
+   - Sélection des promos :
+     - **trial** : `useTunnelStore.detectedProducts.filter(selected)` (les 3 max).
+     - **app** : `listCampaignItemsFn` (déjà appelée) — réutilisée tel quel.
 
-### Routes app (connectée)
-Nouveau parcours linéaire qui réutilise les mêmes composants :
-- `src/routes/_authenticated/workflow.import.tsx`
-- `src/routes/_authenticated/workflow.analyse.tsx`
-- `src/routes/_authenticated/workflow.selection.tsx`
-- `src/routes/_authenticated/workflow.creation.tsx` — délègue à l'éditeur existant `creation.tsx`
-- `src/routes/_authenticated/workflow.publication.tsx`
+5. **Préchargement automatique du canvas**
+   - À l'ouverture, si une promotion est disponible, peupler les blocs (titre = nom, price_main, price_old, badge = `-X%`) et `bgImage = product.imageUrl ?? product.thumbnailUrl`.
+   - Si template choisi en amont (`product.visualTemplate` ou template global du tunnel), l'appliquer.
 
-L'entrée se fait depuis `dashboard.tsx` (CTA "Nouveau contenu") ou `catalog.tsx` (CTA "Créer depuis ce catalogue").
+6. **Navigation Précédent / Continuer (trial)**
+   - Header dédié au-dessus de l'éditeur en mode trial : `← Précédent` (vers `/essai/selection`) et `Continuer →` (vers `/essai/publication`).
+   - Le `WorkflowProgress` reste affiché (déjà géré par `essai.tsx` parent).
+   - "Continuer" persiste le state courant via `useTunnelStore.setGeneratedPosts(...)`.
 
-Les écrans existants `catalog`, `promotions`, `creation`, `calendar` restent accessibles indépendamment (vues de gestion), mais le workflow guidé passe désormais par `/app/workflow/*`.
+7. **Limites freemium**
+   - Cap déjà géré : `setGeneratedPosts` slice à 3 dans `tunnel-store.ts`.
+   - Pas d'autre verrou : tous les panneaux de l'éditeur restent utilisables.
 
-### Gate compte (tunnel uniquement)
-Dans `PublicationStep` avec `mode="trial"`, tout clic sur Publier / Programmer / Brouillon déclenche `TrialGateModal` au lieu d'exécuter l'action. Aucune autre étape ne demande de compte.
+8. **Suppression de l'ancien éditeur de tunnel**
+   - Supprimer le contenu actuel de `essai.creation.tsx` (mockups Facebook/Instagram/LinkedIn) et le remplacer par le mount du nouveau composant.
+   - Garder les composants `FacebookMockup`/`InstagramMockup`/`LinkedInMockup` pour `essai.publication.tsx` qui les utilise pour l'aperçu final (à confirmer en lisant ce fichier).
 
-### Barre de progression
-- Remplacer dans `essai.tsx` l'import `TunnelProgress` → `WorkflowProgress mode="trial"`.
-- Ajouter dans le layout `/app/workflow/*` un header avec `WorkflowProgress mode="app"`.
-- Supprimer `CampaignStepper` (non utilisé après unification) ou le garder uniquement si une autre vue en dépend (à vérifier).
+9. **Routes**
+   - Pas de nouveau fichier de route, juste réécriture du composant de `essai.creation.tsx` et de `_authenticated/creation.tsx` pour qu'ils délèguent à `CreationEditor`.
+   - Pas de migration Supabase nécessaire.
 
-## Hors-scope
-- Pas de refonte de l'éditeur Création (déjà fait à l'itération précédente).
-- Pas de modification du schéma DB.
-- Pas de logique IA réelle nouvelle.
+## Hors scope
 
-## Fichiers créés
-- `src/lib/workflow-store.ts`
-- `src/components/workflow/WorkflowProgress.tsx`
-- `src/components/workflow/ImportStep.tsx`
-- `src/components/workflow/AnalyseStep.tsx`
-- `src/components/workflow/SelectionStep.tsx`
-- `src/components/workflow/PublicationStep.tsx`
-- `src/routes/essai.selection.tsx`
-- `src/routes/essai.creation.tsx`
-- `src/routes/essai.publication.tsx`
-- `src/routes/_authenticated/workflow.tsx` (layout)
-- `src/routes/_authenticated/workflow.import.tsx`
-- `src/routes/_authenticated/workflow.analyse.tsx`
-- `src/routes/_authenticated/workflow.selection.tsx`
-- `src/routes/_authenticated/workflow.creation.tsx`
-- `src/routes/_authenticated/workflow.publication.tsx`
+- Pas de modification des autres étapes (Import/Analyse/Sélection/Publication) au-delà du wiring "Créer mes contenus" → `/essai/creation`, déjà en place.
+- Pas de changement des server functions existantes.
+- Pas de nouveaux secrets (LOVABLE_API_KEY déjà disponible côté serveur → l'IA gateway reste utilisable en trial via les server functions existantes, qui ne nécessitent pas d'auth).
 
-## Fichiers modifiés
-- `src/routes/essai.tsx` — utiliser `WorkflowProgress`
-- `src/routes/essai.import.tsx` / `essai.analyse.tsx` — remonter sur les composants partagés
-- `src/components/app-sidebar.tsx` — entrée "Nouveau contenu" → `/workflow/import`
-- `src/routes/_authenticated/dashboard.tsx` — CTA principal vers le workflow
+## Risques / points d'attention
 
-## Fichiers supprimés
-- `src/routes/essai.preview.tsx`
-- `src/routes/essai.schedule.tsx`
-- `src/components/tunnel-progress.tsx`
-- `src/components/campaign-stepper.tsx` (si non utilisé ailleurs)
-
-## Validation
-- Parcourir `/essai/import` → `/essai/publication` et vérifier que la modale apparaît uniquement à l'étape 5.
-- Parcourir `/workflow/import` → `/workflow/publication` connecté, vérifier la persistance.
-- Vérifier que la barre de progression affiche bien 5 étapes dans les deux modes.
+- **Régression sur `/creation` connecté** : c'est une grosse extraction. Mitigation : on conserve toutes les `useQuery` existantes, on les passe via le `dataSource` Supabase qui appelle les mêmes server fns. Aucun changement de comportement attendu pour les utilisateurs connectés.
+- **Panneau de file d'attente côté connecté** : il existe déjà des `campaign-stepper`/`CampaignStepper` (importés dans `creation.tsx`). À harmoniser ou compléter — détails à trancher pendant l'implémentation.
+- **Taille du diff** : ~2000 lignes touchées. Je procéderai en plusieurs commits logiques.
