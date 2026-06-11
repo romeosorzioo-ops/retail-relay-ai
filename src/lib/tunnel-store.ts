@@ -84,6 +84,7 @@ type TunnelState = {
   setDetectedProducts: (p: TunnelProduct[]) => void;
   setGeneratedPosts: (p: TunnelPost[]) => void;
   addPost: (p: TunnelPost) => void;
+  updatePost: (id: string, patch: Partial<TunnelPost>) => void;
   setStep: (s: TunnelStep) => void;
   reset: () => void;
 };
