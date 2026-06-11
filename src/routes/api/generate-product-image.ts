@@ -1,18 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-const KNOWN_BRANDS = [
-  "coca-cola", "coca cola", "pepsi", "pringles", "nutella", "huggies", "pampers",
-  "danone", "nestle", "nestlé", "kinder", "ferrero", "oreo", "lay's", "lays",
-  "haribo", "lu", "président", "president", "lactel", "evian", "perrier",
-  "heineken", "kronenbourg", "1664", "ricard", "absolut", "jack daniel",
-  "kellogg", "milka", "lindt", "bonduelle", "knorr", "maggi", "barilla",
-  "panzani", "activia", "yoplait", "saint-michel",
-];
-
-export function isBrandedProduct(name: string): boolean {
-  const lower = name.toLowerCase();
-  return KNOWN_BRANDS.some((b) => lower.includes(b));
-}
+import { classifyProductType, isBrandedProduct } from "@/lib/brand-detection";
 
 function buildPrompt(input: {
   productName: string;
@@ -41,18 +28,25 @@ export const Route = createFileRoute("/api/generate-product-image")({
             productName?: string;
             category?: string | null;
             rayon?: string | null;
+            productType?: "packaged" | "fresh" | null;
           };
 
           if (!body?.productName || typeof body.productName !== "string") {
             return Response.json({ error: "productName requis" }, { status: 400 });
           }
 
-          if (isBrandedProduct(body.productName)) {
+          // Garde-fou : on ne génère JAMAIS d'IA pour un produit packagé.
+          // Source de vérité = productType fourni par le client ; fallback = classifier.
+          const productType =
+            body.productType ??
+            classifyProductType(body.productName, body.category);
+
+          if (productType === "packaged" || isBrandedProduct(body.productName)) {
             return Response.json(
               {
-                error: "branded_product",
+                error: "packaged_product",
                 message:
-                  "Pour les produits de marque, utilisez l'image catalogue ou importez une photo produit.",
+                  "Produit packagé : l'image du catalogue est obligatoire, pas de génération IA.",
               },
               { status: 422 },
             );

@@ -31,6 +31,7 @@ export type TunnelProduct = {
   start_date?: string | null;
   end_date?: string | null;
   templateCategory?: TemplateKey | null;
+  productType?: "packaged" | "fresh" | null;
   selected?: boolean;
 };
 

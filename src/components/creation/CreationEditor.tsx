@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
 import { useTunnelStore, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
 import { TEMPLATES, pickTemplateForCategory, type TemplateKey } from "@/lib/promo-templates";
+import { classifyProductType } from "@/lib/brand-detection";
 
 export type CreationEditorMode = "app" | "trial";
 
@@ -557,9 +558,18 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       toast.error("Aucun produit sélectionné.");
       return;
     }
+    const productType: "packaged" | "fresh" =
+      current?.productType ?? classifyProductType(productName, current?.category);
     try {
       let imgUrl: string | null = sourceImageUrl ?? config.bgImage ?? null;
       if (!opts.cutoutOnly || !imgUrl) {
+        // Règle : pas de génération IA pour un produit packagé.
+        if (productType === "packaged") {
+          toast.error(
+            "Produit packagé : importez ou conservez l'image du catalogue, pas de génération IA.",
+          );
+          return;
+        }
         setAiBusy("generate");
         const r = await fetch("/api/generate-product-image", {
           method: "POST",
@@ -567,12 +577,13 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           body: JSON.stringify({
             productName,
             category: current?.category ?? null,
+            productType,
           }),
         });
         const data = (await r.json()) as { dataUrl?: string; error?: string; message?: string };
         if (!r.ok || !data.dataUrl) {
-          if (data.error === "branded_product") {
-            toast.info(data.message ?? "Produit de marque : utilisez l'image catalogue.");
+          if (data.error === "branded_product" || data.error === "packaged_product") {
+            toast.info(data.message ?? "Produit packagé : utilisez l'image catalogue.");
           } else {
             toast.error(`Génération IA échouée : ${data.message ?? data.error ?? r.status}`);
           }
@@ -606,7 +617,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     }
   }
 
-  // Auto-trigger AI generation when current trial product has no image at all.
+  // Auto-trigger AI generation when current trial product has no image at all
+  // AND it's a fresh/generic product. For packaged products, never auto-generate.
   useEffect(() => {
     if (!isTrial || !trialCurrentId) return;
     if (aiAutoRef.current.has(trialCurrentId)) return;
@@ -614,10 +626,13 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (!p) return;
     const hasImg = !!(p.imageUrl || p.thumbnailUrl);
     if (hasImg) return;
+    const ptype = p.productType ?? classifyProductType(p.product_name, p.category);
+    if (ptype !== "fresh") return;
     aiAutoRef.current.add(trialCurrentId);
     void runAiPipeline();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTrial, trialCurrentId, trialQueue]);
+
 
 
 
