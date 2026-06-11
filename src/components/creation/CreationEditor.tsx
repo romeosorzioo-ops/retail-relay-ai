@@ -1730,6 +1730,20 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                     style={{ right: `${20 * scale}px`, bottom: `${20 * scale}px`,
                       width: `${160 * scale}px`, objectFit: "contain" }} />
                 )}
+                {isTrial && aiBusy !== null && (
+                  <AiVisualLoader phase={aiBusy} width={previewWidth} height={previewHeight} />
+                )}
+                {isTrial && aiBusy === null && !config.bgImage && !sourceImageUrl && trialCurrentId && (
+                  <AiVisualEmpty
+                    width={previewWidth}
+                    height={previewHeight}
+                    disabled={aiBusy !== null}
+                    onGenerate={() => {
+                      aiAutoRef.current.add(trialCurrentId);
+                      void runAiPipeline();
+                    }}
+                  />
+                )}
               </div>
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <span>{dims.w} × {dims.h} px</span>
