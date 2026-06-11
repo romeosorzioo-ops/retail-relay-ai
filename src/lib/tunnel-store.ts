@@ -30,6 +30,7 @@ export type TunnelProduct = {
   missingFields?: string[] | null;
   start_date?: string | null;
   end_date?: string | null;
+  templateCategory?: TemplateKey | null;
   selected?: boolean;
 };
 
