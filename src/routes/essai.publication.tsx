@@ -11,6 +11,7 @@ import { useTunnelStore, type TunnelPost } from "@/lib/tunnel-store";
 import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
+import { SchedulePicker } from "@/components/schedule-picker";
 import {
   Calendar,
   Clock,
