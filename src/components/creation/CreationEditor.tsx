@@ -801,19 +801,29 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     });
   }
 
+  // In trial mode, no server upload: convert to dataURL inline.
+  async function fileToDataUrl(file: Blob): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(new Error("Lecture image impossible"));
+      r.readAsDataURL(file);
+    });
+  }
+  async function uploadOrInline(file: Blob, fileName: string, fileType: string): Promise<string> {
+    if (isTrial) return await fileToDataUrl(file);
+    const data_base64 = await blobToBase64(file);
+    const res = await uploadVisualImageFn({ data: { file_name: fileName, file_type: fileType, data_base64 } });
+    return res.url;
+  }
+
   async function uploadImage(file: File, target: "bg" | "logo") {
     if (!file.type.startsWith("image/")) { toast.error("Image uniquement (jpg, png)"); return; }
     const setter = target === "bg" ? setUploadingBg : setUploadingLogo;
     setter(true);
     try {
-      const buf = await file.arrayBuffer();
-      let binary = "";
-      const bytes = new Uint8Array(buf);
-      const chunk = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      const data_base64 = btoa(binary);
-      const res = await uploadVisualImageFn({ data: { file_name: file.name, file_type: file.type, data_base64 } });
-      setConfig((c) => target === "bg" ? { ...c, bgImage: res.url } : { ...c, logoUrl: res.url });
+      const url = await uploadOrInline(file, file.name, file.type);
+      setConfig((c) => target === "bg" ? { ...c, bgImage: url } : { ...c, logoUrl: url });
       toast.success("Image ajoutée");
     } catch (e) { toast.error((e as Error).message); }
     finally { setter(false); }
@@ -823,11 +833,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (!file.type.startsWith("image/")) { toast.error("Image uniquement (jpg, png)"); return; }
     setUploadingField(true);
     try {
-      const data_base64 = await blobToBase64(file);
-      const res = await uploadVisualImageFn({ data: { file_name: file.name, file_type: file.type, data_base64 } });
-      setSourceImageUrl(res.url);
+      const url = await uploadOrInline(file, file.name, file.type);
+      setSourceImageUrl(url);
       setSourceType("field_photo");
-      setCropSrc(res.url);
+      setCropSrc(url);
       setCropOpen(true);
     } catch (e) { toast.error((e as Error).message); }
     finally { setUploadingField(false); }
@@ -837,14 +846,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (!cropSrc) return;
     try {
       const { blob, naturalW, naturalH } = await cropImageToBlob(cropSrc, box, dims.w, dims.h);
-      const data_base64 = await blobToBase64(blob);
-      const res = await uploadVisualImageFn({
-        data: { file_name: `field-${Date.now()}.jpg`, file_type: "image/jpeg", data_base64 },
-      });
+      const url = await uploadOrInline(blob, `field-${Date.now()}.jpg`, "image/jpeg");
       const zoom = box.width > 0 ? 1 / box.width : 1;
       setConfig((c) => ({
         ...c,
-        bgImage: res.url,
+        bgImage: url,
         lastCrop: {
           src: cropSrc,
           x: box.x, y: box.y, width: box.width, height: box.height,
@@ -897,16 +903,24 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       const r = await exportPng();
       let image_url: string | null = null;
       if (r) {
-        const buf = await r.blob.arrayBuffer();
-        let binary = "";
-        const bytes = new Uint8Array(buf);
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        const data_base64 = btoa(binary);
-        const res = await uploadVisualImageFn({
-          data: { file_name: `visual-${Date.now()}.png`, file_type: "image/png", data_base64 },
-        });
-        image_url = res.url;
+        image_url = await uploadOrInline(r.blob, `visual-${Date.now()}.png`, "image/png");
+      }
+      if (isTrial) {
+        // Save into the trial tunnel store (capped at 3 by setGeneratedPosts).
+        const current = trialQueue.find((p) => p.id === trialCurrentId);
+        const newPost: TunnelPost = {
+          id: `${Date.now()}`,
+          product_name: current?.product_name ?? visualName,
+          caption: "",
+          imageUrl: image_url,
+          finalVisualUrl: image_url,
+          productImageUrl: current?.imageUrl ?? null,
+          pageNumber: current?.pageNumber ?? null,
+          selected: true,
+        };
+        const existing = tunnelPosts.filter((p) => p.product_name !== newPost.product_name);
+        setTunnelPosts([...existing, newPost]);
+        return { ok: true };
       }
       return saveVisualFn({
         data: {
@@ -921,11 +935,12 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["created-visuals"] });
-      toast.success("Visuel enregistré dans la bibliothèque");
+      if (!isTrial) qc.invalidateQueries({ queryKey: ["created-visuals"] });
+      toast.success(isTrial ? "Visuel ajouté à votre essai" : "Visuel enregistré dans la bibliothèque");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const stepperActive: CampaignStep = currentItem?.status === "scheduled"
     ? "schedule"
