@@ -1670,6 +1670,37 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                 <button type="button" onClick={() => setShowCropDebug((v) => !v)} className="hover:underline">
                   {showCropDebug ? "Masquer debug" : "Debug crop"}
                 </button>
+                {isTrial && (
+                  <>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      disabled={aiBusy !== null}
+                      onClick={() => runAiPipeline()}
+                      className="text-primary hover:underline disabled:opacity-60"
+                    >
+                      {aiBusy === "generate"
+                        ? "Génération IA…"
+                        : aiBusy === "cutout"
+                          ? "Détourage…"
+                          : "Générer visuel IA"}
+                    </button>
+                    {(sourceImageUrl || config.bgImage) && (
+                      <>
+                        <span>·</span>
+                        <button
+                          type="button"
+                          disabled={aiBusy !== null}
+                          onClick={() => runAiPipeline({ cutoutOnly: true })}
+                          className="text-primary hover:underline disabled:opacity-60"
+                        >
+                          Détourer le visuel
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+
               </div>
             </div>
           </main>
