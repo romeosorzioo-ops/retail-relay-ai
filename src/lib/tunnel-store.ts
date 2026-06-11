@@ -164,6 +164,7 @@ export const useTunnelStore = create<TunnelState>()(
           detectedProducts: [],
           generatedPosts: [],
           currentStep: "import",
+          creativeStateByPromoId: {},
         }),
     }),
     {
@@ -174,6 +175,7 @@ export const useTunnelStore = create<TunnelState>()(
         detectedProducts: s.detectedProducts,
         generatedPosts: s.generatedPosts,
         currentStep: s.currentStep,
+        creativeStateByPromoId: s.creativeStateByPromoId,
       }),
     },
   ),
