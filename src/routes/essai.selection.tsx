@@ -251,12 +251,16 @@ function SelectionPage() {
             variant="brand"
             disabled={count === 0}
             onClick={() => {
+              setDetectedProducts(
+                detectedProducts.map((p) => ({ ...p, selected: selected.has(p.id) } as TunnelProduct)),
+              );
               setStep("creation");
               router.navigate({ to: "/essai/creation" });
             }}
           >
             Créer mes contenus <ArrowRight className="h-4 w-4" />
           </Button>
+
         </div>
       </div>
 
