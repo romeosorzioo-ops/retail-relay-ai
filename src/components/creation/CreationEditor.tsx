@@ -538,6 +538,81 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     }
   }, [isTrial, trialCurrentId, trialQueue, brand]);
 
+  // ---------- AI visual pipeline (generation + cutout) ----------
+  const [aiBusy, setAiBusy] = useState<null | "generate" | "cutout">(null);
+  const aiAutoRef = useRef<Set<string>>(new Set());
+
+  async function runAiPipeline(opts: { cutoutOnly?: boolean } = {}) {
+    const current = isTrial ? trialQueue.find((p) => p.id === trialCurrentId) : null;
+    const productName = current?.product_name;
+    if (!productName) {
+      toast.error("Aucun produit sélectionné.");
+      return;
+    }
+    try {
+      let imgUrl: string | null = sourceImageUrl ?? config.bgImage ?? null;
+      if (!opts.cutoutOnly || !imgUrl) {
+        setAiBusy("generate");
+        const r = await fetch("/api/generate-product-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productName,
+            category: current?.category ?? null,
+          }),
+        });
+        const data = (await r.json()) as { dataUrl?: string; error?: string; message?: string };
+        if (!r.ok || !data.dataUrl) {
+          if (data.error === "branded_product") {
+            toast.info(data.message ?? "Produit de marque : utilisez l'image catalogue.");
+          } else {
+            toast.error(`Génération IA échouée : ${data.message ?? data.error ?? r.status}`);
+          }
+          return;
+        }
+        imgUrl = data.dataUrl;
+      }
+
+      setAiBusy("cutout");
+      const c = await fetch("/api/cutout-product-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: imgUrl,
+          productLabel: current?.productLabel ?? productName,
+        }),
+      });
+      const cData = (await c.json()) as { dataUrl?: string; error?: string; message?: string };
+      const finalUrl = c.ok && cData.dataUrl ? cData.dataUrl : imgUrl;
+      if (!c.ok) {
+        toast.warning("Détourage indisponible, image brute conservée.");
+      }
+      setSourceType("catalog");
+      setSourceImageUrl(finalUrl);
+      setConfig((cfg) => ({ ...cfg, bgImage: finalUrl }));
+      toast.success("Visuel IA prêt.");
+    } catch (e) {
+      toast.error(`Pipeline IA : ${String(e)}`);
+    } finally {
+      setAiBusy(null);
+    }
+  }
+
+  // Auto-trigger AI generation when current trial product has no image at all.
+  useEffect(() => {
+    if (!isTrial || !trialCurrentId) return;
+    if (aiAutoRef.current.has(trialCurrentId)) return;
+    const p = trialQueue.find((x) => x.id === trialCurrentId);
+    if (!p) return;
+    const hasImg = !!(p.imageUrl || p.thumbnailUrl);
+    if (hasImg) return;
+    aiAutoRef.current.add(trialCurrentId);
+    void runAiPipeline();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTrial, trialCurrentId, trialQueue]);
+
+
+
 
 
   // ---------- Catalog promotion bridge ----------
