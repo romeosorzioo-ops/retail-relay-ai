@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { TunnelProgress } from "@/components/tunnel-progress";
+import { WorkflowProgress } from "@/components/workflow/WorkflowProgress";
+import { useRouterState } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useTunnelStore } from "@/lib/tunnel-store";

@@ -59,7 +59,12 @@ export type TunnelPost = {
   visualStatus?: VisualStatus;
 };
 
-export type TunnelStep = "import" | "analyse" | "preview" | "schedule";
+export type TunnelStep =
+  | "import"
+  | "analyse"
+  | "selection"
+  | "creation"
+  | "publication";
 
 type TunnelState = {
   // pdfFile is intentionally NOT persisted (File can't be serialized)
