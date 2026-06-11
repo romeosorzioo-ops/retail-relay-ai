@@ -1,79 +1,78 @@
-## Espace Admin Komaag
+# Refonte module Création — style Canva spécialisé
 
-### 1. Rôles utilisateurs (sécurité)
+## Objectif
+Transformer `/creation` en éditeur visuel moderne type Canva, sans toucher à la logique métier existante (blocks, templates, promotions, save, scheduling, IA). Refonte **UI uniquement**.
 
-- Nouvelle enum `app_role` : `user`, `admin`.
-- Nouvelle table `user_roles (user_id, role)` + fonction `has_role()` SECURITY DEFINER (pattern recommandé Supabase, anti-récursion RLS).
-- RLS : un utilisateur voit ses propres rôles ; les admins peuvent tout lire/écrire.
-- Hook client `useIsAdmin()` qui interroge `user_roles`.
-- Layout protégé `/_authenticated/_admin` (gate `beforeLoad` → redirect `/dashboard` si non-admin).
-- Item « Admin » dans la sidebar masqué pour les non-admins.
-- Le premier admin sera promu manuellement via SQL (je fournirai la commande à la fin).
+## Nouvelle structure
 
-### 2. Storage
+```text
+┌──────────────────────────────────────────────────────────┐
+│ TopBar : [Nom visuel]  [Format ▾]   [⬇][📅][Publier]    │
+├────┬────────────────┬──────────────────────────────┬─────┤
+│ N  │ Panneau        │                              │ N   │
+│ a  │ contextuel     │      Canvas (grand)          │ a   │
+│ v  │ (selon item    │      zoom + pan              │ v   │
+│    │  cliqué)       │                              │     │
+└────┴────────────────┴──────────────────────────────┴─────┘
+```
 
-Création de 3 buckets **privés** (URLs signées au runtime) :
-- `template-assets`
-- `font-assets`
-- `graphic-assets`
+### 1. Sidebar gauche verticale (fixe, ~80px)
+6 items icône + libellé, fond sombre, hover léger, item actif avec dégradé Komaag (`#ff66c4 → #ffde59`).
+- **Modèles** (LayoutTemplate)
+- **Texte** (Type)
+- **Éléments** (Shapes)
+- **Importer** (Upload)
+- **Marque** (Palette) — auto-rempli depuis brand profile
+- **Outils IA** (Sparkles)
 
-Policies : lecture pour `authenticated`, écriture réservée aux admins via `has_role()`.
+### 2. Panneau contextuel (~280px, slide)
+Contenu selon item actif :
+- **Modèles** : grille de cartes (templates enseigne : Jeudi PLUS, Arrivage, Producteur local, Catalogue semaine) → réutilise `listVisualTemplatesFn`
+- **Texte** : bouton "Ajouter un paragraphe" + presets (Titre promo, Prix, Ancien prix barré) → crée des Blocks avec rôles existants
+- **Éléments** : bibliothèque `GRAPHIC_ELEMENTS` (flèches, pastilles %, formes, stickers, séparateurs) groupée par `ELEMENT_CATEGORIES`
+- **Importer** : drop-zone (image/logo/PNG/SVG) → réutilise `uploadVisualImageFn`
+- **Marque** : logo enseigne, palette couleurs, polices (depuis `getMyBrandProfileFn` + `getMyBrandGuidelineFn` + `listBrandFontsFn`)
+- **Outils IA** : Générer image produit, Supprimer fond, Améliorer photo, Recentrer, Générer texte, Variantes
 
-### 3. Tables
+### 3. Canvas central
+- Plus grand (occupe tout l'espace dispo, padding réduit)
+- Conserve le moteur de rendu actuel (blocks/elements/template)
+- Ajouter contrôles zoom (+/-, %) en bas
+- Sélection multiple : déjà présente ou marquée TODO si absente
 
-| Table | Champs métier |
-|---|---|
-| `visual_templates` (refonte) | name, brand, category, format, image_url, is_active |
-| `font_assets` | name, family, style, usage, brand (nullable), file_url, is_active |
-| `graphic_assets` | name, type (arrow/badge/sticker/price_label/local_icon/shape), brand (nullable), file_url, is_active |
-| `creation_presets` | name, brand, format, template_id, title_font_id, price_font_id, graphic_asset_ids[], config_json, is_active |
+### 4. Top bar
+- Gauche : input éditable nom du visuel
+- Centre : Select format (POST_FORMATS)
+- Droite : `Télécharger` (toPng existant), `Planifier` (ScheduleItemModal), `Publier` (bouton dégradé Komaag principal)
 
-**Migration douce** sur `visual_templates` : on ajoute `brand`, `image_url`, `is_active` (existent déjà : `name`, `category`, `format`, `preview_url`, `config_json`, `allowed_brands` créé au tour précédent). `preview_url` → fallback de `image_url`. `allowed_brands` reste compatible avec le filtrage déjà en place.
+### 5. Panneau droit (propriétés)
+Reste affiché quand un block/élément est sélectionné (props existantes : font, taille, couleur, alignement, stroke, shadow). Sinon caché → plus de place pour le canvas.
 
-Toutes les tables ont leurs grants + RLS + policies (lecture authentifié, écriture admin) + trigger `updated_at`.
+## Implémentation
+- **Pas de réécriture** des fonctions métier ni du moteur de rendu blocks/elements.
+- Restructurer `src/routes/_authenticated/creation.tsx` : extraire la sidebar gauche, le panneau contextuel et la top bar en composants dédiés sous `src/components/creation/`.
+- Mapper l'ancien `Tabs` (props/elements/templates/link) vers la nouvelle nav latérale : "Bloc" devient le panneau droit (propriétés), "Éléments"/"Modèles" deviennent des items sidebar, "Promo" (link) devient un sous-section dans panneau Marque ou Modèles.
+- Conserver toute la logique de chargement (promotions, campaign items, brand profile).
+- Ajouter le dégradé Komaag comme classe utilitaire dans `src/styles.css` si pas déjà présent.
 
-### 4. Routes admin (`/_authenticated/_admin/*`)
+## Hors-scope
+- Pas de nouvelles fonctionnalités IA réelles (les boutons "Outils IA" déclenchent les fonctions déjà existantes ou affichent un placeholder "Bientôt").
+- Pas de changement de schéma DB.
+- Pas de modif du tunnel d'essai.
 
-- `/admin` → tableau de bord (compteur d'assets par type).
-- `/admin/templates` → liste + upload PNG + édition + activer/désactiver/supprimer.
-- `/admin/fonts` → liste + upload `.ttf/.otf/.woff/.woff2` + édition.
-- `/admin/graphics` → liste + upload PNG/SVG + édition par type.
-- `/admin/presets` → création de presets en sélectionnant template + polices + éléments + enseigne + format.
+## Fichiers à créer
+- `src/components/creation/CreationSidebar.tsx`
+- `src/components/creation/CreationTopBar.tsx`
+- `src/components/creation/panels/TemplatesPanel.tsx`
+- `src/components/creation/panels/TextPanel.tsx`
+- `src/components/creation/panels/ElementsPanel.tsx`
+- `src/components/creation/panels/ImportPanel.tsx`
+- `src/components/creation/panels/BrandPanel.tsx`
+- `src/components/creation/panels/AiToolsPanel.tsx`
 
-Chaque page : table + formulaire d'édition (Dialog), upload via base64 → server fn → storage privé → `getPublicUrl` ou `createSignedUrl` (selon visibilité).
+## Fichiers à modifier
+- `src/routes/_authenticated/creation.tsx` (recomposition du layout, conservation de toute la logique d'état/handlers)
+- `src/styles.css` (utilitaire `bg-komaag-gradient` si absent)
 
-### 5. Server functions
-
-Un fichier par domaine (`templates.functions.ts`, `font-assets.functions.ts`, `graphic-assets.functions.ts`, `presets.functions.ts`) avec :
-- `listXxxFn` (filtrable par brand / is_active)
-- `upsertXxxFn` (admin only via middleware `requireAdmin`)
-- `deleteXxxFn`
-- `uploadXxxFileFn` (admin only, valide MIME + taille)
-
-Nouveau middleware `requireAdmin` qui empile `requireSupabaseAuth` puis vérifie `has_role(uid, 'admin')`.
-
-### 6. Intégration module Création
-
-- Nouvelle requête `listActivePresetsForMyStoreFn` :
-  - retourne presets `is_active = true`
-  - filtrés par enseigne du magasin
-  - fallback automatique sur `brand = 'Générique'` si rien trouvé
-- Galerie de presets affichée en haut de l'éditeur, à côté/à la place de la sélection de template actuelle.
-- Sélection d'un preset → applique : template (fond du visuel), polices titre/prix, éléments graphiques, `config_json`.
-- Les textes, prix, logo et éléments restent éditables (logique existante conservée).
-
-### 7. Hors scope (à proposer après)
-
-- UI de promotion d'utilisateurs en admin (pour cette V1, promotion via SQL).
-- Versioning des presets.
-- Aperçu live du preset avant sélection.
-
-### Détails techniques
-
-- Buckets privés + `createSignedUrl(60 * 60 * 24 * 7)` pour l'affichage.
-- Upload : base64 côté client → server fn → `supabase.storage.from(bucket).upload()` (chemin `${admin_user_id}/${type}/${timestamp}-${rand}.${ext}`).
-- Validation Zod côté serveur sur toutes les entrées (déjà la convention du projet).
-- Tous les `CREATE TABLE` dans `public` reçoivent `GRANT SELECT, INSERT, UPDATE, DELETE TO authenticated` + `GRANT ALL TO service_role`, puis RLS scopée par `has_role()`.
-- L'erreur runtime « Failed to fetch dynamically imported module » du HMR sera résolue par le redéploiement après migration.
-
-Confirmez et je lance la migration DB + la création des buckets, puis le code.
+## Validation
+Vérifier visuellement chaque panneau via le preview, et que les fonctions Save / Download / Schedule fonctionnent toujours.
