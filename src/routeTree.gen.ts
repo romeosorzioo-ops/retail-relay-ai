@@ -17,8 +17,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EssaiIndexRouteImport } from './routes/essai.index'
-import { Route as EssaiScheduleRouteImport } from './routes/essai.schedule'
-import { Route as EssaiPreviewRouteImport } from './routes/essai.preview'
 import { Route as EssaiImportRouteImport } from './routes/essai.import'
 import { Route as EssaiAnalyseRouteImport } from './routes/essai.analyse'
 import { Route as ApiGenerateProductImageRouteImport } from './routes/api/generate-product-image'
@@ -77,16 +75,6 @@ const IndexRoute = IndexRouteImport.update({
 const EssaiIndexRoute = EssaiIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => EssaiRoute,
-} as any)
-const EssaiScheduleRoute = EssaiScheduleRouteImport.update({
-  id: '/schedule',
-  path: '/schedule',
-  getParentRoute: () => EssaiRoute,
-} as any)
-const EssaiPreviewRoute = EssaiPreviewRouteImport.update({
-  id: '/preview',
-  path: '/preview',
   getParentRoute: () => EssaiRoute,
 } as any)
 const EssaiImportRoute = EssaiImportRouteImport.update({
@@ -216,8 +204,6 @@ export interface FileRoutesByFullPath {
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/import': typeof EssaiImportRoute
-  '/essai/preview': typeof EssaiPreviewRoute
-  '/essai/schedule': typeof EssaiScheduleRoute
   '/essai/': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -245,8 +231,6 @@ export interface FileRoutesByTo {
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/import': typeof EssaiImportRoute
-  '/essai/preview': typeof EssaiPreviewRoute
-  '/essai/schedule': typeof EssaiScheduleRoute
   '/essai': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -278,8 +262,6 @@ export interface FileRoutesById {
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/import': typeof EssaiImportRoute
-  '/essai/preview': typeof EssaiPreviewRoute
-  '/essai/schedule': typeof EssaiScheduleRoute
   '/essai/': typeof EssaiIndexRoute
   '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/_authenticated/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -311,8 +293,6 @@ export interface FileRouteTypes {
     | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/import'
-    | '/essai/preview'
-    | '/essai/schedule'
     | '/essai/'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
@@ -340,8 +320,6 @@ export interface FileRouteTypes {
     | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/import'
-    | '/essai/preview'
-    | '/essai/schedule'
     | '/essai'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
@@ -372,8 +350,6 @@ export interface FileRouteTypes {
     | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/import'
-    | '/essai/preview'
-    | '/essai/schedule'
     | '/essai/'
     | '/_authenticated/admin/brand-guidelines'
     | '/_authenticated/admin/fonts'
@@ -451,20 +427,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/essai/'
       preLoaderRoute: typeof EssaiIndexRouteImport
-      parentRoute: typeof EssaiRoute
-    }
-    '/essai/schedule': {
-      id: '/essai/schedule'
-      path: '/schedule'
-      fullPath: '/essai/schedule'
-      preLoaderRoute: typeof EssaiScheduleRouteImport
-      parentRoute: typeof EssaiRoute
-    }
-    '/essai/preview': {
-      id: '/essai/preview'
-      path: '/preview'
-      fullPath: '/essai/preview'
-      preLoaderRoute: typeof EssaiPreviewRouteImport
       parentRoute: typeof EssaiRoute
     }
     '/essai/import': {
@@ -675,16 +637,12 @@ const AuthenticatedRouteRouteWithChildren =
 interface EssaiRouteChildren {
   EssaiAnalyseRoute: typeof EssaiAnalyseRoute
   EssaiImportRoute: typeof EssaiImportRoute
-  EssaiPreviewRoute: typeof EssaiPreviewRoute
-  EssaiScheduleRoute: typeof EssaiScheduleRoute
   EssaiIndexRoute: typeof EssaiIndexRoute
 }
 
 const EssaiRouteChildren: EssaiRouteChildren = {
   EssaiAnalyseRoute: EssaiAnalyseRoute,
   EssaiImportRoute: EssaiImportRoute,
-  EssaiPreviewRoute: EssaiPreviewRoute,
-  EssaiScheduleRoute: EssaiScheduleRoute,
   EssaiIndexRoute: EssaiIndexRoute,
 }
 
@@ -703,3 +661,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
