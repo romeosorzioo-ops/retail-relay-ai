@@ -120,6 +120,7 @@ type GraphicEl = {
 type Config = {
   bgImage?: string | null;
   bgColor?: string;
+  visualMode?: "cutout" | "fullbleed";
   logoUrl?: string | null;
   blocks: Block[];
   elements?: GraphicEl[];
@@ -133,6 +134,53 @@ type Config = {
     at: number;
   } | null;
 };
+
+// Solid background palette for trial style picker.
+// First entry is dynamically replaced by detected catalog color.
+const SOLID_PALETTE: { key: string; label: string; color: string }[] = [
+  { key: "catalog", label: "Couleur du catalogue", color: "#1f2937" },
+  { key: "blue", label: "Bleu catalogue", color: "#1e3a8a" },
+  { key: "red", label: "Rouge promo", color: "#dc2626" },
+  { key: "yellow", label: "Jaune promo", color: "#facc15" },
+  { key: "green", label: "Vert frais", color: "#16a34a" },
+  { key: "orange", label: "Orange week-end", color: "#f97316" },
+  { key: "beige", label: "Beige gourmand", color: "#e7d7b3" },
+  { key: "white", label: "Blanc", color: "#ffffff" },
+  { key: "black", label: "Noir premium", color: "#0a0a0a" },
+];
+
+async function extractDominantColor(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const w = 32, h = 32;
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          const ctx = c.getContext("2d");
+          if (!ctx) return resolve(null);
+          ctx.drawImage(img, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h).data;
+          // Sample border pixels (where catalog background is usually visible).
+          let r = 0, g = 0, b = 0, n = 0;
+          const push = (i: number) => {
+            if (data[i + 3] < 200) return;
+            r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+          };
+          for (let x = 0; x < w; x++) { push((x) * 4); push(((h - 1) * w + x) * 4); }
+          for (let y = 0; y < h; y++) { push((y * w) * 4); push((y * w + w - 1) * 4); }
+          if (!n) return resolve(null);
+          const toHex = (v: number) => Math.round(v / n).toString(16).padStart(2, "0");
+          resolve(`#${toHex(r)}${toHex(g)}${toHex(b)}`);
+        } catch { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    } catch { resolve(null); }
+  });
+}
 
 const ROLE_LABEL: Record<BlockRole, string> = {
   title: "Titre",
