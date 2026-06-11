@@ -11,6 +11,7 @@ export type VisualStatus =
 export type TunnelProduct = {
   id: string;
   product_name: string;
+  productLabel?: string | null;
   promo_price?: number | null;
   old_price?: number | null;
   discount_percent?: number | null;
@@ -23,8 +24,11 @@ export type TunnelProduct = {
   cutoutImageUrl?: string | null;
   finalVisualUrl?: string | null;
   visualStatus?: VisualStatus;
+  confidence?: number | null;
+  missingFields?: string[] | null;
+  start_date?: string | null;
+  end_date?: string | null;
   selected?: boolean;
-
 };
 
 export type TunnelPlatform = "facebook" | "instagram" | "linkedin";
