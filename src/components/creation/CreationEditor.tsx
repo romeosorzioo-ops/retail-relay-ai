@@ -1329,6 +1329,58 @@ export function CreationEditor(props: CreationEditorProps = {}) {
               </div>
             )}
 
+            {isTrial && trialCurrentId && (() => {
+              const current = trialQueue.find((p) => p.id === trialCurrentId);
+              if (!current) return null;
+              const activeKey: TemplateKey =
+                current.templateCategory ?? pickTemplateForCategory(current.category);
+              return (
+                <div className="mb-3 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
+                  <p className="mb-2 text-[11px] font-semibold text-foreground">
+                    Style du visuel
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => {
+                      const t = TEMPLATES[k];
+                      const active = k === activeKey;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => {
+                            setTunnelDetected(
+                              tunnelDetected.map((d) =>
+                                d.id === current.id ? { ...d, templateCategory: k } : d,
+                              ),
+                            );
+                            trialAppliedRef.current = null; // re-apply bridge
+                            setConfig((c) => ({ ...c, bgColor: t.background }));
+                          }}
+                          className={cn(
+                            "flex flex-col items-start gap-1 overflow-hidden rounded-md border p-1.5 text-left transition",
+                            active
+                              ? "border-primary ring-1 ring-primary"
+                              : "border-zinc-800 hover:border-zinc-600",
+                          )}
+                          title={t.tagline}
+                        >
+                          <div
+                            className="h-6 w-full rounded"
+                            style={{ background: t.background }}
+                          />
+                          <span className="truncate text-[10px] font-medium">
+                            {t.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+
+
             {leftNav === "templates" && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">Modèles de l'enseigne</h3>
