@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
 import { useTunnelStore, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
+import { TEMPLATES, pickTemplateForCategory, type TemplateKey } from "@/lib/promo-templates";
 
 export type CreationEditorMode = "app" | "trial";
 
