@@ -59,6 +59,10 @@ export type TunnelPost = {
   finalVisualUrl?: string | null;
   visualTemplate?: string | null;
   visualStatus?: VisualStatus;
+  format?: import("./post-formats").PostFormatKey | null;
+  platforms?: { facebook: boolean; instagram: boolean };
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
 };
 
 export type TunnelStep =
