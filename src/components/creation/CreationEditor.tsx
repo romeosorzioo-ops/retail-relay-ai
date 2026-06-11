@@ -120,6 +120,7 @@ type GraphicEl = {
 type Config = {
   bgImage?: string | null;
   bgColor?: string;
+  visualMode?: "cutout" | "fullbleed";
   logoUrl?: string | null;
   blocks: Block[];
   elements?: GraphicEl[];
@@ -133,6 +134,53 @@ type Config = {
     at: number;
   } | null;
 };
+
+// Solid background palette for trial style picker.
+// First entry is dynamically replaced by detected catalog color.
+const SOLID_PALETTE: { key: string; label: string; color: string }[] = [
+  { key: "catalog", label: "Couleur du catalogue", color: "#1f2937" },
+  { key: "blue", label: "Bleu catalogue", color: "#1e3a8a" },
+  { key: "red", label: "Rouge promo", color: "#dc2626" },
+  { key: "yellow", label: "Jaune promo", color: "#facc15" },
+  { key: "green", label: "Vert frais", color: "#16a34a" },
+  { key: "orange", label: "Orange week-end", color: "#f97316" },
+  { key: "beige", label: "Beige gourmand", color: "#e7d7b3" },
+  { key: "white", label: "Blanc", color: "#ffffff" },
+  { key: "black", label: "Noir premium", color: "#0a0a0a" },
+];
+
+async function extractDominantColor(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const w = 32, h = 32;
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          const ctx = c.getContext("2d");
+          if (!ctx) return resolve(null);
+          ctx.drawImage(img, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h).data;
+          // Sample border pixels (where catalog background is usually visible).
+          let r = 0, g = 0, b = 0, n = 0;
+          const push = (i: number) => {
+            if (data[i + 3] < 200) return;
+            r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+          };
+          for (let x = 0; x < w; x++) { push((x) * 4); push(((h - 1) * w + x) * 4); }
+          for (let y = 0; y < h; y++) { push((y * w) * 4); push((y * w + w - 1) * 4); }
+          if (!n) return resolve(null);
+          const toHex = (v: number) => Math.round(v / n).toString(16).padStart(2, "0");
+          resolve(`#${toHex(r)}${toHex(g)}${toHex(b)}`);
+        } catch { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    } catch { resolve(null); }
+  });
+}
 
 const ROLE_LABEL: Record<BlockRole, string> = {
   title: "Titre",
@@ -304,6 +352,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const tunnelPosts = useTunnelStore((s) => s.generatedPosts);
   const setTunnelPosts = useTunnelStore((s) => s.setGeneratedPosts);
   const setTunnelDetected = useTunnelStore((s) => s.setDetectedProducts);
+  const creativeStateByPromoId = useTunnelStore((s) => s.creativeStateByPromoId);
+  const setCreativeState = useTunnelStore((s) => s.setCreativeState);
 
 
   const trialQueue: TunnelProduct[] = useMemo(() => {
@@ -512,20 +562,56 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     setConfig((c) => (c.blocks.length === 0 ? { ...c, blocks: defaultBlocks(null) } : c));
   }, []);
 
-  // ---------- Trial promotion bridge: auto-fill canvas when current promo changes
+  // ---------- Trial promotion bridge: per-promo independent creative state.
+  // When the active promo changes, save the previous promo's config and
+  // load (or initialize) the next one. Never reuse another promo's render.
   const trialAppliedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isTrial) return;
     if (!trialCurrentId) return;
     if (trialAppliedRef.current === trialCurrentId) return;
+
+    // 1) Save outgoing promo state.
+    const prev = trialAppliedRef.current;
+    if (prev) {
+      setCreativeState(prev, {
+        bgImage: config.bgImage ?? null,
+        bgColor: config.bgColor ?? null,
+        visualMode: config.visualMode ?? "fullbleed",
+        blocks: config.blocks,
+        elements: config.elements ?? [],
+      });
+    }
+
     const p = trialQueue.find((x) => x.id === trialCurrentId);
     if (!p) return;
     trialAppliedRef.current = trialCurrentId;
+
+    // 2) Load saved state for this promo if present.
+    const saved = creativeStateByPromoId[trialCurrentId];
+    if (saved && saved.blocks) {
+      setConfig((c) => ({
+        ...c,
+        bgImage: saved.bgImage ?? null,
+        bgColor: saved.bgColor ?? c.bgColor,
+        visualMode: saved.visualMode ?? "fullbleed",
+        blocks: (saved.blocks as Block[]) ?? c.blocks,
+        elements: (saved.elements as GraphicEl[]) ?? c.elements ?? [],
+      }));
+      if (saved.bgImage) {
+        setSourceType("catalog");
+        setSourceImageUrl(saved.bgImage);
+      }
+      return;
+    }
+
+    // 3) Fresh init from the promo's own data.
     const img = p.imageUrl ?? p.thumbnailUrl ?? null;
     const tKey: TemplateKey = p.templateCategory ?? pickTemplateForCategory(p.category);
     const tpl = TEMPLATES[tKey];
+    const initialColor = saved?.catalogColor ?? "#1f2937";
     setConfig((c) => {
-      const baseBlocks = c.blocks.length ? c.blocks : defaultBlocks(brand as any);
+      const baseBlocks = defaultBlocks(brand as any);
       const blocks = baseBlocks.map((b) => {
         if ((b.role === "title" || b.role === "custom") && p.product_name)
           return { ...b, text: p.product_name };
@@ -539,13 +625,45 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return { ...b, text: `-${p.discount_percent}%`, bgColor: tpl.accent };
         return b;
       });
-      return { ...c, blocks, bgImage: img ?? c.bgImage, bgColor: tpl.background };
+      return {
+        ...c,
+        blocks,
+        bgImage: img,
+        bgColor: initialColor,
+        // Raw catalog image is full-bleed (it already has its own background).
+        // After cutout, the pipeline switches to "cutout" mode.
+        visualMode: img ? "fullbleed" : "cutout",
+      };
     });
     if (img) {
       setSourceType("catalog");
       setSourceImageUrl(img);
+      // Detect dominant background color from the catalog image (async).
+      void extractDominantColor(img).then((color) => {
+        if (!color) return;
+        setCreativeState(p.id, { catalogColor: color });
+        // Only apply if user hasn't changed promo in the meantime.
+        if (trialAppliedRef.current !== p.id) return;
+        setConfig((c) => ({ ...c, bgColor: color }));
+      });
     }
-  }, [isTrial, trialCurrentId, trialQueue, brand]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTrial, trialCurrentId, trialQueue]);
+
+  // Persist current config back to the active promo's creative state.
+  useEffect(() => {
+    if (!isTrial || !trialCurrentId) return;
+    if (trialAppliedRef.current !== trialCurrentId) return;
+    setCreativeState(trialCurrentId, {
+      bgImage: config.bgImage ?? null,
+      bgColor: config.bgColor ?? null,
+      visualMode: config.visualMode ?? "fullbleed",
+      blocks: config.blocks,
+      elements: config.elements ?? [],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.bgImage, config.bgColor, config.visualMode, config.blocks, config.elements, isTrial, trialCurrentId]);
+
 
 
   // ---------- AI visual pipeline (generation + cutout) ----------
@@ -563,6 +681,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       current?.productType ?? classifyProductType(productName, current?.category);
     try {
       let imgUrl: string | null = sourceImageUrl ?? config.bgImage ?? null;
+      let generatedFallback = false;
       if (!opts.cutoutOnly || !imgUrl) {
         // Règle : pas de génération IA pour un produit packagé.
         if (productType === "packaged") {
@@ -591,6 +710,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return;
         }
         imgUrl = data.dataUrl;
+        generatedFallback = true;
+        if (current) {
+          setCreativeState(current.id, { generatedImageUrl: imgUrl });
+        }
       }
 
       setAiBusy("cutout");
@@ -603,14 +726,29 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         }),
       });
       const cData = (await c.json()) as { dataUrl?: string; error?: string; message?: string };
-      const finalUrl = c.ok && cData.dataUrl ? cData.dataUrl : imgUrl;
-      if (!c.ok) {
-        toast.warning("Détourage indisponible, image brute conservée.");
+      const cutoutOk = c.ok && !!cData.dataUrl;
+
+      // CAS A — détourage réussi : produit détouré sur fond uni modifiable.
+      // CAS B — détourage échoué + image IA fallback : image plein cadre.
+      // CAS C — détourage échoué + image catalogue brute : on garde plein cadre.
+      if (cutoutOk) {
+        const finalUrl = cData.dataUrl!;
+        setSourceType("catalog");
+        setSourceImageUrl(finalUrl);
+        setConfig((cfg) => ({ ...cfg, bgImage: finalUrl, visualMode: "cutout" }));
+        if (current) {
+          setCreativeState(current.id, { cutoutImageUrl: finalUrl, visualMode: "cutout" });
+        }
+        toast.success("Visuel IA prêt.");
+      } else {
+        if (!c.ok) toast.warning("Détourage indisponible, image plein cadre conservée.");
+        setSourceType("catalog");
+        setSourceImageUrl(imgUrl);
+        setConfig((cfg) => ({ ...cfg, bgImage: imgUrl, visualMode: "fullbleed" }));
+        if (current && generatedFallback) {
+          setCreativeState(current.id, { generatedImageUrl: imgUrl, visualMode: "fullbleed" });
+        }
       }
-      setSourceType("catalog");
-      setSourceImageUrl(finalUrl);
-      setConfig((cfg) => ({ ...cfg, bgImage: finalUrl }));
-      toast.success("Visuel IA prêt.");
     } catch (e) {
       toast.error(`Pipeline IA : ${String(e)}`);
     } finally {
@@ -1348,44 +1486,47 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             {isTrial && trialCurrentId && (() => {
               const current = trialQueue.find((p) => p.id === trialCurrentId);
               if (!current) return null;
-              const activeKey: TemplateKey =
-                current.templateCategory ?? pickTemplateForCategory(current.category);
+              const saved = creativeStateByPromoId[current.id];
+              const catalogColor = saved?.catalogColor ?? "#1f2937";
+              const palette = SOLID_PALETTE.map((p) =>
+                p.key === "catalog" ? { ...p, color: catalogColor } : p,
+              );
+              const activeColor = (config.bgColor ?? "").toLowerCase();
+              const isCutout = (config.visualMode ?? "fullbleed") === "cutout";
               return (
                 <div className="mb-3 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
-                  <p className="mb-2 text-[11px] font-semibold text-foreground">
+                  <p className="mb-1 text-[11px] font-semibold text-foreground">
                     Style du visuel
                   </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => {
-                      const t = TEMPLATES[k];
-                      const active = k === activeKey;
+                  <p className="mb-2 text-[10px] text-muted-foreground">
+                    {isCutout
+                      ? "Choisissez la couleur de fond derrière le produit détouré."
+                      : "Image plein cadre — le fond uni est masqué par l'image."}
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {palette.map((p) => {
+                      const active = p.color.toLowerCase() === activeColor;
                       return (
                         <button
-                          key={k}
+                          key={p.key}
                           type="button"
                           onClick={() => {
-                            setTunnelDetected(
-                              tunnelDetected.map((d) =>
-                                d.id === current.id ? { ...d, templateCategory: k } : d,
-                              ),
-                            );
-                            trialAppliedRef.current = null; // re-apply bridge
-                            setConfig((c) => ({ ...c, bgColor: t.background }));
+                            setConfig((c) => ({ ...c, bgColor: p.color }));
                           }}
                           className={cn(
-                            "flex flex-col items-start gap-1 overflow-hidden rounded-md border p-1.5 text-left transition",
+                            "flex flex-col items-center gap-1 overflow-hidden rounded-md border p-1.5 text-center transition",
                             active
                               ? "border-primary ring-1 ring-primary"
                               : "border-zinc-800 hover:border-zinc-600",
                           )}
-                          title={t.tagline}
+                          title={p.label}
                         >
                           <div
-                            className="h-6 w-full rounded"
-                            style={{ background: t.background }}
+                            className="h-6 w-full rounded border border-zinc-700"
+                            style={{ background: p.color }}
                           />
-                          <span className="truncate text-[10px] font-medium">
-                            {t.label}
+                          <span className="truncate text-[9px] font-medium leading-tight">
+                            {p.label}
                           </span>
                         </button>
                       );
@@ -1652,11 +1793,24 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                 className="relative overflow-hidden rounded-lg border border-zinc-700 shadow-2xl"
                 style={{ width: previewWidth, height: previewHeight, background: config.bgColor ?? "#1f2937" }}
               >
-                {config.bgImage && (
-                  <img src={config.bgImage} alt="" draggable={false} crossOrigin="anonymous"
-                    className="pointer-events-none absolute inset-0 h-full w-full select-none"
-                    style={{ objectFit: "fill", objectPosition: "top left" }} />
-                )}
+                {config.bgImage && (() => {
+                  const mode = config.visualMode ?? "fullbleed";
+                  const isCutout = mode === "cutout";
+                  return (
+                    <img
+                      src={config.bgImage}
+                      alt=""
+                      draggable={false}
+                      crossOrigin="anonymous"
+                      className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                      style={{
+                        objectFit: isCutout ? "contain" : "cover",
+                        objectPosition: "center",
+                        padding: isCutout ? "8%" : 0,
+                      }}
+                    />
+                  );
+                })()}
                 {showCropDebug && config.lastCrop && (
                   <div className="pointer-events-none absolute right-1 top-1 z-50 rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow">
                     <div>crop: {config.lastCrop.x.toFixed(3)}, {config.lastCrop.y.toFixed(3)} — {config.lastCrop.width.toFixed(3)}×{config.lastCrop.height.toFixed(3)}</div>
