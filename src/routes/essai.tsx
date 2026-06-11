@@ -32,7 +32,7 @@ function EssaiLayout() {
         description: `Vous avez ${generatedPosts.length} publication${generatedPosts.length > 1 ? "s" : ""} en cours de création.`,
         action: {
           label: "Reprendre",
-          onClick: () => navigate({ to: "/essai/preview" }),
+          onClick: () => navigate({ to: "/essai/selection" }),
         },
       });
     }
@@ -54,6 +54,9 @@ function EssaiLayout() {
         </div>
       </header>
       <WorkflowProgressBar />
+      <main className="flex-1">
+        <Outlet />
+      </main>
     </div>
   );
 }
