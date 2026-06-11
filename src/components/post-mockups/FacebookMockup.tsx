@@ -3,6 +3,7 @@ import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
+import { getPostFormat, type PostFormatKey } from "@/lib/post-formats";
 
 type Props = {
   storeName: string;
