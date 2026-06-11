@@ -3,6 +3,7 @@ import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
+import { getPostFormat, type PostFormatKey } from "@/lib/post-formats";
 
 type Props = {
   storeName: string;
@@ -13,9 +14,11 @@ type Props = {
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
+  format?: PostFormatKey | null;
 };
 
-export function FacebookMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function FacebookMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage, format }: Props) {
+  const aspect = format ? getPostFormat(format).aspect : undefined;
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#3A3B3C] bg-[#1C1E21] text-[#E4E6EB] shadow-xl">
       {/* Header */}
@@ -40,7 +43,10 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, temp
       </div>
 
       {/* Image 16:9 */}
-      <div className="relative aspect-video w-full bg-[#0d0d0f]">
+      <div
+        className={aspect ? "relative w-full bg-[#0d0d0f]" : "relative aspect-video w-full bg-[#0d0d0f]"}
+        style={aspect ? { aspectRatio: aspect } : undefined}
+      >
         {templateData ? (
           <KomaagTemplateVisual {...templateData} format="16:9" />
         ) : imageUrl ? (

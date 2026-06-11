@@ -59,6 +59,10 @@ export type TunnelPost = {
   finalVisualUrl?: string | null;
   visualTemplate?: string | null;
   visualStatus?: VisualStatus;
+  format?: import("./post-formats").PostFormatKey | null;
+  platforms?: { facebook: boolean; instagram: boolean };
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
 };
 
 export type TunnelStep =
@@ -80,6 +84,7 @@ type TunnelState = {
   setDetectedProducts: (p: TunnelProduct[]) => void;
   setGeneratedPosts: (p: TunnelPost[]) => void;
   addPost: (p: TunnelPost) => void;
+  updatePost: (id: string, patch: Partial<TunnelPost>) => void;
   setStep: (s: TunnelStep) => void;
   reset: () => void;
 };
@@ -105,6 +110,12 @@ export const useTunnelStore = create<TunnelState>()(
       addPost: (p) =>
         set((s) => ({
           generatedPosts: [...s.generatedPosts, p].slice(0, 3),
+        })),
+      updatePost: (id, patch) =>
+        set((s) => ({
+          generatedPosts: s.generatedPosts.map((p) =>
+            p.id === id ? { ...p, ...patch } : p,
+          ),
         })),
       setStep: (currentStep) => set({ currentStep }),
       reset: () =>

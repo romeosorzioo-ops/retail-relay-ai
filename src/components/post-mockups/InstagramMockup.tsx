@@ -4,6 +4,7 @@ import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
+import { getPostFormat, type PostFormatKey } from "@/lib/post-formats";
 
 type Props = {
   storeName: string;
@@ -14,6 +15,7 @@ type Props = {
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
+  format?: PostFormatKey | null;
 };
 
 function renderWithHashtags(text: string) {
@@ -27,8 +29,9 @@ function renderWithHashtags(text: string) {
   );
 }
 
-export function InstagramMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function InstagramMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage, format }: Props) {
   const [hover, setHover] = useState(false);
+  const aspect = format ? getPostFormat(format).aspect : undefined;
 
   return (
     <div className="mx-auto w-full max-w-[470px] overflow-hidden rounded-lg border border-[#262626] bg-black text-white">
@@ -45,9 +48,10 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, tem
         <MoreHorizontal className="h-5 w-5" />
       </div>
 
-      {/* Square image */}
+      {/* Image — keep same aspect as source format across networks */}
       <div
-        className="relative aspect-square w-full bg-[#111]"
+        className={aspect ? "relative w-full bg-[#111]" : "relative aspect-square w-full bg-[#111]"}
+        style={aspect ? { aspectRatio: aspect } : undefined}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
