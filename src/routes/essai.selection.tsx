@@ -190,16 +190,32 @@ function SelectionPage() {
                   className="mt-1"
                 />
                 <div className="flex-1">
-                  <div className="relative flex h-20 w-full items-center justify-center rounded-md bg-muted/60 text-muted-foreground mb-3">
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.product_name}
-                        className="h-full w-full object-cover rounded-md"
-                      />
-                    ) : (
-                      <Tag className="h-6 w-6 opacity-60" />
-                    )}
+                  <div className="relative mb-3 w-full overflow-hidden rounded-md bg-muted/60 text-muted-foreground aspect-[16/9]">
+                    {(() => {
+                      const src =
+                        p.thumbnailUrl ||
+                        p.imageUrl ||
+                        p.finalVisualUrl ||
+                        p.cutoutImageUrl ||
+                        p.sourceImageUrl ||
+                        null;
+                      if (src) {
+                        return (
+                          <img
+                            src={src}
+                            alt={p.product_name}
+                            loading="lazy"
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        );
+                      }
+                      return (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                          <Tag className="h-6 w-6 opacity-50" />
+                          <span className="text-[10px] opacity-60">Aperçu indisponible</span>
+                        </div>
+                      );
+                    })()}
                     {typeof p.confidence === "number" && p.confidence < 70 && (
                       <span className="absolute right-1 top-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
                         À vérifier
