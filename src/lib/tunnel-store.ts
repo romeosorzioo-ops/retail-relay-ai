@@ -23,6 +23,8 @@ export type TunnelProduct = {
   cutoutImageUrl?: string | null;
   finalVisualUrl?: string | null;
   visualStatus?: VisualStatus;
+  selected?: boolean;
+
 };
 
 export type TunnelPlatform = "facebook" | "instagram" | "linkedin";
