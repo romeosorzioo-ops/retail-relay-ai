@@ -190,7 +190,7 @@ function SelectionPage() {
                   className="mt-1"
                 />
                 <div className="flex-1">
-                  <div className="flex h-20 w-full items-center justify-center rounded-md bg-muted/60 text-muted-foreground mb-3">
+                  <div className="relative flex h-20 w-full items-center justify-center rounded-md bg-muted/60 text-muted-foreground mb-3">
                     {p.imageUrl ? (
                       <img
                         src={p.imageUrl}
@@ -199,6 +199,11 @@ function SelectionPage() {
                       />
                     ) : (
                       <Tag className="h-6 w-6 opacity-60" />
+                    )}
+                    {typeof p.confidence === "number" && p.confidence < 70 && (
+                      <span className="absolute right-1 top-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                        À vérifier
+                      </span>
                     )}
                   </div>
                   <div className="font-medium text-sm">{p.product_name}</div>
@@ -219,11 +224,23 @@ function SelectionPage() {
                       </span>
                     )}
                   </div>
-                  {p.category && (
-                    <div className="mt-1 text-[11px] text-muted-foreground">
-                      {p.category}
-                    </div>
-                  )}
+                  <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <span className="truncate">{p.category ?? ""}</span>
+                    {typeof p.confidence === "number" && (
+                      <span
+                        className={`shrink-0 font-semibold ${
+                          p.confidence >= 85
+                            ? "text-emerald-600"
+                            : p.confidence >= 70
+                              ? "text-foreground/70"
+                              : "text-amber-600"
+                        }`}
+                        title="Score de confiance de la détection"
+                      >
+                        Confiance {p.confidence}%
+                      </span>
+                    )}
+                  </div>
                 </div>
               </label>
             );
