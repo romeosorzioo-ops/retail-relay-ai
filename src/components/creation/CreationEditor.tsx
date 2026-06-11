@@ -952,6 +952,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           productImageUrl: current?.imageUrl ?? null,
           pageNumber: current?.pageNumber ?? null,
           selected: true,
+          format,
         };
         const existing = tunnelPosts.filter((p) => p.product_name !== newPost.product_name);
         setTunnelPosts([...existing, newPost]);
