@@ -943,12 +943,20 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       if (isTrial) {
         // Save into the trial tunnel store (capped at 3 by setGeneratedPosts).
         const current = trialQueue.find((p) => p.id === trialCurrentId);
+        // Fallback chain ensures finalVisualUrl is never empty even if PNG
+        // export failed (e.g. canvas not mounted): use any visible source.
+        const resolvedVisual =
+          image_url ??
+          config.bgImage ??
+          sourceImageUrl ??
+          current?.imageUrl ??
+          null;
         const newPost: TunnelPost = {
           id: `${Date.now()}`,
           product_name: current?.product_name ?? visualName,
           caption: "",
-          imageUrl: image_url,
-          finalVisualUrl: image_url,
+          imageUrl: resolvedVisual,
+          finalVisualUrl: resolvedVisual,
           productImageUrl: current?.imageUrl ?? null,
           pageNumber: current?.pageNumber ?? null,
           selected: true,
