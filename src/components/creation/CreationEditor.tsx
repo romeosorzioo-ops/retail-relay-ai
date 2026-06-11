@@ -281,7 +281,39 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(bin);
 }
 
-function CreationPage() {
+export function CreationEditor(props: CreationEditorProps = {}) {
+  const {
+    mode = "app",
+    search: searchProp,
+    onSearchChange,
+    onBack,
+    onContinue,
+    onTrialSignupRequired,
+  } = props;
+  const isTrial = mode === "trial";
+  const search: CreationEditorSearch = searchProp ?? {};
+  const navigateSearch = (next: CreationEditorSearch) => {
+    onSearchChange?.(next);
+  };
+
+  // Trial-mode store hooks (always called; no-ops when not used).
+  const tunnelDetected = useTunnelStore((s) => s.detectedProducts);
+  const tunnelPosts = useTunnelStore((s) => s.generatedPosts);
+  const setTunnelPosts = useTunnelStore((s) => s.setGeneratedPosts);
+
+  const trialQueue: TunnelProduct[] = useMemo(
+    () => (isTrial ? tunnelDetected.filter((p) => (p as any).selected).slice(0, 3) : []),
+    [isTrial, tunnelDetected],
+  );
+  const [trialCurrentId, setTrialCurrentId] = useState<string | null>(
+    isTrial ? trialQueue[0]?.id ?? null : null,
+  );
+  useEffect(() => {
+    if (!isTrial) return;
+    if (trialCurrentId && trialQueue.some((p) => p.id === trialCurrentId)) return;
+    setTrialCurrentId(trialQueue[0]?.id ?? null);
+  }, [isTrial, trialQueue, trialCurrentId]);
+
   const qc = useQueryClient();
   const [format, setFormat] = useState<FormatKey>(DEFAULT_POST_FORMAT);
   const [config, setConfig] = useState<Config>({ bgImage: null, bgColor: "#1f2937", logoUrl: null, blocks: [] });
@@ -301,28 +333,49 @@ function CreationPage() {
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
 
-  const search = Route.useSearch();
-  const navigate = useNavigate();
   const [catalogPromoId, setCatalogPromoId] = useState<string | null>(null);
   const [catalogMode, setCatalogMode] = useState<"catalog_visual" | "field_photo" | null>(null);
 
-  const { data: templates = [] } = useQuery({ queryKey: ["visual-templates"], queryFn: () => listVisualTemplatesFn() });
-  const { data: promotions = [] } = useQuery({ queryKey: ["promotions"], queryFn: () => listPromotionsFn() });
-  const { data: brandProfile } = useQuery({ queryKey: ["my-brand"], queryFn: () => getMyBrandProfileFn() });
-  const { data: brandGuideline } = useQuery({ queryKey: ["my-brand-guideline"], queryFn: () => getMyBrandGuidelineFn() });
-  // Fusion : la charte d'enseigne sert de fallback pour les champs non
-  // personnalisés par l'utilisateur dans son profil de marque.
-  const brand = useMemo(() => ({
-    ...(brandGuideline ?? {}),
-    ...Object.fromEntries(
-      Object.entries(brandProfile ?? {}).filter(([, v]) => v != null && v !== ""),
-    ),
-  }), [brandProfile, brandGuideline]) as typeof brandProfile;
-  const { data: brandFonts = [] } = useQuery({ queryKey: ["my-brand-fonts"], queryFn: () => listBrandFontsFn() });
+  // All Supabase queries are disabled in trial mode.
+  const { data: templates = [] } = useQuery({
+    queryKey: ["visual-templates"],
+    queryFn: () => listVisualTemplatesFn(),
+    enabled: !isTrial,
+  });
+  const { data: promotions = [] } = useQuery({
+    queryKey: ["promotions"],
+    queryFn: () => listPromotionsFn(),
+    enabled: !isTrial,
+  });
+  const { data: brandProfile } = useQuery({
+    queryKey: ["my-brand"],
+    queryFn: () => getMyBrandProfileFn(),
+    enabled: !isTrial,
+  });
+  const { data: brandGuideline } = useQuery({
+    queryKey: ["my-brand-guideline"],
+    queryFn: () => getMyBrandGuidelineFn(),
+    enabled: !isTrial,
+  });
+  // Brand fusion (or trial default).
+  const brand = useMemo(() => {
+    if (isTrial) return TRIAL_BRAND_DEFAULT as any;
+    return {
+      ...(brandGuideline ?? {}),
+      ...Object.fromEntries(
+        Object.entries(brandProfile ?? {}).filter(([, v]) => v != null && v !== ""),
+      ),
+    } as typeof brandProfile;
+  }, [isTrial, brandProfile, brandGuideline]);
+  const { data: brandFonts = [] } = useQuery({
+    queryKey: ["my-brand-fonts"],
+    queryFn: () => listBrandFontsFn(),
+    enabled: !isTrial,
+  });
   const { data: catalogPromo } = useQuery({
     queryKey: ["catalog-promo", search.cp],
     queryFn: () => getCatalogPromotionFn({ data: { id: search.cp as string } }),
-    enabled: !!search.cp,
+    enabled: !isTrial && !!search.cp,
   });
 
   const [activeTab, setActiveTab] = useState<"editor" | "queue">(search.tab ?? (search.campaign ? "queue" : "editor"));
@@ -335,9 +388,10 @@ function CreationPage() {
   const { data: queueData } = useQuery({
     queryKey: ["campaign-items", search.campaign ?? null],
     queryFn: () => listCampaignItemsFn({ data: { campaign_id: search.campaign ?? null } }),
-    enabled: !!search.campaign || activeTab === "queue",
+    enabled: !isTrial && (!!search.campaign || activeTab === "queue"),
   });
   const { data: currentItem } = useQuery({
+
     queryKey: ["campaign-item", currentItemId],
     queryFn: () => getCampaignItemFn({ data: { id: currentItemId as string } }),
     enabled: !!currentItemId,
