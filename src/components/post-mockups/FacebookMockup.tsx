@@ -43,7 +43,10 @@ export function FacebookMockup({ storeName, postText, imageUrl, visualMock, temp
       </div>
 
       {/* Image 16:9 */}
-      <div className="relative aspect-video w-full bg-[#0d0d0f]">
+      <div
+        className={aspect ? "relative w-full bg-[#0d0d0f]" : "relative aspect-video w-full bg-[#0d0d0f]"}
+        style={aspect ? { aspectRatio: aspect } : undefined}
+      >
         {templateData ? (
           <KomaagTemplateVisual {...templateData} format="16:9" />
         ) : imageUrl ? (
