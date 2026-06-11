@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { TemplateKey } from "./promo-templates";
+
 
 export type VisualStatus =
   | "pending"
@@ -28,6 +30,7 @@ export type TunnelProduct = {
   missingFields?: string[] | null;
   start_date?: string | null;
   end_date?: string | null;
+  templateCategory?: TemplateKey | null;
   selected?: boolean;
 };
 

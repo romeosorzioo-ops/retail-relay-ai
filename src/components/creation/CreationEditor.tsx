@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
 import { useTunnelStore, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
+import { TEMPLATES, pickTemplateForCategory, type TemplateKey } from "@/lib/promo-templates";
 
 export type CreationEditorMode = "app" | "trial";
 
@@ -300,6 +301,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const tunnelDetected = useTunnelStore((s) => s.detectedProducts);
   const tunnelPosts = useTunnelStore((s) => s.generatedPosts);
   const setTunnelPosts = useTunnelStore((s) => s.setGeneratedPosts);
+  const setTunnelDetected = useTunnelStore((s) => s.setDetectedProducts);
+
 
   const trialQueue: TunnelProduct[] = useMemo(() => {
     if (!isTrial) return [];
@@ -517,26 +520,31 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (!p) return;
     trialAppliedRef.current = trialCurrentId;
     const img = p.imageUrl ?? p.thumbnailUrl ?? null;
+    const tKey: TemplateKey = p.templateCategory ?? pickTemplateForCategory(p.category);
+    const tpl = TEMPLATES[tKey];
     setConfig((c) => {
       const baseBlocks = c.blocks.length ? c.blocks : defaultBlocks(brand as any);
       const blocks = baseBlocks.map((b) => {
         if ((b.role === "title" || b.role === "custom") && p.product_name)
           return { ...b, text: p.product_name };
+        if (b.role === "subtitle" && tpl.tagline)
+          return { ...b, text: tpl.tagline };
         if (b.role === "price_main" && p.promo_price != null)
-          return { ...b, text: `${String(p.promo_price).replace(".", ",")} €` };
+          return { ...b, text: `${String(p.promo_price).replace(".", ",")} €`, color: tpl.accent };
         if (b.role === "price_old" && p.old_price != null)
           return { ...b, text: `${String(p.old_price).replace(".", ",")} €` };
         if (b.role === "badge" && p.discount_percent != null)
-          return { ...b, text: `-${p.discount_percent}%` };
+          return { ...b, text: `-${p.discount_percent}%`, bgColor: tpl.accent };
         return b;
       });
-      return { ...c, blocks, bgImage: img ?? c.bgImage };
+      return { ...c, blocks, bgImage: img ?? c.bgImage, bgColor: tpl.background };
     });
     if (img) {
       setSourceType("catalog");
       setSourceImageUrl(img);
     }
   }, [isTrial, trialCurrentId, trialQueue, brand]);
+
 
   // ---------- AI visual pipeline (generation + cutout) ----------
   const [aiBusy, setAiBusy] = useState<null | "generate" | "cutout">(null);
@@ -1320,6 +1328,58 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                 </div>
               </div>
             )}
+
+            {isTrial && trialCurrentId && (() => {
+              const current = trialQueue.find((p) => p.id === trialCurrentId);
+              if (!current) return null;
+              const activeKey: TemplateKey =
+                current.templateCategory ?? pickTemplateForCategory(current.category);
+              return (
+                <div className="mb-3 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
+                  <p className="mb-2 text-[11px] font-semibold text-foreground">
+                    Style du visuel
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => {
+                      const t = TEMPLATES[k];
+                      const active = k === activeKey;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => {
+                            setTunnelDetected(
+                              tunnelDetected.map((d) =>
+                                d.id === current.id ? { ...d, templateCategory: k } : d,
+                              ),
+                            );
+                            trialAppliedRef.current = null; // re-apply bridge
+                            setConfig((c) => ({ ...c, bgColor: t.background }));
+                          }}
+                          className={cn(
+                            "flex flex-col items-start gap-1 overflow-hidden rounded-md border p-1.5 text-left transition",
+                            active
+                              ? "border-primary ring-1 ring-primary"
+                              : "border-zinc-800 hover:border-zinc-600",
+                          )}
+                          title={t.tagline}
+                        >
+                          <div
+                            className="h-6 w-full rounded"
+                            style={{ background: t.background }}
+                          />
+                          <span className="truncate text-[10px] font-medium">
+                            {t.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+
 
             {leftNav === "templates" && (
               <div className="space-y-3">
