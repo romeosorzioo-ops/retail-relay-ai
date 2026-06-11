@@ -1104,11 +1104,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
             {isTrial ? "Valider ce visuel" : "Publier"}
           </Button>
-          {isTrial && onContinue && (
-            <Button size="sm" variant="brand" onClick={onContinue} className="h-8 gap-1 text-xs">
-              Continuer <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          )}
+
+
         </div>
       </div>
 
