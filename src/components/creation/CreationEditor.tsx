@@ -1793,11 +1793,24 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                 className="relative overflow-hidden rounded-lg border border-zinc-700 shadow-2xl"
                 style={{ width: previewWidth, height: previewHeight, background: config.bgColor ?? "#1f2937" }}
               >
-                {config.bgImage && (
-                  <img src={config.bgImage} alt="" draggable={false} crossOrigin="anonymous"
-                    className="pointer-events-none absolute inset-0 h-full w-full select-none"
-                    style={{ objectFit: "fill", objectPosition: "top left" }} />
-                )}
+                {config.bgImage && (() => {
+                  const mode = config.visualMode ?? "fullbleed";
+                  const isCutout = mode === "cutout";
+                  return (
+                    <img
+                      src={config.bgImage}
+                      alt=""
+                      draggable={false}
+                      crossOrigin="anonymous"
+                      className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                      style={{
+                        objectFit: isCutout ? "contain" : "cover",
+                        objectPosition: "center",
+                        padding: isCutout ? "8%" : 0,
+                      }}
+                    />
+                  );
+                })()}
                 {showCropDebug && config.lastCrop && (
                   <div className="pointer-events-none absolute right-1 top-1 z-50 rounded bg-black/80 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow">
                     <div>crop: {config.lastCrop.x.toFixed(3)}, {config.lastCrop.y.toFixed(3)} — {config.lastCrop.width.toFixed(3)}×{config.lastCrop.height.toFixed(3)}</div>
