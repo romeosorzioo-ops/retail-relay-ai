@@ -79,7 +79,7 @@ function ImportPage() {
             size="sm"
             variant="ghost"
             className="text-amber-200 hover:bg-amber-500/20 hover:text-amber-100 gap-1"
-            onClick={() => navigate({ to: "/essai/preview" })}
+            onClick={() => navigate({ to: "/essai/selection" })}
           >
             Reprendre <ArrowRight className="h-3.5 w-3.5" />
           </Button>
