@@ -11,6 +11,7 @@ import { useTunnelStore, type TunnelPost } from "@/lib/tunnel-store";
 import { TrialGateModal } from "@/components/trial-gate-modal";
 import { FacebookMockup } from "@/components/post-mockups/FacebookMockup";
 import { InstagramMockup } from "@/components/post-mockups/InstagramMockup";
+import { SchedulePicker } from "@/components/schedule-picker";
 import {
   Calendar,
   Clock,
@@ -337,29 +338,21 @@ function PublicationPage() {
                     )}
                   </div>
 
-                  {/* Date / time pickers */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Date</Label>
-                      <Input
-                        type="date"
-                        value={post.scheduledDate ?? ""}
-                        onChange={(e) =>
-                          updatePost(post.id, { scheduledDate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Heure</Label>
-                      <Input
-                        type="time"
-                        value={post.scheduledTime ?? ""}
-                        onChange={(e) =>
-                          updatePost(post.id, { scheduledTime: e.target.value })
-                        }
-                      />
-                    </div>
+                  {/* Schedule picker — Metricool style */}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Programmation</Label>
+                    <SchedulePicker
+                      date={post.scheduledDate}
+                      time={post.scheduledTime}
+                      onChange={({ date, time }) =>
+                        updatePost(post.id, {
+                          scheduledDate: date,
+                          scheduledTime: time,
+                        })
+                      }
+                    />
                   </div>
+
 
                   {/* Networks */}
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">

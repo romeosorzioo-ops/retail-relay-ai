@@ -96,7 +96,7 @@ export function InstagramMockup({ storeName, postText, imageUrl, visualMock, tem
         <Bookmark className="h-6 w-6" />
       </div>
 
-      <div className="px-3 pb-1 text-[14px] font-semibold">128 J'aime</div>
+      <div className="px-3 pb-1 text-[14px] font-semibold">0 J'aime</div>
 
       {/* Caption */}
       <div className="px-3 pb-3 text-[14px] leading-[1.4]">
