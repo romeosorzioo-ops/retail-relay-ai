@@ -101,8 +101,8 @@ function AnalysePage() {
       await Promise.all([aiPromise, minWait]);
       setDetectedProducts(products);
       setGeneratedPosts(posts);
-      setStep("preview");
-      navigate({ to: "/essai/preview" });
+      setStep("selection");
+      navigate({ to: "/essai/selection" });
     };
     void finish();
 

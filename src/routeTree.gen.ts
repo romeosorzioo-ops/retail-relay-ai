@@ -17,7 +17,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EssaiIndexRouteImport } from './routes/essai.index'
+import { Route as EssaiSelectionRouteImport } from './routes/essai.selection'
+import { Route as EssaiPublicationRouteImport } from './routes/essai.publication'
 import { Route as EssaiImportRouteImport } from './routes/essai.import'
+import { Route as EssaiCreationRouteImport } from './routes/essai.creation'
 import { Route as EssaiAnalyseRouteImport } from './routes/essai.analyse'
 import { Route as ApiGenerateProductImageRouteImport } from './routes/api/generate-product-image'
 import { Route as AuthenticatedStoreRouteImport } from './routes/_authenticated/store'
@@ -77,9 +80,24 @@ const EssaiIndexRoute = EssaiIndexRouteImport.update({
   path: '/',
   getParentRoute: () => EssaiRoute,
 } as any)
+const EssaiSelectionRoute = EssaiSelectionRouteImport.update({
+  id: '/selection',
+  path: '/selection',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiPublicationRoute = EssaiPublicationRouteImport.update({
+  id: '/publication',
+  path: '/publication',
+  getParentRoute: () => EssaiRoute,
+} as any)
 const EssaiImportRoute = EssaiImportRouteImport.update({
   id: '/import',
   path: '/import',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiCreationRoute = EssaiCreationRouteImport.update({
+  id: '/creation',
+  path: '/creation',
   getParentRoute: () => EssaiRoute,
 } as any)
 const EssaiAnalyseRoute = EssaiAnalyseRouteImport.update({
@@ -203,7 +221,10 @@ export interface FileRoutesByFullPath {
   '/store': typeof AuthenticatedStoreRoute
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/creation': typeof EssaiCreationRoute
   '/essai/import': typeof EssaiImportRoute
+  '/essai/publication': typeof EssaiPublicationRoute
+  '/essai/selection': typeof EssaiSelectionRoute
   '/essai/': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -230,7 +251,10 @@ export interface FileRoutesByTo {
   '/store': typeof AuthenticatedStoreRoute
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/creation': typeof EssaiCreationRoute
   '/essai/import': typeof EssaiImportRoute
+  '/essai/publication': typeof EssaiPublicationRoute
+  '/essai/selection': typeof EssaiSelectionRoute
   '/essai': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -261,7 +285,10 @@ export interface FileRoutesById {
   '/_authenticated/store': typeof AuthenticatedStoreRoute
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/creation': typeof EssaiCreationRoute
   '/essai/import': typeof EssaiImportRoute
+  '/essai/publication': typeof EssaiPublicationRoute
+  '/essai/selection': typeof EssaiSelectionRoute
   '/essai/': typeof EssaiIndexRoute
   '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/_authenticated/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -292,7 +319,10 @@ export interface FileRouteTypes {
     | '/store'
     | '/api/generate-product-image'
     | '/essai/analyse'
+    | '/essai/creation'
     | '/essai/import'
+    | '/essai/publication'
+    | '/essai/selection'
     | '/essai/'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
@@ -319,7 +349,10 @@ export interface FileRouteTypes {
     | '/store'
     | '/api/generate-product-image'
     | '/essai/analyse'
+    | '/essai/creation'
     | '/essai/import'
+    | '/essai/publication'
+    | '/essai/selection'
     | '/essai'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
@@ -349,7 +382,10 @@ export interface FileRouteTypes {
     | '/_authenticated/store'
     | '/api/generate-product-image'
     | '/essai/analyse'
+    | '/essai/creation'
     | '/essai/import'
+    | '/essai/publication'
+    | '/essai/selection'
     | '/essai/'
     | '/_authenticated/admin/brand-guidelines'
     | '/_authenticated/admin/fonts'
@@ -429,11 +465,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EssaiIndexRouteImport
       parentRoute: typeof EssaiRoute
     }
+    '/essai/selection': {
+      id: '/essai/selection'
+      path: '/selection'
+      fullPath: '/essai/selection'
+      preLoaderRoute: typeof EssaiSelectionRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/publication': {
+      id: '/essai/publication'
+      path: '/publication'
+      fullPath: '/essai/publication'
+      preLoaderRoute: typeof EssaiPublicationRouteImport
+      parentRoute: typeof EssaiRoute
+    }
     '/essai/import': {
       id: '/essai/import'
       path: '/import'
       fullPath: '/essai/import'
       preLoaderRoute: typeof EssaiImportRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/creation': {
+      id: '/essai/creation'
+      path: '/creation'
+      fullPath: '/essai/creation'
+      preLoaderRoute: typeof EssaiCreationRouteImport
       parentRoute: typeof EssaiRoute
     }
     '/essai/analyse': {
@@ -636,13 +693,19 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface EssaiRouteChildren {
   EssaiAnalyseRoute: typeof EssaiAnalyseRoute
+  EssaiCreationRoute: typeof EssaiCreationRoute
   EssaiImportRoute: typeof EssaiImportRoute
+  EssaiPublicationRoute: typeof EssaiPublicationRoute
+  EssaiSelectionRoute: typeof EssaiSelectionRoute
   EssaiIndexRoute: typeof EssaiIndexRoute
 }
 
 const EssaiRouteChildren: EssaiRouteChildren = {
   EssaiAnalyseRoute: EssaiAnalyseRoute,
+  EssaiCreationRoute: EssaiCreationRoute,
   EssaiImportRoute: EssaiImportRoute,
+  EssaiPublicationRoute: EssaiPublicationRoute,
+  EssaiSelectionRoute: EssaiSelectionRoute,
   EssaiIndexRoute: EssaiIndexRoute,
 }
 
