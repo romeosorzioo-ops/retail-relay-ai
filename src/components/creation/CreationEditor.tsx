@@ -1486,44 +1486,47 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             {isTrial && trialCurrentId && (() => {
               const current = trialQueue.find((p) => p.id === trialCurrentId);
               if (!current) return null;
-              const activeKey: TemplateKey =
-                current.templateCategory ?? pickTemplateForCategory(current.category);
+              const saved = creativeStateByPromoId[current.id];
+              const catalogColor = saved?.catalogColor ?? "#1f2937";
+              const palette = SOLID_PALETTE.map((p) =>
+                p.key === "catalog" ? { ...p, color: catalogColor } : p,
+              );
+              const activeColor = (config.bgColor ?? "").toLowerCase();
+              const isCutout = (config.visualMode ?? "fullbleed") === "cutout";
               return (
                 <div className="mb-3 rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
-                  <p className="mb-2 text-[11px] font-semibold text-foreground">
+                  <p className="mb-1 text-[11px] font-semibold text-foreground">
                     Style du visuel
                   </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => {
-                      const t = TEMPLATES[k];
-                      const active = k === activeKey;
+                  <p className="mb-2 text-[10px] text-muted-foreground">
+                    {isCutout
+                      ? "Choisissez la couleur de fond derrière le produit détouré."
+                      : "Image plein cadre — le fond uni est masqué par l'image."}
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {palette.map((p) => {
+                      const active = p.color.toLowerCase() === activeColor;
                       return (
                         <button
-                          key={k}
+                          key={p.key}
                           type="button"
                           onClick={() => {
-                            setTunnelDetected(
-                              tunnelDetected.map((d) =>
-                                d.id === current.id ? { ...d, templateCategory: k } : d,
-                              ),
-                            );
-                            trialAppliedRef.current = null; // re-apply bridge
-                            setConfig((c) => ({ ...c, bgColor: t.background }));
+                            setConfig((c) => ({ ...c, bgColor: p.color }));
                           }}
                           className={cn(
-                            "flex flex-col items-start gap-1 overflow-hidden rounded-md border p-1.5 text-left transition",
+                            "flex flex-col items-center gap-1 overflow-hidden rounded-md border p-1.5 text-center transition",
                             active
                               ? "border-primary ring-1 ring-primary"
                               : "border-zinc-800 hover:border-zinc-600",
                           )}
-                          title={t.tagline}
+                          title={p.label}
                         >
                           <div
-                            className="h-6 w-full rounded"
-                            style={{ background: t.background }}
+                            className="h-6 w-full rounded border border-zinc-700"
+                            style={{ background: p.color }}
                           />
-                          <span className="truncate text-[10px] font-medium">
-                            {t.label}
+                          <span className="truncate text-[9px] font-medium leading-tight">
+                            {p.label}
                           </span>
                         </button>
                       );
