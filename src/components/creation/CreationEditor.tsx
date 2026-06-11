@@ -681,6 +681,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       current?.productType ?? classifyProductType(productName, current?.category);
     try {
       let imgUrl: string | null = sourceImageUrl ?? config.bgImage ?? null;
+      let generatedFallback = false;
       if (!opts.cutoutOnly || !imgUrl) {
         // Règle : pas de génération IA pour un produit packagé.
         if (productType === "packaged") {
@@ -709,6 +710,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return;
         }
         imgUrl = data.dataUrl;
+        generatedFallback = true;
+        if (current) {
+          setCreativeState(current.id, { generatedImageUrl: imgUrl });
+        }
       }
 
       setAiBusy("cutout");
@@ -721,14 +726,29 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         }),
       });
       const cData = (await c.json()) as { dataUrl?: string; error?: string; message?: string };
-      const finalUrl = c.ok && cData.dataUrl ? cData.dataUrl : imgUrl;
-      if (!c.ok) {
-        toast.warning("Détourage indisponible, image brute conservée.");
+      const cutoutOk = c.ok && !!cData.dataUrl;
+
+      // CAS A — détourage réussi : produit détouré sur fond uni modifiable.
+      // CAS B — détourage échoué + image IA fallback : image plein cadre.
+      // CAS C — détourage échoué + image catalogue brute : on garde plein cadre.
+      if (cutoutOk) {
+        const finalUrl = cData.dataUrl!;
+        setSourceType("catalog");
+        setSourceImageUrl(finalUrl);
+        setConfig((cfg) => ({ ...cfg, bgImage: finalUrl, visualMode: "cutout" }));
+        if (current) {
+          setCreativeState(current.id, { cutoutImageUrl: finalUrl, visualMode: "cutout" });
+        }
+        toast.success("Visuel IA prêt.");
+      } else {
+        if (!c.ok) toast.warning("Détourage indisponible, image plein cadre conservée.");
+        setSourceType("catalog");
+        setSourceImageUrl(imgUrl);
+        setConfig((cfg) => ({ ...cfg, bgImage: imgUrl, visualMode: "fullbleed" }));
+        if (current && generatedFallback) {
+          setCreativeState(current.id, { generatedImageUrl: imgUrl, visualMode: "fullbleed" });
+        }
       }
-      setSourceType("catalog");
-      setSourceImageUrl(finalUrl);
-      setConfig((cfg) => ({ ...cfg, bgImage: finalUrl }));
-      toast.success("Visuel IA prêt.");
     } catch (e) {
       toast.error(`Pipeline IA : ${String(e)}`);
     } finally {
