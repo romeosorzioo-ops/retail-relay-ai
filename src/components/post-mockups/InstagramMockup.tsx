@@ -4,6 +4,7 @@ import { EditableText, initials } from "./shared";
 import { PromoVisualMockup } from "./PromoVisualMockup";
 import { KomaagTemplateVisual, type KomaagTemplateVisualProps } from "./KomaagTemplateVisual";
 import type { VisualMock } from "@/lib/tunnel-store";
+import { getPostFormat, type PostFormatKey } from "@/lib/post-formats";
 
 type Props = {
   storeName: string;
@@ -14,6 +15,7 @@ type Props = {
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
+  format?: PostFormatKey | null;
 };
 
 function renderWithHashtags(text: string) {
