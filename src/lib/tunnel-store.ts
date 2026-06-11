@@ -111,6 +111,12 @@ export const useTunnelStore = create<TunnelState>()(
         set((s) => ({
           generatedPosts: [...s.generatedPosts, p].slice(0, 3),
         })),
+      updatePost: (id, patch) =>
+        set((s) => ({
+          generatedPosts: s.generatedPosts.map((p) =>
+            p.id === id ? { ...p, ...patch } : p,
+          ),
+        })),
       setStep: (currentStep) => set({ currentStep }),
       reset: () =>
         set({
