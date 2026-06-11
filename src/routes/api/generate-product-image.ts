@@ -18,7 +18,6 @@ function buildPrompt(input: {
   productName: string;
   category?: string | null;
   rayon?: string | null;
-  storeContext?: string | null;
 }): string {
   const { productName, category, rayon } = input;
   const ctx = [category, rayon].filter(Boolean).join(", ");
@@ -42,14 +41,10 @@ export const Route = createFileRoute("/api/generate-product-image")({
             productName?: string;
             category?: string | null;
             rayon?: string | null;
-            storeContext?: string | null;
           };
 
           if (!body?.productName || typeof body.productName !== "string") {
-            return Response.json(
-              { error: "productName requis" },
-              { status: 400 },
-            );
+            return Response.json({ error: "productName requis" }, { status: 400 });
           }
 
           if (isBrandedProduct(body.productName)) {
@@ -63,10 +58,10 @@ export const Route = createFileRoute("/api/generate-product-image")({
             );
           }
 
-          const key = process.env.LOVABLE_API_KEY;
+          const key = process.env.OPENAI_API_KEY;
           if (!key) {
             return Response.json(
-              { error: "LOVABLE_API_KEY manquante" },
+              { error: "OPENAI_API_KEY manquante" },
               { status: 500 },
             );
           }
@@ -75,24 +70,22 @@ export const Route = createFileRoute("/api/generate-product-image")({
             productName: body.productName,
             category: body.category,
             rayon: body.rayon,
-            storeContext: body.storeContext,
           });
 
           const upstream = await fetch(
-            "https://ai.gateway.lovable.dev/v1/images/generations",
+            "https://api.openai.com/v1/images/generations",
             {
               method: "POST",
               headers: {
-                "Lovable-API-Key": key,
+                Authorization: `Bearer ${key}`,
                 "Content-Type": "application/json",
-                "X-Lovable-AIG-SDK": "vercel-ai-sdk",
               },
               body: JSON.stringify({
-                model: "openai/gpt-image-2",
+                model: "gpt-image-1",
                 prompt,
-                quality: "low",
                 size: "1024x1024",
                 n: 1,
+                quality: "low",
               }),
             },
           );
@@ -100,23 +93,23 @@ export const Route = createFileRoute("/api/generate-product-image")({
           if (!upstream.ok) {
             const txt = await upstream.text().catch(() => "");
             return Response.json(
-              { error: "upstream_error", status: upstream.status, message: txt },
+              { error: "openai_error", status: upstream.status, message: txt },
               { status: upstream.status },
             );
           }
 
           const data = (await upstream.json()) as {
-            data?: Array<{ b64_json?: string }>;
+            data?: Array<{ b64_json?: string; url?: string }>;
           };
           const b64 = data?.data?.[0]?.b64_json;
-          if (!b64) {
-            return Response.json(
-              { error: "no_image_returned" },
-              { status: 500 },
-            );
+          const url = data?.data?.[0]?.url;
+          if (!b64 && !url) {
+            return Response.json({ error: "no_image_returned" }, { status: 500 });
           }
 
-          return Response.json({ dataUrl: `data:image/png;base64,${b64}` });
+          return Response.json({
+            dataUrl: b64 ? `data:image/png;base64,${b64}` : url,
+          });
         } catch (e) {
           console.error("generate-product-image error", e);
           return Response.json(

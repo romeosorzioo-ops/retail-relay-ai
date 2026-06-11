@@ -23,6 +23,7 @@ import { Route as EssaiImportRouteImport } from './routes/essai.import'
 import { Route as EssaiCreationRouteImport } from './routes/essai.creation'
 import { Route as EssaiAnalyseRouteImport } from './routes/essai.analyse'
 import { Route as ApiGenerateProductImageRouteImport } from './routes/api/generate-product-image'
+import { Route as ApiCutoutProductImageRouteImport } from './routes/api/cutout-product-image'
 import { Route as AuthenticatedWorkflowRouteImport } from './routes/_authenticated/workflow'
 import { Route as AuthenticatedStoreRouteImport } from './routes/_authenticated/store'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
@@ -114,6 +115,11 @@ const EssaiAnalyseRoute = EssaiAnalyseRouteImport.update({
 const ApiGenerateProductImageRoute = ApiGenerateProductImageRouteImport.update({
   id: '/api/generate-product-image',
   path: '/api/generate-product-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCutoutProductImageRoute = ApiCutoutProductImageRouteImport.update({
+  id: '/api/cutout-product-image',
+  path: '/api/cutout-product-image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWorkflowRoute = AuthenticatedWorkflowRouteImport.update({
@@ -261,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
   '/workflow': typeof AuthenticatedWorkflowRouteWithChildren
+  '/api/cutout-product-image': typeof ApiCutoutProductImageRoute
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/creation': typeof EssaiCreationRoute
@@ -297,6 +304,7 @@ export interface FileRoutesByTo {
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
   '/workflow': typeof AuthenticatedWorkflowRouteWithChildren
+  '/api/cutout-product-image': typeof ApiCutoutProductImageRoute
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/creation': typeof EssaiCreationRoute
@@ -337,6 +345,7 @@ export interface FileRoutesById {
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
   '/_authenticated/workflow': typeof AuthenticatedWorkflowRouteWithChildren
+  '/api/cutout-product-image': typeof ApiCutoutProductImageRoute
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
   '/essai/creation': typeof EssaiCreationRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/promotions'
     | '/store'
     | '/workflow'
+    | '/api/cutout-product-image'
     | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/creation'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/promotions'
     | '/store'
     | '/workflow'
+    | '/api/cutout-product-image'
     | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/creation'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/_authenticated/promotions'
     | '/_authenticated/store'
     | '/_authenticated/workflow'
+    | '/api/cutout-product-image'
     | '/api/generate-product-image'
     | '/essai/analyse'
     | '/essai/creation'
@@ -481,6 +493,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PricingRoute: typeof PricingRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiCutoutProductImageRoute: typeof ApiCutoutProductImageRoute
   ApiGenerateProductImageRoute: typeof ApiGenerateProductImageRoute
 }
 
@@ -582,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/api/generate-product-image'
       fullPath: '/api/generate-product-image'
       preLoaderRoute: typeof ApiGenerateProductImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cutout-product-image': {
+      id: '/api/cutout-product-image'
+      path: '/api/cutout-product-image'
+      fullPath: '/api/cutout-product-image'
+      preLoaderRoute: typeof ApiCutoutProductImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/workflow': {
@@ -861,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PricingRoute: PricingRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiCutoutProductImageRoute: ApiCutoutProductImageRoute,
   ApiGenerateProductImageRoute: ApiGenerateProductImageRoute,
 }
 export const routeTree = rootRouteImport
