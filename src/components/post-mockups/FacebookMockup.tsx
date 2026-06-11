@@ -14,9 +14,11 @@ type Props = {
   onTextChange: (t: string) => void;
   onRegenerateImage?: () => void;
   onChangeImage?: () => void;
+  format?: PostFormatKey | null;
 };
 
-export function FacebookMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage }: Props) {
+export function FacebookMockup({ storeName, postText, imageUrl, visualMock, templateData, onTextChange, onRegenerateImage, onChangeImage, format }: Props) {
+  const aspect = format ? getPostFormat(format).aspect : undefined;
   return (
     <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-lg border border-[#3A3B3C] bg-[#1C1E21] text-[#E4E6EB] shadow-xl">
       {/* Header */}
