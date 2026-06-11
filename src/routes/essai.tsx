@@ -63,15 +63,5 @@ function WorkflowProgressBar() {
   const seg = path.split("/")[2] || "import";
   const valid = ["import", "analyse", "selection", "creation", "publication"] as const;
   const active = (valid as readonly string[]).includes(seg) ? (seg as typeof valid[number]) : "import";
-  return (
-    <>
-      <WorkflowProgress active={active} mode="trial" />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <main className="flex-1">
-        <Outlet />
-      </main>
-    </div>
-  );
+  return <WorkflowProgress active={active} mode="trial" />;
 }
