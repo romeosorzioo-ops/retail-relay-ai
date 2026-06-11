@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Lock, Upload, FileText, X, Clock, ArrowRight } from "lucide-react";
+import { Lock, Upload, FileText, X } from "lucide-react";
 import { useTunnelStore } from "@/lib/tunnel-store";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -26,10 +26,9 @@ function fileToBase64(file: File): Promise<string> {
 
 function ImportPage() {
   const navigate = useNavigate();
-  const { pdfFile, pdfName, setPdf, setStep, generatedPosts, reset } = useTunnelStore();
+  const { pdfFile, pdfName, setPdf, setStep } = useTunnelStore();
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
-  const hasPosts = generatedPosts.length > 0;
 
   useEffect(() => {
     setStep("import");
@@ -68,35 +67,6 @@ function ImportPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-8">
       <Toaster />
-
-      {hasPosts && (
-        <div className="mb-6 flex w-full items-center gap-4 rounded-lg bg-amber-500/15 px-5 py-4 text-amber-200 border border-amber-500/20">
-          <Clock className="h-5 w-5 shrink-0 text-amber-300" />
-          <div className="flex-1 text-sm">
-            Vous avez {generatedPosts.length} publication{generatedPosts.length > 1 ? "s" : ""} en cours.
-          </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-amber-200 hover:bg-amber-500/20 hover:text-amber-100 gap-1"
-            onClick={() => navigate({ to: "/essai/selection" })}
-          >
-            Reprendre <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-amber-200 hover:bg-amber-500/20 hover:text-amber-100"
-            onClick={() => {
-              reset();
-              toast.info("Recommencé");
-            }}
-          >
-            Recommencer
-          </Button>
-        </div>
-      )}
-
       <h1 className="mb-2 text-center text-3xl font-bold sm:text-4xl">
         Déposez votre catalogue promotionnel
       </h1>
@@ -164,22 +134,10 @@ function ImportPage() {
         size="lg"
         variant="brand"
         className="mt-8"
-        disabled={busy}
-        onClick={async () => {
-          console.log("Analyse clicked", { hasFile, pdfName });
-          if (!hasFile) {
-            toast.error("Veuillez d'abord déposer un PDF.");
-            return;
-          }
-          setBusy(true);
+        disabled={!hasFile || busy}
+        onClick={() => {
           setStep("analyse");
-          try {
-            await navigate({ to: "/essai/analyse" });
-          } catch (e) {
-            console.error("Navigation error", e);
-            setBusy(false);
-            toast.error("Impossible de lancer l'analyse.");
-          }
+          navigate({ to: "/essai/analyse" });
         }}
       >
         {busy ? "Préparation…" : "Analyser avec l'IA →"}
