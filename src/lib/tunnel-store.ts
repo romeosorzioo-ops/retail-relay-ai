@@ -123,6 +123,19 @@ export const useTunnelStore = create<TunnelState>()(
       detectedProducts: [],
       generatedPosts: [],
       currentStep: "import",
+      creativeStateByPromoId: {},
+      setCreativeState: (promoId, patch) =>
+        set((s) => ({
+          creativeStateByPromoId: {
+            ...s.creativeStateByPromoId,
+            [promoId]: {
+              ...(s.creativeStateByPromoId[promoId] ?? { promoId }),
+              ...patch,
+              promoId,
+              updatedAt: Date.now(),
+            },
+          },
+        })),
       setPdf: (file, base64) =>
         set({
           pdfFile: file,
