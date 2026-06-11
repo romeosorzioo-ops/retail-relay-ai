@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { TunnelProgress } from "@/components/tunnel-progress";
+import { WorkflowProgress } from "@/components/workflow/WorkflowProgress";
+import { useRouterState } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useTunnelStore } from "@/lib/tunnel-store";
@@ -31,7 +32,7 @@ function EssaiLayout() {
         description: `Vous avez ${generatedPosts.length} publication${generatedPosts.length > 1 ? "s" : ""} en cours de création.`,
         action: {
           label: "Reprendre",
-          onClick: () => navigate({ to: "/essai/preview" }),
+          onClick: () => navigate({ to: "/essai/selection" }),
         },
       });
     }
@@ -52,10 +53,18 @@ function EssaiLayout() {
           </Link>
         </div>
       </header>
-      <TunnelProgress />
+      <WorkflowProgressBar />
       <main className="flex-1">
         <Outlet />
       </main>
     </div>
   );
+}
+
+function WorkflowProgressBar() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const seg = path.split("/")[2] || "import";
+  const valid = ["import", "analyse", "selection", "creation", "publication"] as const;
+  const active = (valid as readonly string[]).includes(seg) ? (seg as typeof valid[number]) : "import";
+  return <WorkflowProgress active={active} mode="trial" />;
 }

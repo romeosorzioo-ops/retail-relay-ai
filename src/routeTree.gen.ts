@@ -17,11 +17,13 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EssaiIndexRouteImport } from './routes/essai.index'
-import { Route as EssaiScheduleRouteImport } from './routes/essai.schedule'
-import { Route as EssaiPreviewRouteImport } from './routes/essai.preview'
+import { Route as EssaiSelectionRouteImport } from './routes/essai.selection'
+import { Route as EssaiPublicationRouteImport } from './routes/essai.publication'
 import { Route as EssaiImportRouteImport } from './routes/essai.import'
+import { Route as EssaiCreationRouteImport } from './routes/essai.creation'
 import { Route as EssaiAnalyseRouteImport } from './routes/essai.analyse'
 import { Route as ApiGenerateProductImageRouteImport } from './routes/api/generate-product-image'
+import { Route as AuthenticatedWorkflowRouteImport } from './routes/_authenticated/workflow'
 import { Route as AuthenticatedStoreRouteImport } from './routes/_authenticated/store'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
@@ -33,6 +35,11 @@ import { Route as AuthenticatedCatalogRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedWorkflowSelectionRouteImport } from './routes/_authenticated/workflow.selection'
+import { Route as AuthenticatedWorkflowPublicationRouteImport } from './routes/_authenticated/workflow.publication'
+import { Route as AuthenticatedWorkflowImportRouteImport } from './routes/_authenticated/workflow.import'
+import { Route as AuthenticatedWorkflowCreationRouteImport } from './routes/_authenticated/workflow.creation'
+import { Route as AuthenticatedWorkflowAnalyseRouteImport } from './routes/_authenticated/workflow.analyse'
 import { Route as AuthenticatedLibraryPromotionIdRouteImport } from './routes/_authenticated/library.$promotionId'
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated/admin.templates'
 import { Route as AuthenticatedAdminPresetsRouteImport } from './routes/_authenticated/admin.presets'
@@ -79,19 +86,24 @@ const EssaiIndexRoute = EssaiIndexRouteImport.update({
   path: '/',
   getParentRoute: () => EssaiRoute,
 } as any)
-const EssaiScheduleRoute = EssaiScheduleRouteImport.update({
-  id: '/schedule',
-  path: '/schedule',
+const EssaiSelectionRoute = EssaiSelectionRouteImport.update({
+  id: '/selection',
+  path: '/selection',
   getParentRoute: () => EssaiRoute,
 } as any)
-const EssaiPreviewRoute = EssaiPreviewRouteImport.update({
-  id: '/preview',
-  path: '/preview',
+const EssaiPublicationRoute = EssaiPublicationRouteImport.update({
+  id: '/publication',
+  path: '/publication',
   getParentRoute: () => EssaiRoute,
 } as any)
 const EssaiImportRoute = EssaiImportRouteImport.update({
   id: '/import',
   path: '/import',
+  getParentRoute: () => EssaiRoute,
+} as any)
+const EssaiCreationRoute = EssaiCreationRouteImport.update({
+  id: '/creation',
+  path: '/creation',
   getParentRoute: () => EssaiRoute,
 } as any)
 const EssaiAnalyseRoute = EssaiAnalyseRouteImport.update({
@@ -103,6 +115,11 @@ const ApiGenerateProductImageRoute = ApiGenerateProductImageRouteImport.update({
   id: '/api/generate-product-image',
   path: '/api/generate-product-image',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWorkflowRoute = AuthenticatedWorkflowRouteImport.update({
+  id: '/workflow',
+  path: '/workflow',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedStoreRoute = AuthenticatedStoreRouteImport.update({
   id: '/store',
@@ -160,6 +177,36 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedWorkflowSelectionRoute =
+  AuthenticatedWorkflowSelectionRouteImport.update({
+    id: '/selection',
+    path: '/selection',
+    getParentRoute: () => AuthenticatedWorkflowRoute,
+  } as any)
+const AuthenticatedWorkflowPublicationRoute =
+  AuthenticatedWorkflowPublicationRouteImport.update({
+    id: '/publication',
+    path: '/publication',
+    getParentRoute: () => AuthenticatedWorkflowRoute,
+  } as any)
+const AuthenticatedWorkflowImportRoute =
+  AuthenticatedWorkflowImportRouteImport.update({
+    id: '/import',
+    path: '/import',
+    getParentRoute: () => AuthenticatedWorkflowRoute,
+  } as any)
+const AuthenticatedWorkflowCreationRoute =
+  AuthenticatedWorkflowCreationRouteImport.update({
+    id: '/creation',
+    path: '/creation',
+    getParentRoute: () => AuthenticatedWorkflowRoute,
+  } as any)
+const AuthenticatedWorkflowAnalyseRoute =
+  AuthenticatedWorkflowAnalyseRouteImport.update({
+    id: '/analyse',
+    path: '/analyse',
+    getParentRoute: () => AuthenticatedWorkflowRoute,
+  } as any)
 const AuthenticatedLibraryPromotionIdRoute =
   AuthenticatedLibraryPromotionIdRouteImport.update({
     id: '/$promotionId',
@@ -213,11 +260,13 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/workflow': typeof AuthenticatedWorkflowRouteWithChildren
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/creation': typeof EssaiCreationRoute
   '/essai/import': typeof EssaiImportRoute
-  '/essai/preview': typeof EssaiPreviewRoute
-  '/essai/schedule': typeof EssaiScheduleRoute
+  '/essai/publication': typeof EssaiPublicationRoute
+  '/essai/selection': typeof EssaiSelectionRoute
   '/essai/': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -225,6 +274,11 @@ export interface FileRoutesByFullPath {
   '/admin/presets': typeof AuthenticatedAdminPresetsRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
+  '/workflow/analyse': typeof AuthenticatedWorkflowAnalyseRoute
+  '/workflow/creation': typeof AuthenticatedWorkflowCreationRoute
+  '/workflow/import': typeof AuthenticatedWorkflowImportRoute
+  '/workflow/publication': typeof AuthenticatedWorkflowPublicationRoute
+  '/workflow/selection': typeof AuthenticatedWorkflowSelectionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -242,11 +296,13 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRouteWithChildren
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/store': typeof AuthenticatedStoreRoute
+  '/workflow': typeof AuthenticatedWorkflowRouteWithChildren
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/creation': typeof EssaiCreationRoute
   '/essai/import': typeof EssaiImportRoute
-  '/essai/preview': typeof EssaiPreviewRoute
-  '/essai/schedule': typeof EssaiScheduleRoute
+  '/essai/publication': typeof EssaiPublicationRoute
+  '/essai/selection': typeof EssaiSelectionRoute
   '/essai': typeof EssaiIndexRoute
   '/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -254,6 +310,11 @@ export interface FileRoutesByTo {
   '/admin/presets': typeof AuthenticatedAdminPresetsRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
+  '/workflow/analyse': typeof AuthenticatedWorkflowAnalyseRoute
+  '/workflow/creation': typeof AuthenticatedWorkflowCreationRoute
+  '/workflow/import': typeof AuthenticatedWorkflowImportRoute
+  '/workflow/publication': typeof AuthenticatedWorkflowPublicationRoute
+  '/workflow/selection': typeof AuthenticatedWorkflowSelectionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -275,11 +336,13 @@ export interface FileRoutesById {
   '/_authenticated/library': typeof AuthenticatedLibraryRouteWithChildren
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/store': typeof AuthenticatedStoreRoute
+  '/_authenticated/workflow': typeof AuthenticatedWorkflowRouteWithChildren
   '/api/generate-product-image': typeof ApiGenerateProductImageRoute
   '/essai/analyse': typeof EssaiAnalyseRoute
+  '/essai/creation': typeof EssaiCreationRoute
   '/essai/import': typeof EssaiImportRoute
-  '/essai/preview': typeof EssaiPreviewRoute
-  '/essai/schedule': typeof EssaiScheduleRoute
+  '/essai/publication': typeof EssaiPublicationRoute
+  '/essai/selection': typeof EssaiSelectionRoute
   '/essai/': typeof EssaiIndexRoute
   '/_authenticated/admin/brand-guidelines': typeof AuthenticatedAdminBrandGuidelinesRoute
   '/_authenticated/admin/fonts': typeof AuthenticatedAdminFontsRoute
@@ -287,6 +350,11 @@ export interface FileRoutesById {
   '/_authenticated/admin/presets': typeof AuthenticatedAdminPresetsRoute
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/_authenticated/library/$promotionId': typeof AuthenticatedLibraryPromotionIdRoute
+  '/_authenticated/workflow/analyse': typeof AuthenticatedWorkflowAnalyseRoute
+  '/_authenticated/workflow/creation': typeof AuthenticatedWorkflowCreationRoute
+  '/_authenticated/workflow/import': typeof AuthenticatedWorkflowImportRoute
+  '/_authenticated/workflow/publication': typeof AuthenticatedWorkflowPublicationRoute
+  '/_authenticated/workflow/selection': typeof AuthenticatedWorkflowSelectionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -308,11 +376,13 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/workflow'
     | '/api/generate-product-image'
     | '/essai/analyse'
+    | '/essai/creation'
     | '/essai/import'
-    | '/essai/preview'
-    | '/essai/schedule'
+    | '/essai/publication'
+    | '/essai/selection'
     | '/essai/'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
@@ -320,6 +390,11 @@ export interface FileRouteTypes {
     | '/admin/presets'
     | '/admin/templates'
     | '/library/$promotionId'
+    | '/workflow/analyse'
+    | '/workflow/creation'
+    | '/workflow/import'
+    | '/workflow/publication'
+    | '/workflow/selection'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -337,11 +412,13 @@ export interface FileRouteTypes {
     | '/library'
     | '/promotions'
     | '/store'
+    | '/workflow'
     | '/api/generate-product-image'
     | '/essai/analyse'
+    | '/essai/creation'
     | '/essai/import'
-    | '/essai/preview'
-    | '/essai/schedule'
+    | '/essai/publication'
+    | '/essai/selection'
     | '/essai'
     | '/admin/brand-guidelines'
     | '/admin/fonts'
@@ -349,6 +426,11 @@ export interface FileRouteTypes {
     | '/admin/presets'
     | '/admin/templates'
     | '/library/$promotionId'
+    | '/workflow/analyse'
+    | '/workflow/creation'
+    | '/workflow/import'
+    | '/workflow/publication'
+    | '/workflow/selection'
     | '/admin'
   id:
     | '__root__'
@@ -369,11 +451,13 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/promotions'
     | '/_authenticated/store'
+    | '/_authenticated/workflow'
     | '/api/generate-product-image'
     | '/essai/analyse'
+    | '/essai/creation'
     | '/essai/import'
-    | '/essai/preview'
-    | '/essai/schedule'
+    | '/essai/publication'
+    | '/essai/selection'
     | '/essai/'
     | '/_authenticated/admin/brand-guidelines'
     | '/_authenticated/admin/fonts'
@@ -381,6 +465,11 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/presets'
     | '/_authenticated/admin/templates'
     | '/_authenticated/library/$promotionId'
+    | '/_authenticated/workflow/analyse'
+    | '/_authenticated/workflow/creation'
+    | '/_authenticated/workflow/import'
+    | '/_authenticated/workflow/publication'
+    | '/_authenticated/workflow/selection'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -453,18 +542,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EssaiIndexRouteImport
       parentRoute: typeof EssaiRoute
     }
-    '/essai/schedule': {
-      id: '/essai/schedule'
-      path: '/schedule'
-      fullPath: '/essai/schedule'
-      preLoaderRoute: typeof EssaiScheduleRouteImport
+    '/essai/selection': {
+      id: '/essai/selection'
+      path: '/selection'
+      fullPath: '/essai/selection'
+      preLoaderRoute: typeof EssaiSelectionRouteImport
       parentRoute: typeof EssaiRoute
     }
-    '/essai/preview': {
-      id: '/essai/preview'
-      path: '/preview'
-      fullPath: '/essai/preview'
-      preLoaderRoute: typeof EssaiPreviewRouteImport
+    '/essai/publication': {
+      id: '/essai/publication'
+      path: '/publication'
+      fullPath: '/essai/publication'
+      preLoaderRoute: typeof EssaiPublicationRouteImport
       parentRoute: typeof EssaiRoute
     }
     '/essai/import': {
@@ -472,6 +561,13 @@ declare module '@tanstack/react-router' {
       path: '/import'
       fullPath: '/essai/import'
       preLoaderRoute: typeof EssaiImportRouteImport
+      parentRoute: typeof EssaiRoute
+    }
+    '/essai/creation': {
+      id: '/essai/creation'
+      path: '/creation'
+      fullPath: '/essai/creation'
+      preLoaderRoute: typeof EssaiCreationRouteImport
       parentRoute: typeof EssaiRoute
     }
     '/essai/analyse': {
@@ -487,6 +583,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/generate-product-image'
       preLoaderRoute: typeof ApiGenerateProductImageRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/workflow': {
+      id: '/_authenticated/workflow'
+      path: '/workflow'
+      fullPath: '/workflow'
+      preLoaderRoute: typeof AuthenticatedWorkflowRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/store': {
       id: '/_authenticated/store'
@@ -564,6 +667,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/workflow/selection': {
+      id: '/_authenticated/workflow/selection'
+      path: '/selection'
+      fullPath: '/workflow/selection'
+      preLoaderRoute: typeof AuthenticatedWorkflowSelectionRouteImport
+      parentRoute: typeof AuthenticatedWorkflowRoute
+    }
+    '/_authenticated/workflow/publication': {
+      id: '/_authenticated/workflow/publication'
+      path: '/publication'
+      fullPath: '/workflow/publication'
+      preLoaderRoute: typeof AuthenticatedWorkflowPublicationRouteImport
+      parentRoute: typeof AuthenticatedWorkflowRoute
+    }
+    '/_authenticated/workflow/import': {
+      id: '/_authenticated/workflow/import'
+      path: '/import'
+      fullPath: '/workflow/import'
+      preLoaderRoute: typeof AuthenticatedWorkflowImportRouteImport
+      parentRoute: typeof AuthenticatedWorkflowRoute
+    }
+    '/_authenticated/workflow/creation': {
+      id: '/_authenticated/workflow/creation'
+      path: '/creation'
+      fullPath: '/workflow/creation'
+      preLoaderRoute: typeof AuthenticatedWorkflowCreationRouteImport
+      parentRoute: typeof AuthenticatedWorkflowRoute
+    }
+    '/_authenticated/workflow/analyse': {
+      id: '/_authenticated/workflow/analyse'
+      path: '/analyse'
+      fullPath: '/workflow/analyse'
+      preLoaderRoute: typeof AuthenticatedWorkflowAnalyseRouteImport
+      parentRoute: typeof AuthenticatedWorkflowRoute
     }
     '/_authenticated/library/$promotionId': {
       id: '/_authenticated/library/$promotionId'
@@ -643,6 +781,27 @@ const AuthenticatedLibraryRouteChildren: AuthenticatedLibraryRouteChildren = {
 const AuthenticatedLibraryRouteWithChildren =
   AuthenticatedLibraryRoute._addFileChildren(AuthenticatedLibraryRouteChildren)
 
+interface AuthenticatedWorkflowRouteChildren {
+  AuthenticatedWorkflowAnalyseRoute: typeof AuthenticatedWorkflowAnalyseRoute
+  AuthenticatedWorkflowCreationRoute: typeof AuthenticatedWorkflowCreationRoute
+  AuthenticatedWorkflowImportRoute: typeof AuthenticatedWorkflowImportRoute
+  AuthenticatedWorkflowPublicationRoute: typeof AuthenticatedWorkflowPublicationRoute
+  AuthenticatedWorkflowSelectionRoute: typeof AuthenticatedWorkflowSelectionRoute
+}
+
+const AuthenticatedWorkflowRouteChildren: AuthenticatedWorkflowRouteChildren = {
+  AuthenticatedWorkflowAnalyseRoute: AuthenticatedWorkflowAnalyseRoute,
+  AuthenticatedWorkflowCreationRoute: AuthenticatedWorkflowCreationRoute,
+  AuthenticatedWorkflowImportRoute: AuthenticatedWorkflowImportRoute,
+  AuthenticatedWorkflowPublicationRoute: AuthenticatedWorkflowPublicationRoute,
+  AuthenticatedWorkflowSelectionRoute: AuthenticatedWorkflowSelectionRoute,
+}
+
+const AuthenticatedWorkflowRouteWithChildren =
+  AuthenticatedWorkflowRoute._addFileChildren(
+    AuthenticatedWorkflowRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
@@ -654,6 +813,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRouteWithChildren
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedStoreRoute: typeof AuthenticatedStoreRoute
+  AuthenticatedWorkflowRoute: typeof AuthenticatedWorkflowRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -667,6 +827,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLibraryRoute: AuthenticatedLibraryRouteWithChildren,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedStoreRoute: AuthenticatedStoreRoute,
+  AuthenticatedWorkflowRoute: AuthenticatedWorkflowRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -674,17 +835,19 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface EssaiRouteChildren {
   EssaiAnalyseRoute: typeof EssaiAnalyseRoute
+  EssaiCreationRoute: typeof EssaiCreationRoute
   EssaiImportRoute: typeof EssaiImportRoute
-  EssaiPreviewRoute: typeof EssaiPreviewRoute
-  EssaiScheduleRoute: typeof EssaiScheduleRoute
+  EssaiPublicationRoute: typeof EssaiPublicationRoute
+  EssaiSelectionRoute: typeof EssaiSelectionRoute
   EssaiIndexRoute: typeof EssaiIndexRoute
 }
 
 const EssaiRouteChildren: EssaiRouteChildren = {
   EssaiAnalyseRoute: EssaiAnalyseRoute,
+  EssaiCreationRoute: EssaiCreationRoute,
   EssaiImportRoute: EssaiImportRoute,
-  EssaiPreviewRoute: EssaiPreviewRoute,
-  EssaiScheduleRoute: EssaiScheduleRoute,
+  EssaiPublicationRoute: EssaiPublicationRoute,
+  EssaiSelectionRoute: EssaiSelectionRoute,
   EssaiIndexRoute: EssaiIndexRoute,
 }
 

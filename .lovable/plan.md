@@ -1,78 +1,97 @@
-# Refonte module Création — style Canva spécialisé
+# Workflow unifié Komaag — 5 étapes partagées
 
 ## Objectif
-Transformer `/creation` en éditeur visuel moderne type Canva, sans toucher à la logique métier existante (blocks, templates, promotions, save, scheduling, IA). Refonte **UI uniquement**.
+Un seul workflow, une seule barre de progression, mêmes écrans, mêmes CTA — peu importe si l'utilisateur est dans `/essai` (anonyme) ou dans `/app` (connecté). La seule différence : à l'étape **Publication**, l'anonyme voit le `TrialGateModal` avant publish/programme/sauvegarde.
 
-## Nouvelle structure
+## Les 5 étapes (canoniques)
 
 ```text
-┌──────────────────────────────────────────────────────────┐
-│ TopBar : [Nom visuel]  [Format ▾]   [⬇][📅][Publier]    │
-├────┬────────────────┬──────────────────────────────┬─────┤
-│ N  │ Panneau        │                              │ N   │
-│ a  │ contextuel     │      Canvas (grand)          │ a   │
-│ v  │ (selon item    │      zoom + pan              │ v   │
-│    │  cliqué)       │                              │     │
-└────┴────────────────┴──────────────────────────────┴─────┘
+1. Import      → upload PDF/JPG/PNG, aperçu, "Analyser"
+2. Analyse     → progression IA, promos/produits/prix/visuels détectés, "Continuer"
+3. Sélection   → grille promos (miniature, produit, prix, remise, rayon), filtres + sélection, "Créer mes contenus"
+4. Création    → éditeur Canva existant, préchargé depuis la sélection, "Valider"
+5. Publication → calendrier/date/heure/réseau, "Programmer / Publier / Brouillon"
 ```
 
-### 1. Sidebar gauche verticale (fixe, ~80px)
-6 items icône + libellé, fond sombre, hover léger, item actif avec dégradé Komaag (`#ff66c4 → #ffde59`).
-- **Modèles** (LayoutTemplate)
-- **Texte** (Type)
-- **Éléments** (Shapes)
-- **Importer** (Upload)
-- **Marque** (Palette) — auto-rempli depuis brand profile
-- **Outils IA** (Sparkles)
+## Architecture cible
 
-### 2. Panneau contextuel (~280px, slide)
-Contenu selon item actif :
-- **Modèles** : grille de cartes (templates enseigne : Jeudi PLUS, Arrivage, Producteur local, Catalogue semaine) → réutilise `listVisualTemplatesFn`
-- **Texte** : bouton "Ajouter un paragraphe" + presets (Titre promo, Prix, Ancien prix barré) → crée des Blocks avec rôles existants
-- **Éléments** : bibliothèque `GRAPHIC_ELEMENTS` (flèches, pastilles %, formes, stickers, séparateurs) groupée par `ELEMENT_CATEGORIES`
-- **Importer** : drop-zone (image/logo/PNG/SVG) → réutilise `uploadVisualImageFn`
-- **Marque** : logo enseigne, palette couleurs, polices (depuis `getMyBrandProfileFn` + `getMyBrandGuidelineFn` + `listBrandFontsFn`)
-- **Outils IA** : Générer image produit, Supprimer fond, Améliorer photo, Recentrer, Générer texte, Variantes
+### Composants partagés (nouveaux, sous `src/components/workflow/`)
+- `WorkflowProgress.tsx` — barre 5 étapes, remplace `TunnelProgress` et `CampaignStepper`. Props : `active: WorkflowStep`, `mode: "trial" | "app"`. Adapte les `to` selon le mode (`/essai/...` vs `/app/...`).
+- `ImportStep.tsx` — drag&drop, aperçu, validation, CTA "Analyser". Extrait depuis `essai.import.tsx`.
+- `AnalyseStep.tsx` — progression + listes détectées + CTA "Continuer". Extrait depuis `essai.analyse.tsx`.
+- `SelectionStep.tsx` — grille promos sélectionnables avec filtres. NOUVEAU (remplace l'aperçu pré-formaté de `essai.preview.tsx`).
+- `PublicationStep.tsx` — calendrier + CTA programmer/publier/brouillon. Réutilise `ScheduleItemModal` et la logique de `essai.schedule.tsx` / `calendar.tsx`.
 
-### 3. Canvas central
-- Plus grand (occupe tout l'espace dispo, padding réduit)
-- Conserve le moteur de rendu actuel (blocks/elements/template)
-- Ajouter contrôles zoom (+/-, %) en bas
-- Sélection multiple : déjà présente ou marquée TODO si absente
+Chaque composant reçoit un `mode: "trial" | "app"` + des callbacks (`onNext`, `onPublishGate`).
 
-### 4. Top bar
-- Gauche : input éditable nom du visuel
-- Centre : Select format (POST_FORMATS)
-- Droite : `Télécharger` (toPng existant), `Planifier` (ScheduleItemModal), `Publier` (bouton dégradé Komaag principal)
+### Store partagé
+- Renommer/étendre `useTunnelStore` en `useWorkflowStore` (`src/lib/workflow-store.ts`) avec la séquence à 5 étapes (`import | analyse | selection | creation | publication`).
+- En mode connecté, le store reste utile comme buffer client (sélection en cours) avant persistance via les server functions existantes (`catalog.functions.ts`, `promotions.functions.ts`, `campaigns.functions.ts`).
 
-### 5. Panneau droit (propriétés)
-Reste affiché quand un block/élément est sélectionné (props existantes : font, taille, couleur, alignement, stroke, shadow). Sinon caché → plus de place pour le canvas.
+### Routes tunnel (anonyme)
+Restructurer en miroir des 5 étapes :
+- `src/routes/essai.import.tsx` — utilise `<ImportStep mode="trial" />`
+- `src/routes/essai.analyse.tsx` — `<AnalyseStep mode="trial" />`
+- `src/routes/essai.selection.tsx` — **NOUVEAU**, `<SelectionStep mode="trial" />`
+- `src/routes/essai.creation.tsx` — **NOUVEAU**, monte l'éditeur de `creation.tsx` en mode léger (sans auth)
+- `src/routes/essai.publication.tsx` — `<PublicationStep mode="trial" onPublishGate={openTrialModal} />`
+- Supprimer : `essai.preview.tsx`, `essai.schedule.tsx` (remplacés).
 
-## Implémentation
-- **Pas de réécriture** des fonctions métier ni du moteur de rendu blocks/elements.
-- Restructurer `src/routes/_authenticated/creation.tsx` : extraire la sidebar gauche, le panneau contextuel et la top bar en composants dédiés sous `src/components/creation/`.
-- Mapper l'ancien `Tabs` (props/elements/templates/link) vers la nouvelle nav latérale : "Bloc" devient le panneau droit (propriétés), "Éléments"/"Modèles" deviennent des items sidebar, "Promo" (link) devient un sous-section dans panneau Marque ou Modèles.
-- Conserver toute la logique de chargement (promotions, campaign items, brand profile).
-- Ajouter le dégradé Komaag comme classe utilitaire dans `src/styles.css` si pas déjà présent.
+### Routes app (connectée)
+Nouveau parcours linéaire qui réutilise les mêmes composants :
+- `src/routes/_authenticated/workflow.import.tsx`
+- `src/routes/_authenticated/workflow.analyse.tsx`
+- `src/routes/_authenticated/workflow.selection.tsx`
+- `src/routes/_authenticated/workflow.creation.tsx` — délègue à l'éditeur existant `creation.tsx`
+- `src/routes/_authenticated/workflow.publication.tsx`
+
+L'entrée se fait depuis `dashboard.tsx` (CTA "Nouveau contenu") ou `catalog.tsx` (CTA "Créer depuis ce catalogue").
+
+Les écrans existants `catalog`, `promotions`, `creation`, `calendar` restent accessibles indépendamment (vues de gestion), mais le workflow guidé passe désormais par `/app/workflow/*`.
+
+### Gate compte (tunnel uniquement)
+Dans `PublicationStep` avec `mode="trial"`, tout clic sur Publier / Programmer / Brouillon déclenche `TrialGateModal` au lieu d'exécuter l'action. Aucune autre étape ne demande de compte.
+
+### Barre de progression
+- Remplacer dans `essai.tsx` l'import `TunnelProgress` → `WorkflowProgress mode="trial"`.
+- Ajouter dans le layout `/app/workflow/*` un header avec `WorkflowProgress mode="app"`.
+- Supprimer `CampaignStepper` (non utilisé après unification) ou le garder uniquement si une autre vue en dépend (à vérifier).
 
 ## Hors-scope
-- Pas de nouvelles fonctionnalités IA réelles (les boutons "Outils IA" déclenchent les fonctions déjà existantes ou affichent un placeholder "Bientôt").
-- Pas de changement de schéma DB.
-- Pas de modif du tunnel d'essai.
+- Pas de refonte de l'éditeur Création (déjà fait à l'itération précédente).
+- Pas de modification du schéma DB.
+- Pas de logique IA réelle nouvelle.
 
-## Fichiers à créer
-- `src/components/creation/CreationSidebar.tsx`
-- `src/components/creation/CreationTopBar.tsx`
-- `src/components/creation/panels/TemplatesPanel.tsx`
-- `src/components/creation/panels/TextPanel.tsx`
-- `src/components/creation/panels/ElementsPanel.tsx`
-- `src/components/creation/panels/ImportPanel.tsx`
-- `src/components/creation/panels/BrandPanel.tsx`
-- `src/components/creation/panels/AiToolsPanel.tsx`
+## Fichiers créés
+- `src/lib/workflow-store.ts`
+- `src/components/workflow/WorkflowProgress.tsx`
+- `src/components/workflow/ImportStep.tsx`
+- `src/components/workflow/AnalyseStep.tsx`
+- `src/components/workflow/SelectionStep.tsx`
+- `src/components/workflow/PublicationStep.tsx`
+- `src/routes/essai.selection.tsx`
+- `src/routes/essai.creation.tsx`
+- `src/routes/essai.publication.tsx`
+- `src/routes/_authenticated/workflow.tsx` (layout)
+- `src/routes/_authenticated/workflow.import.tsx`
+- `src/routes/_authenticated/workflow.analyse.tsx`
+- `src/routes/_authenticated/workflow.selection.tsx`
+- `src/routes/_authenticated/workflow.creation.tsx`
+- `src/routes/_authenticated/workflow.publication.tsx`
 
-## Fichiers à modifier
-- `src/routes/_authenticated/creation.tsx` (recomposition du layout, conservation de toute la logique d'état/handlers)
-- `src/styles.css` (utilitaire `bg-komaag-gradient` si absent)
+## Fichiers modifiés
+- `src/routes/essai.tsx` — utiliser `WorkflowProgress`
+- `src/routes/essai.import.tsx` / `essai.analyse.tsx` — remonter sur les composants partagés
+- `src/components/app-sidebar.tsx` — entrée "Nouveau contenu" → `/workflow/import`
+- `src/routes/_authenticated/dashboard.tsx` — CTA principal vers le workflow
+
+## Fichiers supprimés
+- `src/routes/essai.preview.tsx`
+- `src/routes/essai.schedule.tsx`
+- `src/components/tunnel-progress.tsx`
+- `src/components/campaign-stepper.tsx` (si non utilisé ailleurs)
 
 ## Validation
-Vérifier visuellement chaque panneau via le preview, et que les fonctions Save / Download / Schedule fonctionnent toujours.
+- Parcourir `/essai/import` → `/essai/publication` et vérifier que la modale apparaît uniquement à l'étape 5.
+- Parcourir `/workflow/import` → `/workflow/publication` connecté, vérifier la persistance.
+- Vérifier que la barre de progression affiche bien 5 étapes dans les deux modes.

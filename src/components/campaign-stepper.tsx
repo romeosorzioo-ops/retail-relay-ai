@@ -3,8 +3,8 @@ import { Check } from "lucide-react";
 
 const STEPS = [
   { id: "catalog", label: "Catalogue" },
-  { id: "select",  label: "Sélection" },
-  { id: "create",  label: "Création" },
+  { id: "select", label: "Sélection" },
+  { id: "create", label: "Création" },
   { id: "validate", label: "Validation" },
   { id: "schedule", label: "Programmation" },
 ] as const;
@@ -30,15 +30,21 @@ export function CampaignStepper({ active }: { active: CampaignStep }) {
             >
               {done ? <Check className="h-3 w-3" /> : i + 1}
             </div>
-            <span className={cn(
-              "truncate font-medium",
-              isActive ? "text-foreground" : "text-muted-foreground",
-            )}>{s.label}</span>
+            <span
+              className={cn(
+                "truncate font-medium",
+                isActive ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {s.label}
+            </span>
             {i < STEPS.length - 1 && (
-              <div className={cn(
-                "h-px flex-1 mx-1",
-                i < activeIdx ? "bg-primary" : "bg-border",
-              )} />
+              <div
+                className={cn(
+                  "h-px flex-1 mx-1",
+                  i < activeIdx ? "bg-primary" : "bg-border",
+                )}
+              />
             )}
           </div>
         );

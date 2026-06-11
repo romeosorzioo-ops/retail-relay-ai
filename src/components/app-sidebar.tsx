@@ -12,6 +12,7 @@ import {
   FileUp,
   Shield,
   Sparkle,
+  Workflow,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +32,7 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 
 const items = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Nouveau contenu", url: "/workflow/import", icon: Workflow },
   { title: "Mon magasin", url: "/store", icon: Store },
   { title: "Promotions", url: "/promotions", icon: Tag },
   { title: "Import catalogue", url: "/catalog", icon: FileUp },

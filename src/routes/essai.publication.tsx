@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useTunnelStore } from "@/lib/tunnel-store";
 import { TrialGateModal } from "@/components/trial-gate-modal";
-import { Calendar, Clock, ArrowLeft, Save, Send } from "lucide-react";
+import { Calendar, Clock, ArrowLeft, Save, Send, CalendarClock } from "lucide-react";
 
-export const Route = createFileRoute("/essai/schedule")({
-  component: SchedulePage,
+export const Route = createFileRoute("/essai/publication")({
+  component: PublicationPage,
 });
 
 function platformLabel(p?: string) {
@@ -14,16 +14,17 @@ function platformLabel(p?: string) {
   return p.charAt(0).toUpperCase() + p.slice(1);
 }
 
-function SchedulePage() {
+function PublicationPage() {
   const router = useRouter();
   const { generatedPosts, setStep } = useTunnelStore();
   const [open, setOpen] = useState(false);
+  const [redirectTo, setRedirectTo] =
+    useState<"/calendar" | "/dashboard">("/calendar");
 
   useEffect(() => {
-    setStep("schedule");
+    setStep("publication");
   }, [setStep]);
 
-  // Default planning: tomorrow at 10h, 12h, 14h
   const baseDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -31,15 +32,20 @@ function SchedulePage() {
     return d;
   })();
 
+  const openGate = (target: "/calendar" | "/dashboard") => {
+    setRedirectTo(target);
+    setOpen(true);
+  };
+
   return (
     <div className="relative pb-28">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-6">
           <h1 className="font-display text-3xl font-bold">
-            Programmer mes publications
+            Programmer et publier
           </h1>
           <p className="text-sm text-muted-foreground">
-            Vérifiez puis sauvegardez vos publications dans votre calendrier.
+            Vérifiez le calendrier puis publiez ou enregistrez en brouillon.
           </p>
         </div>
 
@@ -103,22 +109,29 @@ function SchedulePage() {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <Button
             variant="outline"
-            onClick={() => router.navigate({ to: "/essai/preview" })}
+            onClick={() => router.navigate({ to: "/essai/creation" })}
           >
             <ArrowLeft className="h-4 w-4" /> Précédent
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setOpen(true)}>
-              <Save className="h-4 w-4" /> Sauvegarder
+            <Button variant="ghost" onClick={() => openGate("/dashboard")}>
+              <Save className="h-4 w-4" /> Brouillon
             </Button>
-            <Button onClick={() => setOpen(true)}>
+            <Button variant="outline" onClick={() => openGate("/calendar")}>
+              <CalendarClock className="h-4 w-4" /> Programmer
+            </Button>
+            <Button variant="brand" onClick={() => openGate("/calendar")}>
               <Send className="h-4 w-4" /> Publier
             </Button>
           </div>
         </div>
       </div>
 
-      <TrialGateModal open={open} onOpenChange={setOpen} redirectTo="/calendar" />
+      <TrialGateModal
+        open={open}
+        onOpenChange={setOpen}
+        redirectTo={redirectTo}
+      />
     </div>
   );
 }
