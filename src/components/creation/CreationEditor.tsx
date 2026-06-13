@@ -38,7 +38,7 @@ import { ScheduleItemModal } from "@/components/schedule-item-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
-import { useTunnelStore, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
+import { useTunnelStore, type CreativeState, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
 import { TEMPLATES, pickTemplateForCategory, type TemplateKey } from "@/lib/promo-templates";
 import { classifyProductType } from "@/lib/brand-detection";
 import { AiVisualLoader, AiVisualEmpty } from "./AiVisualLoader";
@@ -695,7 +695,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         return;
       }
       const productLabel = currentPromo.productLabel?.trim() || productName;
-      const savedState = creativeStateByPromoId[promoId] ?? { promoId };
+      const savedState: CreativeState = creativeStateByPromoId[promoId] ?? { promoId };
 
       // Initialise le creativeState si absent pour cette promo.
       if (!creativeStateByPromoId[promoId]) {
