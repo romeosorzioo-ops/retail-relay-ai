@@ -1477,10 +1477,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             </Button>
           )}
           <Button size="sm"
-            onClick={() => save.mutate()} disabled={save.isPending}
+            onClick={handleValidateClick} disabled={save.isPending}
             className="h-8 gap-1 bg-brand-gradient text-xs font-semibold text-black shadow-md hover:opacity-90">
             {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-            {isTrial ? "Valider ce visuel" : "Publier"}
+            {save.isPending ? "Validation…" : isTrial ? "Valider ce visuel" : "Publier"}
           </Button>
 
 
