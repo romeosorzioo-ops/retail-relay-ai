@@ -1303,16 +1303,44 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       if (isTrial) {
         // Save into the trial tunnel store (capped at 3 by setGeneratedPosts).
         const current = trialQueue.find((p) => p.id === trialCurrentId);
+        const promoId = current?.id ?? trialCurrentId ?? null;
+        const saved = promoId ? creativeStateByPromoId[promoId] : null;
         // Fallback chain ensures finalVisualUrl is never empty even if PNG
         // export failed (e.g. canvas not mounted): use any visible source.
         const resolvedVisual =
           image_url ??
           config.bgImage ??
           sourceImageUrl ??
+          saved?.cutoutImageUrl ??
+          saved?.generatedImageUrl ??
+          saved?.bgImage ??
           current?.imageUrl ??
+          current?.thumbnailUrl ??
           null;
+        // eslint-disable-next-line no-console
+        console.log("[validate] saving post", {
+          promoId,
+          publicationId: `${Date.now()}`,
+          finalVisualUrl: resolvedVisual ? `${resolvedVisual.slice(0, 40)}…` : null,
+          visualSource: image_url
+            ? "canvas-export"
+            : config.bgImage
+              ? "config.bgImage"
+              : sourceImageUrl
+                ? "sourceImageUrl"
+                : saved?.cutoutImageUrl
+                  ? "saved.cutoutImageUrl"
+                  : saved?.generatedImageUrl
+                    ? "saved.generatedImageUrl"
+                    : saved?.bgImage
+                      ? "saved.bgImage"
+                      : current?.imageUrl
+                        ? "current.imageUrl"
+                        : "none",
+        });
         const newPost: TunnelPost = {
           id: `${Date.now()}`,
+          promoId,
           product_name: current?.product_name ?? visualName,
           caption: "",
           imageUrl: resolvedVisual,
@@ -1322,8 +1350,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           selected: true,
           format,
         };
-        const existing = tunnelPosts.filter((p) => p.product_name !== newPost.product_name);
+        // Replace either by promoId (preferred) or by product_name (legacy).
+        const existing = tunnelPosts.filter(
+          (p) =>
+            (promoId ? p.promoId !== promoId : true) &&
+            p.product_name !== newPost.product_name,
+        );
         setTunnelPosts([...existing, newPost]);
+        if (promoId) {
+          try {
+            setCreativeState(promoId, {
+              isValidated: true,
+              bgImage: resolvedVisual ?? config.bgImage ?? null,
+            });
+          } catch (e) {
+            console.warn("[validate] persist isValidated failed", e);
+          }
+        }
         return { ok: true };
       }
       return saveVisualFn({
