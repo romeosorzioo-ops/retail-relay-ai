@@ -175,8 +175,26 @@ export const useTunnelStore = create<TunnelState>()(
         detectedProducts: s.detectedProducts,
         generatedPosts: s.generatedPosts,
         currentStep: s.currentStep,
-        creativeStateByPromoId: s.creativeStateByPromoId,
+        // Strip heavy data: URLs from persisted creative state to avoid
+        // localStorage QuotaExceededError on the 2nd/3rd AI generation
+        // (each base64 PNG ~1 MB; quota is typically 5 MB total).
+        creativeStateByPromoId: Object.fromEntries(
+          Object.entries(s.creativeStateByPromoId).map(([k, v]) => [
+            k,
+            {
+              ...v,
+              bgImage: v.bgImage?.startsWith("data:") ? null : v.bgImage,
+              cutoutImageUrl: v.cutoutImageUrl?.startsWith("data:")
+                ? null
+                : v.cutoutImageUrl,
+              generatedImageUrl: v.generatedImageUrl?.startsWith("data:")
+                ? null
+                : v.generatedImageUrl,
+            },
+          ]),
+        ),
       }),
+
     },
   ),
 );
