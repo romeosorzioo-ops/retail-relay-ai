@@ -54,7 +54,8 @@ function fmtDateLong(iso: string) {
 
 function PublicationPage() {
   const router = useRouter();
-  const { generatedPosts, updatePost, setStep } = useTunnelStore();
+  const { generatedPosts, updatePost, setStep, creativeStateByPromoId } =
+    useTunnelStore();
   const [open, setOpen] = useState(false);
   const [redirectTo, setRedirectTo] =
     useState<"/calendar" | "/dashboard">("/calendar");
@@ -103,23 +104,41 @@ function PublicationPage() {
     };
   }, [generatedPosts]);
 
+  // Resolve the validated visual for a post, strictly keyed by promoId.
+  // Order: post.finalVisualUrl → creativeStateByPromoId[promoId] (cutout > generated > bg)
+  // → other post sources. Returns null if nothing is available.
+  const resolveVisual = (p: TunnelPost): string | null => {
+    const saved = p.promoId ? creativeStateByPromoId[p.promoId] : null;
+    const v =
+      p.finalVisualUrl ||
+      saved?.cutoutImageUrl ||
+      saved?.generatedImageUrl ||
+      saved?.bgImage ||
+      p.imageUrl ||
+      p.productImageUrl ||
+      p.sourceImageUrl ||
+      p.cutoutImageUrl ||
+      null;
+    // eslint-disable-next-line no-console
+    console.log("[publication] resolveVisual", {
+      publicationId: p.id,
+      promoId: p.promoId ?? null,
+      finalVisualUrl: p.finalVisualUrl ? `${p.finalVisualUrl.slice(0, 40)}…` : null,
+      visualSource: v ? (v === p.finalVisualUrl ? "finalVisualUrl" : "fallback") : "none",
+    });
+    return v;
+  };
+
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     generatedPosts.forEach((p) => {
-      // Trust the preview: any visible image source counts as a valid visual.
-      const visual =
-        p.finalVisualUrl ||
-        p.imageUrl ||
-        p.productImageUrl ||
-        p.sourceImageUrl ||
-        p.cutoutImageUrl ||
-        null;
+      const visual = resolveVisual(p);
       if (!p.caption?.trim()) next[p.id] = "Ajoutez une description.";
       else if (!p.scheduledDate) next[p.id] = "Choisissez une date.";
       else if (!p.scheduledTime) next[p.id] = "Choisissez une heure.";
       else if (!p.platforms?.facebook && !p.platforms?.instagram)
         next[p.id] = "Sélectionnez au moins un réseau.";
-      else if (!visual) next[p.id] = "Visuel manquant.";
+      else if (!visual) next[p.id] = "Visuel non validé.";
     });
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -216,13 +235,7 @@ function PublicationPage() {
           )}
 
           {generatedPosts.map((post) => {
-            const visual =
-              post.finalVisualUrl ||
-              post.imageUrl ||
-              post.productImageUrl ||
-              post.sourceImageUrl ||
-              post.cutoutImageUrl ||
-              null;
+            const visual = resolveVisual(post);
             const platforms = post.platforms ?? { facebook: true, instagram: true };
             const captionDraft = editingCaption[post.id];
             const isEditing = typeof captionDraft === "string";
@@ -241,14 +254,18 @@ function PublicationPage() {
                 {/* Left: card */}
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
                       {visual ? (
                         <img
                           src={visual}
                           alt=""
                           className="h-full w-full object-cover"
                         />
-                      ) : null}
+                      ) : (
+                        <span className="px-1 text-center text-[10px] leading-tight text-muted-foreground">
+                          Visuel non validé
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
@@ -391,6 +408,17 @@ function PublicationPage() {
                       />
                     </label>
                   </div>
+
+                  {!visual && (
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                      <span className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" /> Visuel non validé
+                      </span>
+                      <Button size="sm" variant="outline" onClick={() => editPost(post)}>
+                        Retourner modifier le visuel
+                      </Button>
+                    </div>
+                  )}
 
                   {err && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">

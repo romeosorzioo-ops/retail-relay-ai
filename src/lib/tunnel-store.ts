@@ -53,6 +53,7 @@ export type VisualMock = {
 
 export type TunnelPost = {
   id: string;
+  promoId?: string | null;
   product_name: string;
   caption: string;
   platform?: TunnelPlatform;
