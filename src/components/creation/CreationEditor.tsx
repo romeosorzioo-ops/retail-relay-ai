@@ -1320,6 +1320,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         toast.success("Visuel enregistré dans la bibliothèque");
         return;
       }
+      toast.success("Visuel validé");
       // Trial: advance to next pending promo, or move on to publication.
       const validatedNames = new Set(
         [...tunnelPosts.map((p) => p.product_name),
@@ -1330,14 +1331,46 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       );
       if (next) {
         setTrialCurrentId(next.id);
-        toast.success("Visuel validé. Promotion suivante…");
+        // Allow auto-pipeline to retry for the new promo if needed.
+        aiAutoRef.current.delete(next.id);
       } else {
         toast.success("Toutes les promotions sont validées !");
         onContinue?.();
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[validate] save failed", e);
+      toast.error(e?.message || "Validation impossible. Réessayez.");
+    },
   });
+
+  function handleValidateClick() {
+    if (isTrial) {
+      const current = trialQueue.find((p) => p.id === trialCurrentId);
+      console.log(
+        "[validate] clicked",
+        { promoId: trialCurrentId, creativeState: trialCurrentId ? creativeStateByPromoId[trialCurrentId] : null },
+      );
+      if (!current) {
+        toast.error("Aucune promotion active.");
+        return;
+      }
+      const saved = trialCurrentId ? creativeStateByPromoId[trialCurrentId] : null;
+      const hasVisual = !!(
+        config.bgImage ||
+        sourceImageUrl ||
+        saved?.cutoutImageUrl ||
+        saved?.generatedImageUrl ||
+        current.imageUrl ||
+        current.thumbnailUrl
+      );
+      if (!hasVisual) {
+        toast.error("Générez un visuel avant de valider.");
+        return;
+      }
+    }
+    save.mutate();
+  }
 
 
 
