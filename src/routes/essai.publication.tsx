@@ -54,7 +54,8 @@ function fmtDateLong(iso: string) {
 
 function PublicationPage() {
   const router = useRouter();
-  const { generatedPosts, updatePost, setStep } = useTunnelStore();
+  const { generatedPosts, updatePost, setStep, creativeStateByPromoId } =
+    useTunnelStore();
   const [open, setOpen] = useState(false);
   const [redirectTo, setRedirectTo] =
     useState<"/calendar" | "/dashboard">("/calendar");
