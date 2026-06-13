@@ -834,21 +834,42 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
 
 
-  // Auto-trigger AI generation when current trial product has no image at all
-  // AND it's a fresh/generic product. For packaged products, never auto-generate.
+  // Auto-trigger AI generation for the currently active promo when it has
+  // no visual at all. Works for every promoId (no index-based logic).
+  // - Packaged products: try cutout from the catalog image.
+  // - Fresh products: generate from scratch via OpenAI then cutout.
+  // If the pipeline fails, the "Générer visuel IA" button remains available.
   useEffect(() => {
     if (!isTrial || !trialCurrentId) return;
+    if (aiBusy !== null) return;
     if (aiAutoRef.current.has(trialCurrentId)) return;
     const p = trialQueue.find((x) => x.id === trialCurrentId);
     if (!p) return;
-    const hasImg = !!(p.imageUrl || p.thumbnailUrl);
-    if (hasImg) return;
+    // Wait for the bridge effect to apply this promo before kicking off AI,
+    // otherwise we may run against the previous promo's config.
+    if (trialAppliedRef.current !== trialCurrentId) return;
+
+    const saved = creativeStateByPromoId[trialCurrentId];
+    const hasVisual = !!(
+      p.finalVisualUrl ||
+      p.cutoutImageUrl ||
+      p.sourceImageUrl ||
+      saved?.cutoutImageUrl ||
+      saved?.generatedImageUrl ||
+      saved?.bgImage
+    );
+    if (hasVisual) return;
+
+    const hasCatalogImg = !!(p.imageUrl || p.thumbnailUrl);
     const ptype = p.productType ?? classifyProductType(p.product_name, p.category);
-    if (ptype !== "fresh") return;
+    // Nothing we can do automatically: packaged product without catalog image.
+    if (!hasCatalogImg && ptype === "packaged") return;
+
     aiAutoRef.current.add(trialCurrentId);
-    void runAiPipeline();
+    // cutoutOnly when we already have a catalog image; else full generation.
+    void runAiPipeline({ cutoutOnly: hasCatalogImg });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTrial, trialCurrentId, trialQueue]);
+  }, [isTrial, trialCurrentId, trialQueue, aiBusy, creativeStateByPromoId]);
 
 
 
