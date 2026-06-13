@@ -235,13 +235,7 @@ function PublicationPage() {
           )}
 
           {generatedPosts.map((post) => {
-            const visual =
-              post.finalVisualUrl ||
-              post.imageUrl ||
-              post.productImageUrl ||
-              post.sourceImageUrl ||
-              post.cutoutImageUrl ||
-              null;
+            const visual = resolveVisual(post);
             const platforms = post.platforms ?? { facebook: true, instagram: true };
             const captionDraft = editingCaption[post.id];
             const isEditing = typeof captionDraft === "string";
@@ -260,14 +254,18 @@ function PublicationPage() {
                 {/* Left: card */}
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
                       {visual ? (
                         <img
                           src={visual}
                           alt=""
                           className="h-full w-full object-cover"
                         />
-                      ) : null}
+                      ) : (
+                        <span className="px-1 text-center text-[10px] leading-tight text-muted-foreground">
+                          Visuel non validé
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
