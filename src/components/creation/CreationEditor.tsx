@@ -730,7 +730,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         productName,
         productType,
         imageSource: imageSource ? `${imageSource.slice(0, 40)}…` : null,
-        creativeStateByPromoIdForPromo: creativeStateByPromoId[promoId] ?? null,
+        "creativeStateByPromoId[promoId]": creativeStateByPromoId[promoId] ?? null,
       });
 
       const isStillActivePromo = () => !isTrial || trialCurrentIdRef.current === promoId;
