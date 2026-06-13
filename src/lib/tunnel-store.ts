@@ -95,6 +95,10 @@ export type CreativeState = {
   updatedAt?: number;
 };
 
+function stripPersistedDataUrl(value?: string | null) {
+  return value?.startsWith("data:") ? null : value ?? null;
+}
+
 type TunnelState = {
   // pdfFile is intentionally NOT persisted (File can't be serialized)
   pdfFile: File | null;
@@ -172,8 +176,22 @@ export const useTunnelStore = create<TunnelState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         pdfName: s.pdfName,
-        detectedProducts: s.detectedProducts,
-        generatedPosts: s.generatedPosts,
+        detectedProducts: s.detectedProducts.map((p) => ({
+          ...p,
+          imageUrl: stripPersistedDataUrl(p.imageUrl),
+          thumbnailUrl: stripPersistedDataUrl(p.thumbnailUrl),
+          sourceImageUrl: stripPersistedDataUrl(p.sourceImageUrl),
+          cutoutImageUrl: stripPersistedDataUrl(p.cutoutImageUrl),
+          finalVisualUrl: stripPersistedDataUrl(p.finalVisualUrl),
+        })),
+        generatedPosts: s.generatedPosts.map((p) => ({
+          ...p,
+          imageUrl: stripPersistedDataUrl(p.imageUrl),
+          productImageUrl: stripPersistedDataUrl(p.productImageUrl),
+          sourceImageUrl: stripPersistedDataUrl(p.sourceImageUrl),
+          cutoutImageUrl: stripPersistedDataUrl(p.cutoutImageUrl),
+          finalVisualUrl: stripPersistedDataUrl(p.finalVisualUrl),
+        })),
         currentStep: s.currentStep,
         // Strip heavy data: URLs from persisted creative state to avoid
         // localStorage QuotaExceededError on the 2nd/3rd AI generation
@@ -183,13 +201,9 @@ export const useTunnelStore = create<TunnelState>()(
             k,
             {
               ...v,
-              bgImage: v.bgImage?.startsWith("data:") ? null : v.bgImage,
-              cutoutImageUrl: v.cutoutImageUrl?.startsWith("data:")
-                ? null
-                : v.cutoutImageUrl,
-              generatedImageUrl: v.generatedImageUrl?.startsWith("data:")
-                ? null
-                : v.generatedImageUrl,
+              bgImage: stripPersistedDataUrl(v.bgImage),
+              cutoutImageUrl: stripPersistedDataUrl(v.cutoutImageUrl),
+              generatedImageUrl: stripPersistedDataUrl(v.generatedImageUrl),
             },
           ]),
         ),

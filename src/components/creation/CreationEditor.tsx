@@ -38,7 +38,7 @@ import { ScheduleItemModal } from "@/components/schedule-item-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Layout, ListChecks, CalendarPlus } from "lucide-react";
-import { useTunnelStore, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
+import { useTunnelStore, type CreativeState, type TunnelProduct, type TunnelPost } from "@/lib/tunnel-store";
 import { TEMPLATES, pickTemplateForCategory, type TemplateKey } from "@/lib/promo-templates";
 import { classifyProductType } from "@/lib/brand-detection";
 import { AiVisualLoader, AiVisualEmpty } from "./AiVisualLoader";
@@ -669,51 +669,71 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   // ---------- AI visual pipeline (generation + cutout) ----------
   const [aiBusy, setAiBusy] = useState<null | "generate" | "cutout">(null);
   const aiAutoRef = useRef<Set<string>>(new Set());
+  const trialCurrentIdRef = useRef<string | null>(trialCurrentId);
+
+  useEffect(() => {
+    trialCurrentIdRef.current = trialCurrentId;
+  }, [trialCurrentId]);
 
   async function runAiPipeline(opts: { cutoutOnly?: boolean } = {}) {
-    const current = isTrial ? trialQueue.find((p) => p.id === trialCurrentId) : null;
-
-    // --- Guards : never crash, always toast.
-    if (!current) {
-      toast.error("Aucune promotion active. Sélectionnez une promotion.");
-      return;
-    }
-    const promoId = current.id;
-    if (!promoId) {
-      toast.error("Identifiant de promotion manquant.");
-      return;
-    }
-    const productName = current.product_name;
-    if (!productName) {
-      toast.error("Nom de produit manquant pour cette promotion.");
-      return;
-    }
-    const productLabel = current.productLabel ?? productName;
-
-    // Initialise le creativeState si absent pour cette promo.
-    if (!creativeStateByPromoId[promoId]) {
-      try {
-        setCreativeState(promoId, { visualMode: "fullbleed" });
-      } catch (e) {
-        console.warn("[AI] init creativeState failed", e);
-      }
-    }
-
-    const productType: "packaged" | "fresh" =
-      current.productType ?? classifyProductType(productName, current.category);
-    const imageSource: string | null = sourceImageUrl ?? config.bgImage ?? null;
-
-    // eslint-disable-next-line no-console
-    console.log("[AI pipeline] start", {
-      promoId,
-      productName,
-      productLabel,
-      productType,
-      imageSource: imageSource ? `${imageSource.slice(0, 40)}…` : null,
-      creativeState: creativeStateByPromoId[promoId] ?? null,
-    });
-
     try {
+      const currentPromo = isTrial ? trialQueue.find((p) => p.id === trialCurrentId) : null;
+
+      // --- Guards : never crash, always toast.
+      if (!currentPromo) {
+        toast.error("Aucune promotion active. Sélectionnez une promotion.");
+        return;
+      }
+      const promoId = currentPromo.id;
+      if (!promoId) {
+        toast.error("Identifiant de promotion manquant.");
+        return;
+      }
+      const productName = currentPromo.product_name?.trim();
+      if (!productName) {
+        toast.error("Nom de produit manquant pour cette promotion.");
+        return;
+      }
+      const productLabel = currentPromo.productLabel?.trim() || productName;
+      const savedState: CreativeState = creativeStateByPromoId[promoId] ?? { promoId };
+
+      // Initialise le creativeState si absent pour cette promo.
+      if (!creativeStateByPromoId[promoId]) {
+        try {
+          setCreativeState(promoId, {
+            visualMode: currentPromo.imageUrl || currentPromo.thumbnailUrl ? "fullbleed" : "cutout",
+            bgImage: currentPromo.imageUrl ?? currentPromo.thumbnailUrl ?? null,
+          });
+        } catch (e) {
+          console.warn("[AI] init creativeState failed", e);
+        }
+      }
+
+      const productType: "packaged" | "fresh" =
+        currentPromo.productType ?? classifyProductType(productName, currentPromo.category);
+      const promoOwnSource =
+        currentPromo.sourceImageUrl ??
+        currentPromo.imageUrl ??
+        currentPromo.thumbnailUrl ??
+        currentPromo.finalVisualUrl ??
+        savedState.bgImage ??
+        savedState.cutoutImageUrl ??
+        savedState.generatedImageUrl ??
+        null;
+      const imageSource: string | null = promoOwnSource;
+
+      // eslint-disable-next-line no-console
+      console.log("[AI pipeline] start", {
+        currentPromo,
+        promoId,
+        productLabel,
+        productName,
+        productType,
+        imageSource: imageSource ? `${imageSource.slice(0, 40)}…` : null,
+        "creativeStateByPromoId[promoId]": creativeStateByPromoId[promoId] ?? null,
+      });
+
+      const isStillActivePromo = () => !isTrial || trialCurrentIdRef.current === promoId;
       let imgUrl: string | null = imageSource;
       let generatedFallback = false;
 
@@ -732,7 +752,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               productName,
-              category: current.category ?? null,
+              category: currentPromo.category ?? null,
               productType,
             }),
           });
@@ -791,12 +811,15 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       try {
         if (cutoutOk) {
           const finalUrl = cutoutData.dataUrl!;
-          setSourceType("catalog");
-          setSourceImageUrl(finalUrl);
-          setConfig((cfg) => ({ ...cfg, bgImage: finalUrl, visualMode: "cutout" }));
+          if (isStillActivePromo()) {
+            setSourceType("catalog");
+            setSourceImageUrl(finalUrl);
+            setConfig((cfg) => ({ ...cfg, bgImage: finalUrl, visualMode: "cutout" }));
+          }
           try {
             setCreativeState(promoId, {
               cutoutImageUrl: finalUrl,
+              bgImage: finalUrl,
               visualMode: "cutout",
             });
           } catch (e) {
@@ -807,18 +830,19 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           if (!cutoutHttpOk) {
             toast.warning("Détourage indisponible, image plein cadre conservée.");
           }
-          setSourceType("catalog");
-          setSourceImageUrl(imgUrl);
-          setConfig((cfg) => ({ ...cfg, bgImage: imgUrl, visualMode: "fullbleed" }));
-          if (generatedFallback) {
-            try {
-              setCreativeState(promoId, {
-                generatedImageUrl: imgUrl,
-                visualMode: "fullbleed",
-              });
-            } catch (e) {
-              console.warn("[AI] persist fallback failed", e);
-            }
+          if (isStillActivePromo()) {
+            setSourceType("catalog");
+            setSourceImageUrl(imgUrl);
+            setConfig((cfg) => ({ ...cfg, bgImage: imgUrl, visualMode: "fullbleed" }));
+          }
+          try {
+            setCreativeState(promoId, {
+              ...(generatedFallback ? { generatedImageUrl: imgUrl } : {}),
+              bgImage: imgUrl,
+              visualMode: "fullbleed",
+            });
+          } catch (e) {
+            console.warn("[AI] persist fallback failed", e);
           }
         }
       } catch (e) {
