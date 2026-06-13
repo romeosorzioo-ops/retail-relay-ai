@@ -672,18 +672,53 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
   async function runAiPipeline(opts: { cutoutOnly?: boolean } = {}) {
     const current = isTrial ? trialQueue.find((p) => p.id === trialCurrentId) : null;
-    const productName = current?.product_name;
-    if (!productName) {
-      toast.error("Aucun produit sélectionné.");
+
+    // --- Guards : never crash, always toast.
+    if (!current) {
+      toast.error("Aucune promotion active. Sélectionnez une promotion.");
       return;
     }
+    const promoId = current.id;
+    if (!promoId) {
+      toast.error("Identifiant de promotion manquant.");
+      return;
+    }
+    const productName = current.product_name;
+    if (!productName) {
+      toast.error("Nom de produit manquant pour cette promotion.");
+      return;
+    }
+    const productLabel = current.productLabel ?? productName;
+
+    // Initialise le creativeState si absent pour cette promo.
+    if (!creativeStateByPromoId[promoId]) {
+      try {
+        setCreativeState(promoId, { visualMode: "fullbleed" });
+      } catch (e) {
+        console.warn("[AI] init creativeState failed", e);
+      }
+    }
+
     const productType: "packaged" | "fresh" =
-      current?.productType ?? classifyProductType(productName, current?.category);
+      current.productType ?? classifyProductType(productName, current.category);
+    const imageSource: string | null = sourceImageUrl ?? config.bgImage ?? null;
+
+    // eslint-disable-next-line no-console
+    console.log("[AI pipeline] start", {
+      promoId,
+      productName,
+      productLabel,
+      productType,
+      imageSource: imageSource ? `${imageSource.slice(0, 40)}…` : null,
+      creativeState: creativeStateByPromoId[promoId] ?? null,
+    });
+
     try {
-      let imgUrl: string | null = sourceImageUrl ?? config.bgImage ?? null;
+      let imgUrl: string | null = imageSource;
       let generatedFallback = false;
+
+      // --- Étape 1 : génération OpenAI (si pas d'image source ou si demandé)
       if (!opts.cutoutOnly || !imgUrl) {
-        // Règle : pas de génération IA pour un produit packagé.
         if (productType === "packaged") {
           toast.error(
             "Produit packagé : importez ou conservez l'image du catalogue, pas de génération IA.",
@@ -691,70 +726,113 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return;
         }
         setAiBusy("generate");
-        const r = await fetch("/api/generate-product-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            productName,
-            category: current?.category ?? null,
-            productType,
-          }),
-        });
-        const data = (await r.json()) as { dataUrl?: string; error?: string; message?: string };
-        if (!r.ok || !data.dataUrl) {
-          if (data.error === "branded_product" || data.error === "packaged_product") {
-            toast.info(data.message ?? "Produit packagé : utilisez l'image catalogue.");
-          } else {
-            toast.error(`Génération IA échouée : ${data.message ?? data.error ?? r.status}`);
+        try {
+          const r = await fetch("/api/generate-product-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              productName,
+              category: current.category ?? null,
+              productType,
+            }),
+          });
+          const data = (await r.json().catch(() => ({}))) as {
+            dataUrl?: string;
+            error?: string;
+            message?: string;
+          };
+          if (!r.ok || !data.dataUrl) {
+            if (data.error === "branded_product" || data.error === "packaged_product") {
+              toast.info(data.message ?? "Produit packagé : utilisez l'image catalogue.");
+            } else {
+              toast.error("Impossible de générer ce visuel. Réessayez.");
+            }
+            return;
           }
+          imgUrl = data.dataUrl;
+          generatedFallback = true;
+          try {
+            setCreativeState(promoId, { generatedImageUrl: imgUrl });
+          } catch (e) {
+            console.warn("[AI] persist generatedImageUrl failed", e);
+          }
+        } catch (e) {
+          console.error("[AI] OpenAI generation failed", e);
+          toast.error("Impossible de générer ce visuel. Réessayez.");
           return;
         }
-        imgUrl = data.dataUrl;
-        generatedFallback = true;
-        if (current) {
-          setCreativeState(current.id, { generatedImageUrl: imgUrl });
-        }
       }
 
+      if (!imgUrl) {
+        toast.error("Impossible de générer ce visuel. Réessayez.");
+        return;
+      }
+
+      // --- Étape 2 : détourage Gemini
       setAiBusy("cutout");
-      const c = await fetch("/api/cutout-product-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageUrl: imgUrl,
-          productLabel: current?.productLabel ?? productName,
-        }),
-      });
-      const cData = (await c.json()) as { dataUrl?: string; error?: string; message?: string };
-      const cutoutOk = c.ok && !!cData.dataUrl;
+      let cutoutOk = false;
+      let cutoutData: { dataUrl?: string; error?: string; message?: string } = {};
+      let cutoutHttpOk = false;
+      try {
+        const c = await fetch("/api/cutout-product-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: imgUrl, productLabel }),
+        });
+        cutoutHttpOk = c.ok;
+        cutoutData = (await c.json().catch(() => ({}))) as typeof cutoutData;
+        cutoutOk = c.ok && !!cutoutData.dataUrl;
+      } catch (e) {
+        console.warn("[AI] cutout failed", e);
+      }
 
       // CAS A — détourage réussi : produit détouré sur fond uni modifiable.
-      // CAS B — détourage échoué + image IA fallback : image plein cadre.
-      // CAS C — détourage échoué + image catalogue brute : on garde plein cadre.
-      if (cutoutOk) {
-        const finalUrl = cData.dataUrl!;
-        setSourceType("catalog");
-        setSourceImageUrl(finalUrl);
-        setConfig((cfg) => ({ ...cfg, bgImage: finalUrl, visualMode: "cutout" }));
-        if (current) {
-          setCreativeState(current.id, { cutoutImageUrl: finalUrl, visualMode: "cutout" });
+      // CAS B/C — détourage échoué : image plein cadre.
+      try {
+        if (cutoutOk) {
+          const finalUrl = cutoutData.dataUrl!;
+          setSourceType("catalog");
+          setSourceImageUrl(finalUrl);
+          setConfig((cfg) => ({ ...cfg, bgImage: finalUrl, visualMode: "cutout" }));
+          try {
+            setCreativeState(promoId, {
+              cutoutImageUrl: finalUrl,
+              visualMode: "cutout",
+            });
+          } catch (e) {
+            console.warn("[AI] persist cutout failed", e);
+          }
+          toast.success("Visuel IA prêt.");
+        } else {
+          if (!cutoutHttpOk) {
+            toast.warning("Détourage indisponible, image plein cadre conservée.");
+          }
+          setSourceType("catalog");
+          setSourceImageUrl(imgUrl);
+          setConfig((cfg) => ({ ...cfg, bgImage: imgUrl, visualMode: "fullbleed" }));
+          if (generatedFallback) {
+            try {
+              setCreativeState(promoId, {
+                generatedImageUrl: imgUrl,
+                visualMode: "fullbleed",
+              });
+            } catch (e) {
+              console.warn("[AI] persist fallback failed", e);
+            }
+          }
         }
-        toast.success("Visuel IA prêt.");
-      } else {
-        if (!c.ok) toast.warning("Détourage indisponible, image plein cadre conservée.");
-        setSourceType("catalog");
-        setSourceImageUrl(imgUrl);
-        setConfig((cfg) => ({ ...cfg, bgImage: imgUrl, visualMode: "fullbleed" }));
-        if (current && generatedFallback) {
-          setCreativeState(current.id, { generatedImageUrl: imgUrl, visualMode: "fullbleed" });
-        }
+      } catch (e) {
+        console.error("[AI] apply visual failed", e);
+        toast.error("Impossible de générer ce visuel. Réessayez.");
       }
     } catch (e) {
-      toast.error(`Pipeline IA : ${String(e)}`);
+      console.error("[AI] pipeline crashed", e);
+      toast.error("Impossible de générer ce visuel. Réessayez.");
     } finally {
       setAiBusy(null);
     }
   }
+
 
   // Auto-trigger AI generation when current trial product has no image at all
   // AND it's a fresh/generic product. For packaged products, never auto-generate.
