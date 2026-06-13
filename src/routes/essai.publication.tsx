@@ -409,6 +409,17 @@ function PublicationPage() {
                     </label>
                   </div>
 
+                  {!visual && (
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                      <span className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" /> Visuel non validé
+                      </span>
+                      <Button size="sm" variant="outline" onClick={() => editPost(post)}>
+                        Retourner modifier le visuel
+                      </Button>
+                    </div>
+                  )}
+
                   {err && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                       <AlertCircle className="h-4 w-4" /> {err}
