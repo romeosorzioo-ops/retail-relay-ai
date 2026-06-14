@@ -1058,3 +1058,139 @@ export const getCatalogPromotionFn = createServerFn({ method: "GET" })
     if (!row) throw new Error("Promotion introuvable.");
     return row;
   });
+
+export const getCatalogPipelineDebugFn = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .handler(async () => {
+    const startedAt = Date.now();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const openAiKey = process.env.OPENAI_API_KEY ?? "";
+    const lovableKey = process.env.LOVABLE_API_KEY ?? "";
+    const supabaseUrl = process.env.SUPABASE_URL ?? "";
+    const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+    const supabasePublishable = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
+
+    let openAiCheck: {
+      configured: boolean;
+      status: number | null;
+      ok: boolean;
+      message: string | null;
+      endpoint: string;
+      keyPrefix: string | null;
+      keyLength: number;
+    } = {
+      configured: Boolean(openAiKey),
+      status: null,
+      ok: false,
+      message: openAiKey ? null : "OPENAI_API_KEY manquante",
+      endpoint: "https://api.openai.com/v1/models",
+      keyPrefix: openAiKey ? `${openAiKey.slice(0, 7)}…` : null,
+      keyLength: openAiKey.length,
+    };
+
+    if (openAiKey) {
+      try {
+        const response = await fetch(openAiCheck.endpoint, {
+          headers: { Authorization: `Bearer ${openAiKey}` },
+        });
+        const raw = response.ok ? null : await response.text().catch(() => null);
+        openAiCheck = {
+          ...openAiCheck,
+          status: response.status,
+          ok: response.ok,
+          message: raw,
+        };
+      } catch (error) {
+        openAiCheck = {
+          ...openAiCheck,
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
+    const imports = await supabaseAdmin
+      .from("catalog_imports")
+      .select("id,file_name,status,error_message,page_count,created_at,updated_at")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (imports.error) throw new Error(imports.error.message);
+
+    const importIds = (imports.data ?? []).map((item) => item.id);
+    const pages = importIds.length
+      ? await supabaseAdmin
+          .from("catalog_pages")
+          .select("catalog_import_id,page_number,status,promotions_count,error_message,notes,analyzed_at,updated_at")
+          .in("catalog_import_id", importIds)
+          .order("updated_at", { ascending: false })
+      : { data: [], error: null };
+    if (pages.error) throw new Error(pages.error.message);
+
+    const promotions = importIds.length
+      ? await supabaseAdmin
+          .from("catalog_promotions")
+          .select("catalog_import_id,id", { count: "exact", head: false })
+          .in("catalog_import_id", importIds)
+      : { data: [], error: null, count: 0 };
+    if (promotions.error) throw new Error(promotions.error.message);
+
+    const pagesByImport = new Map<string, any[]>();
+    for (const page of pages.data ?? []) {
+      const list = pagesByImport.get(page.catalog_import_id) ?? [];
+      list.push(page);
+      pagesByImport.set(page.catalog_import_id, list);
+    }
+    const promosByImport = new Map<string, number>();
+    for (const promotion of promotions.data ?? []) {
+      promosByImport.set(
+        promotion.catalog_import_id,
+        (promosByImport.get(promotion.catalog_import_id) ?? 0) + 1,
+      );
+    }
+
+    return {
+      generatedAt: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
+      architecture: {
+        catalogAnalysis: {
+          provider: CATALOG_ANALYSIS_PROVIDER,
+          model: CATALOG_ANALYSIS_MODEL,
+          endpoint: CATALOG_ANALYSIS_ENDPOINT,
+          usesOpenAI: false,
+        },
+        visualGeneration: {
+          provider: "OpenAI",
+          model: "gpt-image-1",
+          endpoint: "https://api.openai.com/v1/images/generations",
+          isolatedFromCatalogAnalysis: true,
+        },
+      },
+      variables: {
+        LOVABLE_API_KEY: {
+          configured: Boolean(lovableKey),
+          keyPrefix: lovableKey ? `${lovableKey.slice(0, 7)}…` : null,
+          keyLength: lovableKey.length,
+        },
+        OPENAI_API_KEY: openAiCheck,
+        SUPABASE_URL: { configured: Boolean(supabaseUrl) },
+        SUPABASE_PUBLISHABLE_KEY: { configured: Boolean(supabasePublishable) },
+        SUPABASE_SERVICE_ROLE_KEY: { configured: Boolean(supabaseServiceRole) },
+      },
+      imports: (imports.data ?? []).map((item) => {
+        const itemPages = pagesByImport.get(item.id) ?? [];
+        const analyzedPages = itemPages.filter((p) => p.status === "analyzed").length;
+        const failedPages = itemPages.filter((p) => p.status === "failed").length;
+        const promotionsDetected = promosByImport.get(item.id) ?? 0;
+        return {
+          ...item,
+          analyzedPages,
+          failedPages,
+          promotionsDetected,
+          modelUsed: CATALOG_ANALYSIS_MODEL,
+          estimatedCostEur: Number(
+            ((item.page_count ?? itemPages.length) * ESTIMATED_CATALOG_ANALYSIS_COST_PER_PAGE_EUR).toFixed(3),
+          ),
+          pages: itemPages,
+        };
+      }),
+    };
+  });
