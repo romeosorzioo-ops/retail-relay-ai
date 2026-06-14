@@ -1122,6 +1122,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       updateBlock(d.id, { x: Math.max(0, Math.min(100, d.bx + dx)), y: Math.max(0, Math.min(100, d.by + dy)) });
       return;
     }
+    // product layer drag
+    if (prodDragRef.current) {
+      onPointerMoveProduct(e);
+      return;
+    }
     // element drag
     const ed = elDragRef.current;
     if (!ed) return;
