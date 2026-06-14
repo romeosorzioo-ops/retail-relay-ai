@@ -262,6 +262,13 @@ async function analyzeSinglePage(args: {
   apiKey: string;
 }) {
   const { context, imp, pageNumber, fullPdf, store, apiKey } = args;
+  const startedAt = Date.now();
+  logCatalogAiDiagnostic({
+    functionCalled: "analyzeSinglePage",
+    catalogImportId: imp.id,
+    pageNumber,
+    phase: "start",
+  });
 
   // mark page as analyzing
   await context.supabase
@@ -310,7 +317,7 @@ Pas de markdown, pas de texte autour.`;
 
 
     const { text } = await generateText({
-      model: gateway("google/gemini-3-flash-preview"),
+        model: gateway(CATALOG_ANALYSIS_MODEL),
       system: sys,
       messages: [
         {
@@ -379,12 +386,41 @@ Pas de markdown, pas de texte autour.`;
       .eq("page_number", pageNumber)
       .eq("user_id", context.userId);
 
+    logCatalogAiDiagnostic({
+      functionCalled: "analyzeSinglePage",
+      catalogImportId: imp.id,
+      pageNumber,
+      phase: "success",
+      extra: { promotionsDetected: rows.length, durationMs: Date.now() - startedAt },
+    });
+
     return { count: rows.length };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Analyse de page échouée";
+    const raw = formatRawError(e);
+    const msg = raw.message || "Analyse de page échouée";
+    logCatalogAiDiagnostic({
+      functionCalled: "analyzeSinglePage",
+      catalogImportId: imp.id,
+      pageNumber,
+      phase: "error",
+      error: e,
+      extra: { durationMs: Date.now() - startedAt },
+    });
     await context.supabase
       .from("catalog_pages")
-      .update({ status: "failed", error_message: msg })
+      .update({
+        status: "failed",
+        error_message: msg,
+        notes: JSON.stringify({
+          functionCalled: "analyzeSinglePage",
+          provider: CATALOG_ANALYSIS_PROVIDER,
+          model: CATALOG_ANALYSIS_MODEL,
+          endpoint: CATALOG_ANALYSIS_ENDPOINT,
+          httpStatus: raw.status,
+          rawErrorMessage: raw.message,
+          stackTrace: raw.stack,
+        }).slice(0, 780),
+      })
       .eq("catalog_import_id", imp.id)
       .eq("page_number", pageNumber)
       .eq("user_id", context.userId);
