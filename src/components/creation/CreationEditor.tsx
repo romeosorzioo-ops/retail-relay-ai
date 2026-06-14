@@ -1482,8 +1482,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
   function restoreOriginalImage() {
     if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
-    const target =
-      (selectedProductId && (config.products ?? []).find((p) => p.id === selectedProductId)) ??
+    const target: ProductLayer | null =
+      (selectedProductId ? (config.products ?? []).find((p) => p.id === selectedProductId) ?? null : null) ??
       (config.products ?? [])[0] ??
       null;
     if (target) {
