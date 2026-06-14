@@ -497,11 +497,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return { ...b, text: `-${currentItem.discount_percent}%` };
         return b;
       });
+      const hasProduct = (c.products ?? []).length > 0;
+      const newProducts = !hasProduct && catalogImage
+        ? [{
+            id: uid(),
+            imageUrl: catalogImage,
+            isCutout: false,
+            x: 15, y: 25, width: 70, height: 50,
+            rotation: 0, zIndex: 1,
+          } as ProductLayer]
+        : (c.products ?? []);
       return {
         ...c,
-        bgImage: catalogImage ?? c.bgImage,
-        visualMode: catalogImage ? "fullbleed" : c.visualMode,
+        // Image is now a manipulable product layer, not a fixed background.
+        bgImage: hasProduct ? c.bgImage : null,
+        visualMode: c.visualMode,
         blocks,
+        products: newProducts,
       };
     });
     if (currentItem.creation_mode === "field_photo") {
