@@ -383,6 +383,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const [uploadingField, setUploadingField] = useState(false);
   const [sourceType, setSourceType] = useState<"template" | "catalog" | "field_photo">("template");
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [cutoutBusy, setCutoutBusy] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [showCropDebug, setShowCropDebug] = useState(false);
@@ -459,6 +461,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   useEffect(() => {
     if (!currentItem || itemAppliedRef.current === currentItem.id) return;
     itemAppliedRef.current = currentItem.id;
+    // Priority order: cutout > source > thumbnail. Image must NEVER disappear
+    // when transitioning Sélection → Création, regardless of creation_mode.
+    const item = currentItem as typeof currentItem & { thumbnail_url?: string | null };
+    const catalogImage =
+      item.source_image_url ?? item.thumbnail_url ?? null;
     setConfig((c) => {
       const blocks = c.blocks.map((b) => {
         if (b.role === "custom" && currentItem.product_name) return { ...b, text: currentItem.product_name };
@@ -472,16 +479,17 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       });
       return {
         ...c,
-        bgImage: currentItem.creation_mode === "catalog_visual" && currentItem.source_image_url
-          ? currentItem.source_image_url : c.bgImage,
+        bgImage: catalogImage ?? c.bgImage,
+        visualMode: catalogImage ? "fullbleed" : c.visualMode,
         blocks,
       };
     });
-    if (currentItem.creation_mode === "catalog_visual" && currentItem.source_image_url) {
-      setSourceType("catalog");
-      setSourceImageUrl(currentItem.source_image_url);
-    } else if (currentItem.creation_mode === "field_photo") {
+    if (currentItem.creation_mode === "field_photo") {
       setSourceType("field_photo");
+    } else if (catalogImage) {
+      setSourceType("catalog");
+      setSourceImageUrl(catalogImage);
+      setOriginalImageUrl(catalogImage);
     }
     if (currentItem.recommended_format && currentItem.recommended_format in FORMATS) {
       setFormat(currentItem.recommended_format as FormatKey);
@@ -638,6 +646,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (img) {
       setSourceType("catalog");
       setSourceImageUrl(img);
+      setOriginalImageUrl(img);
       // Detect dominant background color from the catalog image (async).
       void extractDominantColor(img).then((color) => {
         if (!color) return;
@@ -953,7 +962,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (mode === "catalog_visual" && catalogPromo.product_image_url) {
       setSourceType("catalog");
       setSourceImageUrl(catalogPromo.product_image_url);
-      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url }));
+      setOriginalImageUrl(catalogPromo.product_image_url);
+      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url, visualMode: "fullbleed" }));
     } else if (mode === "field_photo") {
       setSourceType("field_photo");
     }
@@ -1235,6 +1245,53 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       setCropOpen(true);
     } catch (e) { toast.error((e as Error).message); }
     finally { setUploadingField(false); }
+  }
+
+  async function removeBackgroundFromCurrentImage() {
+    const target = config.bgImage ?? sourceImageUrl ?? originalImageUrl;
+    if (!target) { toast.error("Aucune image à détourer."); return; }
+    setCutoutBusy(true);
+    try {
+      if (!originalImageUrl) setOriginalImageUrl(target);
+      const r = await fetch("/api/cutout-product-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: target }),
+      });
+      const data = (await r.json().catch(() => ({}))) as { dataUrl?: string; error?: string };
+      if (!r.ok || !data.dataUrl) {
+        toast.error("Détourage impossible. Réessayez.");
+        return;
+      }
+      setConfig((c) => ({ ...c, bgImage: data.dataUrl!, visualMode: "cutout" }));
+      setSourceImageUrl(data.dataUrl!);
+      if (isTrial && trialCurrentId) {
+        setCreativeState(trialCurrentId, {
+          cutoutImageUrl: data.dataUrl!,
+          bgImage: data.dataUrl!,
+          visualMode: "cutout",
+        });
+      }
+      toast.success("Arrière-plan supprimé.");
+    } catch (e) {
+      console.error("cutout failed", e);
+      toast.error("Détourage impossible.");
+    } finally {
+      setCutoutBusy(false);
+    }
+  }
+
+  function restoreOriginalImage() {
+    if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
+    setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+    setSourceImageUrl(originalImageUrl);
+    if (isTrial && trialCurrentId) {
+      setCreativeState(trialCurrentId, {
+        bgImage: originalImageUrl,
+        visualMode: "fullbleed",
+      });
+    }
+    toast.success("Image originale restaurée.");
   }
 
   async function handleCropConfirm(box: CropBox) {
@@ -1864,6 +1921,31 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                 <h3 className="text-sm font-semibold">Importer</h3>
                 <UploadField label="Image de fond" uploading={uploadingBg} currentUrl={config.bgImage ?? null}
                   onClear={() => setConfig((c) => ({ ...c, bgImage: null }))} onFile={(f) => uploadImage(f, "bg")} />
+                <div className="flex flex-col gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs"
+                    disabled={cutoutBusy || !config.bgImage}
+                    onClick={removeBackgroundFromCurrentImage}
+                  >
+                    {cutoutBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    Supprimer l'arrière-plan
+                  </Button>
+                  {originalImageUrl && originalImageUrl !== config.bgImage ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1.5 text-[11px]"
+                      onClick={restoreOriginalImage}
+                    >
+                      <RotateCw className="h-3 w-3" />
+                      Revenir à l'image originale
+                    </Button>
+                  ) : null}
+                </div>
                 <UploadField label="Logo" uploading={uploadingLogo} currentUrl={config.logoUrl ?? null}
                   onClear={() => setConfig((c) => ({ ...c, logoUrl: null }))} onFile={(f) => uploadImage(f, "logo")} />
                 <div>
