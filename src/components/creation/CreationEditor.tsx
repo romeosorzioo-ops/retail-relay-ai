@@ -459,6 +459,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   useEffect(() => {
     if (!currentItem || itemAppliedRef.current === currentItem.id) return;
     itemAppliedRef.current = currentItem.id;
+    // Priority order: cutout > source > thumbnail. Image must NEVER disappear
+    // when transitioning Sélection → Création, regardless of creation_mode.
+    const item = currentItem as typeof currentItem & { thumbnail_url?: string | null };
+    const catalogImage =
+      item.source_image_url ?? item.thumbnail_url ?? null;
     setConfig((c) => {
       const blocks = c.blocks.map((b) => {
         if (b.role === "custom" && currentItem.product_name) return { ...b, text: currentItem.product_name };
@@ -472,16 +477,17 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       });
       return {
         ...c,
-        bgImage: currentItem.creation_mode === "catalog_visual" && currentItem.source_image_url
-          ? currentItem.source_image_url : c.bgImage,
+        bgImage: catalogImage ?? c.bgImage,
+        visualMode: catalogImage ? "fullbleed" : c.visualMode,
         blocks,
       };
     });
-    if (currentItem.creation_mode === "catalog_visual" && currentItem.source_image_url) {
-      setSourceType("catalog");
-      setSourceImageUrl(currentItem.source_image_url);
-    } else if (currentItem.creation_mode === "field_photo") {
+    if (currentItem.creation_mode === "field_photo") {
       setSourceType("field_photo");
+    } else if (catalogImage) {
+      setSourceType("catalog");
+      setSourceImageUrl(catalogImage);
+      setOriginalImageUrl(catalogImage);
     }
     if (currentItem.recommended_format && currentItem.recommended_format in FORMATS) {
       setFormat(currentItem.recommended_format as FormatKey);
