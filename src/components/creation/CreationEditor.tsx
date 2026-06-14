@@ -117,6 +117,18 @@ type GraphicEl = {
   secondary?: string;     // optional fill for outlined shapes
 };
 
+// Independent, transformable product image layer (Canva-style).
+export type ProductLayer = {
+  id: string;
+  imageUrl: string;       // PNG (transparent if cutout) or raw catalog image
+  isCutout: boolean;      // true once background has been removed
+  x: number; y: number;   // % of canvas — top-left of bounding box
+  width: number;          // % of canvas width
+  height: number;         // % of canvas width (square reference, like GraphicEl)
+  rotation: number;       // degrees
+  zIndex: number;
+};
+
 type Config = {
   bgImage?: string | null;
   bgColor?: string;
@@ -124,6 +136,7 @@ type Config = {
   logoUrl?: string | null;
   blocks: Block[];
   elements?: GraphicEl[];
+  products?: ProductLayer[];
   lastCrop?: {
     src: string;
     x: number; y: number; width: number; height: number;
@@ -135,18 +148,17 @@ type Config = {
   } | null;
 };
 
-// Solid background palette for trial style picker.
-// First entry is dynamically replaced by detected catalog color.
+// Solid background palette (no gradients). First entry is dynamically
+// replaced by the dominant color extracted from the catalog.
 const SOLID_PALETTE: { key: string; label: string; color: string }[] = [
-  { key: "catalog", label: "Couleur du catalogue", color: "#1f2937" },
-  { key: "blue", label: "Bleu catalogue", color: "#1e3a8a" },
-  { key: "red", label: "Rouge promo", color: "#dc2626" },
-  { key: "yellow", label: "Jaune promo", color: "#facc15" },
-  { key: "green", label: "Vert frais", color: "#16a34a" },
-  { key: "orange", label: "Orange week-end", color: "#f97316" },
-  { key: "beige", label: "Beige gourmand", color: "#e7d7b3" },
-  { key: "white", label: "Blanc", color: "#ffffff" },
-  { key: "black", label: "Noir premium", color: "#0a0a0a" },
+  { key: "catalog", label: "Couleur catalogue", color: "#1f2937" },
+  { key: "blue_u",  label: "Bleu catalogue U", color: "#003DA5" },
+  { key: "white",   label: "Blanc",             color: "#ffffff" },
+  { key: "black",   label: "Noir",              color: "#0a0a0a" },
+  { key: "red",     label: "Rouge promo",       color: "#dc2626" },
+  { key: "yellow",  label: "Jaune promo",       color: "#facc15" },
+  { key: "green",   label: "Vert fruits & légumes", color: "#16a34a" },
+  { key: "grey",    label: "Gris premium",      color: "#374151" },
 ];
 
 async function extractDominantColor(url: string): Promise<string | null> {
@@ -391,6 +403,14 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const prodDragRef = useRef<{
+    id: string;
+    mode: "move" | "resize-nw" | "resize-ne" | "resize-sw" | "resize-se" | "rotate";
+    startX: number; startY: number;
+    bx: number; by: number; bw: number; bh: number; brot: number;
+    rect: DOMRect; cx: number; cy: number;
+  } | null>(null);
 
   const [catalogPromoId, setCatalogPromoId] = useState<string | null>(null);
   const [catalogMode, setCatalogMode] = useState<"catalog_visual" | "field_photo" | null>(null);
@@ -477,11 +497,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return { ...b, text: `-${currentItem.discount_percent}%` };
         return b;
       });
+      const hasProduct = (c.products ?? []).length > 0;
+      const newProducts = !hasProduct && catalogImage
+        ? [{
+            id: uid(),
+            imageUrl: catalogImage,
+            isCutout: false,
+            x: 15, y: 25, width: 70, height: 50,
+            rotation: 0, zIndex: 1,
+          } as ProductLayer]
+        : (c.products ?? []);
       return {
         ...c,
-        bgImage: catalogImage ?? c.bgImage,
-        visualMode: catalogImage ? "fullbleed" : c.visualMode,
+        // Image is now a manipulable product layer, not a fixed background.
+        bgImage: hasProduct ? c.bgImage : null,
+        visualMode: c.visualMode,
         blocks,
+        products: newProducts,
       };
     });
     if (currentItem.creation_mode === "field_photo") {
@@ -588,12 +620,14 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         visualMode: config.visualMode ?? "fullbleed",
         blocks: config.blocks,
         elements: config.elements ?? [],
+        products: (config.products ?? []) as never,
       });
     }
 
     const p = trialQueue.find((x) => x.id === trialCurrentId);
     if (!p) return;
     trialAppliedRef.current = trialCurrentId;
+    setSelectedProductId(null);
 
     // 2) Load saved state for this promo if present.
     const saved = creativeStateByPromoId[trialCurrentId];
@@ -605,6 +639,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         visualMode: saved.visualMode ?? "fullbleed",
         blocks: (saved.blocks as Block[]) ?? c.blocks,
         elements: (saved.elements as GraphicEl[]) ?? c.elements ?? [],
+        products: (saved.products as ProductLayer[]) ?? c.products ?? [],
       }));
       if (saved.bgImage) {
         setSourceType("catalog");
@@ -633,14 +668,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return { ...b, text: `-${p.discount_percent}%`, bgColor: tpl.accent };
         return b;
       });
+      const newProducts: ProductLayer[] = img
+        ? [{
+            id: uid(),
+            imageUrl: img,
+            isCutout: false,
+            x: 15, y: 25, width: 70, height: 50,
+            rotation: 0, zIndex: 1,
+          }]
+        : [];
       return {
         ...c,
         blocks,
-        bgImage: img,
+        // Image is now a free-floating product layer, not a fixed background.
+        bgImage: null,
         bgColor: initialColor,
-        // Raw catalog image is full-bleed (it already has its own background).
-        // After cutout, the pipeline switches to "cutout" mode.
-        visualMode: img ? "fullbleed" : "cutout",
+        visualMode: "cutout",
+        products: newProducts,
       };
     });
     if (img) {
@@ -669,9 +713,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       visualMode: config.visualMode ?? "fullbleed",
       blocks: config.blocks,
       elements: config.elements ?? [],
+      products: (config.products ?? []) as never,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.bgImage, config.bgColor, config.visualMode, config.blocks, config.elements, isTrial, trialCurrentId]);
+  }, [config.bgImage, config.bgColor, config.visualMode, config.blocks, config.elements, config.products, isTrial, trialCurrentId]);
 
 
 
@@ -1102,6 +1147,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       updateBlock(d.id, { x: Math.max(0, Math.min(100, d.bx + dx)), y: Math.max(0, Math.min(100, d.by + dy)) });
       return;
     }
+    // product layer drag
+    if (prodDragRef.current) {
+      onPointerMoveProduct(e);
+      return;
+    }
     // element drag
     const ed = elDragRef.current;
     if (!ed) return;
@@ -1131,7 +1181,143 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
       elDragRef.current = null;
     }
+    if (prodDragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      prodDragRef.current = null;
+    }
   }
+
+  // ---------- Product layers (Canva-like) ----------
+  const products = config.products ?? [];
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+
+  function updateProduct(id: string, patch: Partial<ProductLayer>) {
+    setConfig((c) => ({
+      ...c,
+      products: (c.products ?? []).map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    }));
+  }
+  function deleteProduct(id: string) {
+    setConfig((c) => ({ ...c, products: (c.products ?? []).filter((p) => p.id !== id) }));
+    if (selectedProductId === id) setSelectedProductId(null);
+  }
+  function duplicateProduct(id: string) {
+    setConfig((c) => {
+      const src = (c.products ?? []).find((p) => p.id === id);
+      if (!src) return c;
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      const copy: ProductLayer = { ...src, id: uid(), x: Math.min(80, src.x + 5), y: Math.min(80, src.y + 5), zIndex: maxZ + 1 };
+      return { ...c, products: [...(c.products ?? []), copy] };
+    });
+  }
+  function bringProductForward(id: string) {
+    setConfig((c) => {
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: maxZ + 1 } : p)) };
+    });
+  }
+  function sendProductBackward(id: string) {
+    setConfig((c) => {
+      const minZ = (c.products ?? []).reduce((m, p) => Math.min(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: minZ - 1 } : p)) };
+    });
+  }
+  function addProductLayer(imageUrl: string, opts: { isCutout?: boolean } = {}) {
+    const id = uid();
+    setConfig((c) => {
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      const layer: ProductLayer = {
+        id,
+        imageUrl,
+        isCutout: !!opts.isCutout,
+        x: 15, y: 25, width: 70, height: 50,
+        rotation: 0,
+        zIndex: maxZ + 1,
+      };
+      return { ...c, products: [...(c.products ?? []), layer] };
+    });
+    setSelectedProductId(id);
+    setSelectedId(null);
+    setSelectedElementId(null);
+    // Compute natural ratio to size the layer correctly
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          const ratio = img.naturalHeight / img.naturalWidth;
+          setConfig((c) => ({
+            ...c,
+            products: (c.products ?? []).map((p) => (p.id === id ? { ...p, height: p.width * ratio } : p)),
+          }));
+        }
+      };
+      img.src = imageUrl;
+    } catch { /* noop */ }
+    return id;
+  }
+
+  function onPointerDownProduct(
+    e: React.PointerEvent,
+    p: ProductLayer,
+    mode: "move" | "resize-nw" | "resize-ne" | "resize-sw" | "resize-se" | "rotate",
+  ) {
+    e.stopPropagation();
+    setSelectedProductId(p.id);
+    setSelectedId(null);
+    setSelectedElementId(null);
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { /* noop */ }
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + ((p.x + p.width / 2) / 100) * rect.width;
+    const cy = rect.top + ((p.y / 100) * rect.height) + ((p.height / 100) * rect.width) / 2;
+    prodDragRef.current = {
+      id: p.id, mode,
+      startX: e.clientX, startY: e.clientY,
+      bx: p.x, by: p.y, bw: p.width, bh: p.height, brot: p.rotation,
+      rect, cx, cy,
+    };
+  }
+
+  function onPointerMoveProduct(e: React.PointerEvent) {
+    const d = prodDragRef.current;
+    if (!d) return;
+    const dxPct = ((e.clientX - d.startX) / d.rect.width) * 100;
+    const dyPct = ((e.clientY - d.startY) / d.rect.height) * 100;
+    if (d.mode === "move") {
+      updateProduct(d.id, {
+        x: Math.max(-20, Math.min(110, d.bx + dxPct)),
+        y: Math.max(-20, Math.min(110, d.by + dyPct)),
+      });
+    } else if (d.mode === "rotate") {
+      const angle = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI + 90;
+      updateProduct(d.id, { rotation: Math.round(angle) });
+    } else {
+      // Corner resize — keep aspect ratio (height stays width * ratio)
+      const ratio = d.bw > 0 ? d.bh / d.bw : 1;
+      let newW = d.bw;
+      let newX = d.bx;
+      let newY = d.by;
+      if (d.mode === "resize-se") {
+        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+      } else if (d.mode === "resize-ne") {
+        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+        const newH = newW * ratio;
+        newY = d.by + (d.bh - newH);
+      } else if (d.mode === "resize-sw") {
+        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        newX = d.bx + (d.bw - newW);
+      } else if (d.mode === "resize-nw") {
+        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        const newH = newW * ratio;
+        newX = d.bx + (d.bw - newW);
+        newY = d.by + (d.bh - newH);
+      }
+      updateProduct(d.id, { x: newX, y: newY, width: newW, height: newW * ratio });
+    }
+  }
+
 
   function applyTemplate(t: (typeof templates)[number]) {
     setTemplateId(t.id);
@@ -1248,31 +1434,45 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
 
   async function removeBackgroundFromCurrentImage() {
-    const target = config.bgImage ?? sourceImageUrl ?? originalImageUrl;
-    if (!target) { toast.error("Aucune image à détourer."); return; }
+    // Prefer the currently selected product layer; otherwise pick the first
+    // non-cutout product layer; finally fall back to bgImage (legacy).
+    const productsNow = config.products ?? [];
+    let target: ProductLayer | null = null;
+    if (selectedProductId) {
+      target = productsNow.find((p) => p.id === selectedProductId) ?? null;
+    }
+    if (!target) target = productsNow.find((p) => !p.isCutout) ?? null;
+    const targetUrl = target?.imageUrl ?? config.bgImage ?? sourceImageUrl ?? originalImageUrl;
+    if (!targetUrl) { toast.error("Aucune image à détourer."); return; }
     setCutoutBusy(true);
     try {
-      if (!originalImageUrl) setOriginalImageUrl(target);
+      if (!originalImageUrl) setOriginalImageUrl(targetUrl);
       const r = await fetch("/api/cutout-product-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: target }),
+        body: JSON.stringify({ imageUrl: targetUrl }),
       });
       const data = (await r.json().catch(() => ({}))) as { dataUrl?: string; error?: string };
       if (!r.ok || !data.dataUrl) {
         toast.error("Détourage impossible. Réessayez.");
         return;
       }
-      setConfig((c) => ({ ...c, bgImage: data.dataUrl!, visualMode: "cutout" }));
+      if (target) {
+        updateProduct(target.id, { imageUrl: data.dataUrl!, isCutout: true });
+        setSelectedProductId(target.id);
+      } else {
+        // Legacy fallback: replace bgImage AND promote it to a product layer
+        addProductLayer(data.dataUrl!, { isCutout: true });
+        setConfig((c) => ({ ...c, bgImage: null }));
+      }
       setSourceImageUrl(data.dataUrl!);
       if (isTrial && trialCurrentId) {
         setCreativeState(trialCurrentId, {
           cutoutImageUrl: data.dataUrl!,
-          bgImage: data.dataUrl!,
           visualMode: "cutout",
         });
       }
-      toast.success("Arrière-plan supprimé.");
+      toast.success("Arrière-plan supprimé. Le produit est maintenant un calque éditable.");
     } catch (e) {
       console.error("cutout failed", e);
       toast.error("Détourage impossible.");
@@ -1283,7 +1483,16 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
   function restoreOriginalImage() {
     if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
-    setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+    let target: ProductLayer | null = null;
+    if (selectedProductId) {
+      target = (config.products ?? []).find((p) => p.id === selectedProductId) ?? null;
+    }
+    if (!target) target = (config.products ?? [])[0] ?? null;
+    if (target) {
+      updateProduct(target.id, { imageUrl: originalImageUrl, isCutout: false });
+    } else {
+      setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+    }
     setSourceImageUrl(originalImageUrl);
     if (isTrial && trialCurrentId) {
       setCreativeState(trialCurrentId, {
@@ -2066,11 +2275,28 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           {/* ============== CANVAS ============== */}
           <main className="relative flex flex-1 items-center justify-center overflow-auto bg-zinc-800/50 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.05)_1px,transparent_0)] [background-size:24px_24px] p-8">
             <div className="flex flex-col items-center gap-3">
+              {/* Mise en avant : CTA Supprimer l'arrière-plan */}
+              {selectedProduct && !selectedProduct.isCutout && (
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={cutoutBusy}
+                  onClick={removeBackgroundFromCurrentImage}
+                  className="gap-2 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_-8px_rgba(236,72,153,0.6)] transition hover:scale-[1.02] hover:shadow-[0_12px_40px_-8px_rgba(236,72,153,0.8)]"
+                >
+                  {cutoutBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {cutoutBusy ? "Détourage en cours…" : "✨ Supprimer l'arrière-plan"}
+                </Button>
+              )}
               <div
                 ref={canvasWrapRef}
                 onPointerMove={onPointerMoveCanvas}
                 onPointerUp={onPointerUpCanvas}
-                onClick={() => { setSelectedId(null); setSelectedElementId(null); }}
+                onClick={() => { setSelectedId(null); setSelectedElementId(null); setSelectedProductId(null); }}
                 className="relative overflow-hidden rounded-lg border border-zinc-700 shadow-2xl"
                 style={{ width: previewWidth, height: previewHeight, background: config.bgColor ?? "#1f2937" }}
               >
@@ -2097,6 +2323,175 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                     <div>crop: {config.lastCrop.x.toFixed(3)}, {config.lastCrop.y.toFixed(3)} — {config.lastCrop.width.toFixed(3)}×{config.lastCrop.height.toFixed(3)}</div>
                   </div>
                 )}
+                {/* ===== Product layers (Canva-like, manipulable) ===== */}
+                {[...products].sort((a, b) => a.zIndex - b.zIndex).map((p) => {
+                  const isSel = selectedProductId === p.id;
+                  const heightPx = (p.height / 100) * previewWidth;
+                  return (
+                    <div
+                      key={p.id}
+                      onPointerDown={(e) => onPointerDownProduct(e, p, "move")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductId(p.id);
+                        setSelectedId(null);
+                        setSelectedElementId(null);
+                      }}
+                      className={cn(
+                        "absolute cursor-move select-none",
+                        isSel && "outline-dashed outline-2 outline-primary/80",
+                      )}
+                      style={{
+                        left: `${p.x}%`,
+                        top: `${p.y}%`,
+                        width: `${p.width}%`,
+                        height: heightPx,
+                        transform: `rotate(${p.rotation}deg)`,
+                        transformOrigin: "center",
+                        zIndex: 10 + p.zIndex,
+                      }}
+                    >
+                      <img
+                        src={p.imageUrl}
+                        alt=""
+                        draggable={false}
+                        crossOrigin="anonymous"
+                        className="pointer-events-none h-full w-full select-none object-contain"
+                      />
+                    </div>
+                  );
+                })}
+                {/* Selection handles for active product */}
+                {selectedProduct && (() => {
+                  const p = selectedProduct;
+                  const heightPx = (p.height / 100) * previewWidth;
+                  return (
+                    <div
+                      className="pointer-events-none absolute"
+                      style={{
+                        left: `${p.x}%`,
+                        top: `${p.y}%`,
+                        width: `${p.width}%`,
+                        height: heightPx,
+                        transform: `rotate(${p.rotation}deg)`,
+                        transformOrigin: "center",
+                        zIndex: 200,
+                      }}
+                    >
+                      {(["nw", "ne", "sw", "se"] as const).map((corner) => {
+                        const pos: React.CSSProperties =
+                          corner === "nw" ? { top: -6, left: -6, cursor: "nwse-resize" } :
+                          corner === "ne" ? { top: -6, right: -6, cursor: "nesw-resize" } :
+                          corner === "sw" ? { bottom: -6, left: -6, cursor: "nesw-resize" } :
+                                             { bottom: -6, right: -6, cursor: "nwse-resize" };
+                        return (
+                          <div
+                            key={corner}
+                            onPointerDown={(e) => onPointerDownProduct(e, p, `resize-${corner}` as never)}
+                            className="pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-primary bg-white shadow"
+                            style={pos}
+                          />
+                        );
+                      })}
+                      <div
+                        onPointerDown={(e) => onPointerDownProduct(e, p, "rotate")}
+                        className="pointer-events-auto absolute left-1/2 -top-8 h-4 w-4 -translate-x-1/2 cursor-grab rounded-full border-2 border-primary bg-white shadow"
+                        title="Pivoter"
+                      />
+                    </div>
+                  );
+                })()}
+                {/* Floating contextual toolbar above selected product */}
+                {selectedProduct && (() => {
+                  const p = selectedProduct;
+                  return (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className="pointer-events-auto absolute flex items-center gap-0.5 rounded-md border border-zinc-700 bg-zinc-900/95 px-1 py-1 text-white shadow-xl backdrop-blur"
+                      style={{
+                        left: `${p.x + p.width / 2}%`,
+                        top: `${p.y}%`,
+                        transform: "translate(-50%, calc(-100% - 14px))",
+                        zIndex: 250,
+                      }}
+                    >
+                      {!p.isCutout && (
+                        <button
+                          type="button"
+                          disabled={cutoutBusy}
+                          onClick={removeBackgroundFromCurrentImage}
+                          className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium hover:bg-zinc-800 disabled:opacity-50"
+                          title="Supprimer l'arrière-plan"
+                        >
+                          {cutoutBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                          Détourer
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inp = document.createElement("input");
+                          inp.type = "file";
+                          inp.accept = "image/*";
+                          inp.onchange = async () => {
+                            const f = inp.files?.[0];
+                            if (!f) return;
+                            const url = await uploadOrInline(f, f.name, f.type);
+                            updateProduct(p.id, { imageUrl: url, isCutout: false });
+                          };
+                          inp.click();
+                        }}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-[11px] hover:bg-zinc-800"
+                        title="Remplacer l'image"
+                      >
+                        <ImageIcon className="h-3 w-3" /> Remplacer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCropSrc(p.imageUrl); setCropOpen(true); }}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-[11px] hover:bg-zinc-800"
+                        title="Recadrer"
+                      >
+                        <LayoutTemplate className="h-3 w-3" /> Recadrer
+                      </button>
+                      <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+                      <button
+                        type="button"
+                        onClick={() => duplicateProduct(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800"
+                        title="Dupliquer"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => bringProductForward(p.id)}
+                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
+                        title="Mettre devant"
+                      >
+                        Avant
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendProductBackward(p.id)}
+                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
+                        title="Mettre derrière"
+                      >
+                        Arrière
+                      </button>
+                      <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+                      <button
+                        type="button"
+                        onClick={() => deleteProduct(p.id)}
+                        className="rounded p-1 text-rose-400 hover:bg-rose-500/15"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })()}
                 {config.blocks.map((b) => {
                   const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
                     ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`

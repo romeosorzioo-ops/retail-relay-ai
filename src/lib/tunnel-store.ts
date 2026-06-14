@@ -81,6 +81,16 @@ export type TunnelStep =
   | "creation"
   | "publication";
 
+export type PersistedProductLayer = {
+  id: string;
+  imageUrl: string;
+  isCutout: boolean;
+  x: number; y: number;
+  width: number; height: number;
+  rotation: number;
+  zIndex: number;
+};
+
 export type CreativeState = {
   promoId: string;
   bgImage?: string | null;
@@ -92,6 +102,7 @@ export type CreativeState = {
   templateCategory?: TemplateKey | null;
   blocks?: unknown;
   elements?: unknown;
+  products?: PersistedProductLayer[];
   isValidated?: boolean;
   updatedAt?: number;
 };
@@ -205,6 +216,9 @@ export const useTunnelStore = create<TunnelState>()(
               bgImage: stripPersistedDataUrl(v.bgImage),
               cutoutImageUrl: stripPersistedDataUrl(v.cutoutImageUrl),
               generatedImageUrl: stripPersistedDataUrl(v.generatedImageUrl),
+              products: (v.products ?? [])
+                .map((p) => ({ ...p, imageUrl: stripPersistedDataUrl(p.imageUrl) ?? "" }))
+                .filter((p) => !!p.imageUrl),
             },
           ]),
         ),
