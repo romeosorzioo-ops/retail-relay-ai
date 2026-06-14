@@ -117,6 +117,18 @@ type GraphicEl = {
   secondary?: string;     // optional fill for outlined shapes
 };
 
+// Independent, transformable product image layer (Canva-style).
+export type ProductLayer = {
+  id: string;
+  imageUrl: string;       // PNG (transparent if cutout) or raw catalog image
+  isCutout: boolean;      // true once background has been removed
+  x: number; y: number;   // % of canvas — top-left of bounding box
+  width: number;          // % of canvas width
+  height: number;         // % of canvas width (square reference, like GraphicEl)
+  rotation: number;       // degrees
+  zIndex: number;
+};
+
 type Config = {
   bgImage?: string | null;
   bgColor?: string;
@@ -124,6 +136,7 @@ type Config = {
   logoUrl?: string | null;
   blocks: Block[];
   elements?: GraphicEl[];
+  products?: ProductLayer[];
   lastCrop?: {
     src: string;
     x: number; y: number; width: number; height: number;
@@ -135,18 +148,17 @@ type Config = {
   } | null;
 };
 
-// Solid background palette for trial style picker.
-// First entry is dynamically replaced by detected catalog color.
+// Solid background palette (no gradients). First entry is dynamically
+// replaced by the dominant color extracted from the catalog.
 const SOLID_PALETTE: { key: string; label: string; color: string }[] = [
-  { key: "catalog", label: "Couleur du catalogue", color: "#1f2937" },
-  { key: "blue", label: "Bleu catalogue", color: "#1e3a8a" },
-  { key: "red", label: "Rouge promo", color: "#dc2626" },
-  { key: "yellow", label: "Jaune promo", color: "#facc15" },
-  { key: "green", label: "Vert frais", color: "#16a34a" },
-  { key: "orange", label: "Orange week-end", color: "#f97316" },
-  { key: "beige", label: "Beige gourmand", color: "#e7d7b3" },
-  { key: "white", label: "Blanc", color: "#ffffff" },
-  { key: "black", label: "Noir premium", color: "#0a0a0a" },
+  { key: "catalog", label: "Couleur catalogue", color: "#1f2937" },
+  { key: "blue_u",  label: "Bleu catalogue U", color: "#003DA5" },
+  { key: "white",   label: "Blanc",             color: "#ffffff" },
+  { key: "black",   label: "Noir",              color: "#0a0a0a" },
+  { key: "red",     label: "Rouge promo",       color: "#dc2626" },
+  { key: "yellow",  label: "Jaune promo",       color: "#facc15" },
+  { key: "green",   label: "Vert fruits & légumes", color: "#16a34a" },
+  { key: "grey",    label: "Gris premium",      color: "#374151" },
 ];
 
 async function extractDominantColor(url: string): Promise<string | null> {
