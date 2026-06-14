@@ -961,7 +961,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (mode === "catalog_visual" && catalogPromo.product_image_url) {
       setSourceType("catalog");
       setSourceImageUrl(catalogPromo.product_image_url);
-      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url }));
+      setOriginalImageUrl(catalogPromo.product_image_url);
+      setConfig((c) => ({ ...c, bgImage: catalogPromo.product_image_url, visualMode: "fullbleed" }));
     } else if (mode === "field_photo") {
       setSourceType("field_photo");
     }
