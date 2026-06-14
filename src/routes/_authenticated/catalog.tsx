@@ -613,15 +613,70 @@ function CatalogPage() {
   }
 
 
+  const lastAnalyzed = useMemo(
+    () =>
+      [...imports]
+        .filter((i: any) => i.status === "analyzed")
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.updated_at ?? b.created_at).getTime() -
+            new Date(a.updated_at ?? a.created_at).getTime(),
+        )[0],
+    [imports],
+  );
+
+  function reuseLastAnalysis() {
+    if (!lastAnalyzed) {
+      toast.error("Aucun catalogue déjà analysé.");
+      return;
+    }
+    setSelectedId(lastAnalyzed.id);
+    toast.success(
+      `Analyse réutilisée — ${lastAnalyzed.file_name} (aucun crédit IA consommé).`,
+    );
+    setTimeout(() => {
+      document
+        .getElementById("promos-section")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }
+
+  function handleAnalyzeClick(it: any) {
+    if (it.status === "analyzed") {
+      const ok = confirm(
+        "Ce catalogue est déjà analysé. Relancer l'analyse consommera des crédits IA.\n\nOK pour relancer, Annuler pour réutiliser l'analyse existante.",
+      );
+      if (!ok) {
+        setSelectedId(it.id);
+        toast.success("Analyse existante réutilisée (mode DEV).");
+        return;
+      }
+    }
+    analyzeMut.mutate(it.id);
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6 pb-28">
       <CampaignStepper active={selectedCount > 0 ? "select" : "catalog"} />
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Import catalogue</h1>
-        <p className="text-sm text-muted-foreground">
-          Importez votre catalogue mensuel en PDF, Komaag détecte les promos page par page
-          et recommande votre plan social.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Import catalogue</h1>
+          <p className="text-sm text-muted-foreground">
+            Importez votre catalogue mensuel en PDF, Komaag détecte les promos page par page
+            et recommande votre plan social.
+          </p>
+        </div>
+        {lastAnalyzed && (
+          <div className="flex flex-col items-end gap-1">
+            <Button variant="outline" size="sm" onClick={reuseLastAnalysis} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Réutiliser la dernière analyse
+            </Button>
+            <span className="text-[11px] text-muted-foreground">
+              Mode DEV — pas de crédit IA consommé
+            </span>
+          </div>
+        )}
       </div>
 
       <Card>
