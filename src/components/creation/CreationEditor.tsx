@@ -2323,6 +2323,175 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                     <div>crop: {config.lastCrop.x.toFixed(3)}, {config.lastCrop.y.toFixed(3)} — {config.lastCrop.width.toFixed(3)}×{config.lastCrop.height.toFixed(3)}</div>
                   </div>
                 )}
+                {/* ===== Product layers (Canva-like, manipulable) ===== */}
+                {[...products].sort((a, b) => a.zIndex - b.zIndex).map((p) => {
+                  const isSel = selectedProductId === p.id;
+                  const heightPx = (p.height / 100) * previewWidth;
+                  return (
+                    <div
+                      key={p.id}
+                      onPointerDown={(e) => onPointerDownProduct(e, p, "move")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductId(p.id);
+                        setSelectedId(null);
+                        setSelectedElementId(null);
+                      }}
+                      className={cn(
+                        "absolute cursor-move select-none",
+                        isSel && "outline-dashed outline-2 outline-primary/80",
+                      )}
+                      style={{
+                        left: `${p.x}%`,
+                        top: `${p.y}%`,
+                        width: `${p.width}%`,
+                        height: heightPx,
+                        transform: `rotate(${p.rotation}deg)`,
+                        transformOrigin: "center",
+                        zIndex: 10 + p.zIndex,
+                      }}
+                    >
+                      <img
+                        src={p.imageUrl}
+                        alt=""
+                        draggable={false}
+                        crossOrigin="anonymous"
+                        className="pointer-events-none h-full w-full select-none object-contain"
+                      />
+                    </div>
+                  );
+                })}
+                {/* Selection handles for active product */}
+                {selectedProduct && (() => {
+                  const p = selectedProduct;
+                  const heightPx = (p.height / 100) * previewWidth;
+                  return (
+                    <div
+                      className="pointer-events-none absolute"
+                      style={{
+                        left: `${p.x}%`,
+                        top: `${p.y}%`,
+                        width: `${p.width}%`,
+                        height: heightPx,
+                        transform: `rotate(${p.rotation}deg)`,
+                        transformOrigin: "center",
+                        zIndex: 200,
+                      }}
+                    >
+                      {(["nw", "ne", "sw", "se"] as const).map((corner) => {
+                        const pos: React.CSSProperties =
+                          corner === "nw" ? { top: -6, left: -6, cursor: "nwse-resize" } :
+                          corner === "ne" ? { top: -6, right: -6, cursor: "nesw-resize" } :
+                          corner === "sw" ? { bottom: -6, left: -6, cursor: "nesw-resize" } :
+                                             { bottom: -6, right: -6, cursor: "nwse-resize" };
+                        return (
+                          <div
+                            key={corner}
+                            onPointerDown={(e) => onPointerDownProduct(e, p, `resize-${corner}` as never)}
+                            className="pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-primary bg-white shadow"
+                            style={pos}
+                          />
+                        );
+                      })}
+                      <div
+                        onPointerDown={(e) => onPointerDownProduct(e, p, "rotate")}
+                        className="pointer-events-auto absolute left-1/2 -top-8 h-4 w-4 -translate-x-1/2 cursor-grab rounded-full border-2 border-primary bg-white shadow"
+                        title="Pivoter"
+                      />
+                    </div>
+                  );
+                })()}
+                {/* Floating contextual toolbar above selected product */}
+                {selectedProduct && (() => {
+                  const p = selectedProduct;
+                  return (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className="pointer-events-auto absolute flex items-center gap-0.5 rounded-md border border-zinc-700 bg-zinc-900/95 px-1 py-1 text-white shadow-xl backdrop-blur"
+                      style={{
+                        left: `${p.x + p.width / 2}%`,
+                        top: `${p.y}%`,
+                        transform: "translate(-50%, calc(-100% - 14px))",
+                        zIndex: 250,
+                      }}
+                    >
+                      {!p.isCutout && (
+                        <button
+                          type="button"
+                          disabled={cutoutBusy}
+                          onClick={removeBackgroundFromCurrentImage}
+                          className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium hover:bg-zinc-800 disabled:opacity-50"
+                          title="Supprimer l'arrière-plan"
+                        >
+                          {cutoutBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                          Détourer
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inp = document.createElement("input");
+                          inp.type = "file";
+                          inp.accept = "image/*";
+                          inp.onchange = async () => {
+                            const f = inp.files?.[0];
+                            if (!f) return;
+                            const url = await uploadOrInline(f, f.name, f.type);
+                            updateProduct(p.id, { imageUrl: url, isCutout: false });
+                          };
+                          inp.click();
+                        }}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-[11px] hover:bg-zinc-800"
+                        title="Remplacer l'image"
+                      >
+                        <ImageIcon className="h-3 w-3" /> Remplacer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCropSrc(p.imageUrl); setCropOpen(true); }}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-[11px] hover:bg-zinc-800"
+                        title="Recadrer"
+                      >
+                        <LayoutTemplate className="h-3 w-3" /> Recadrer
+                      </button>
+                      <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+                      <button
+                        type="button"
+                        onClick={() => duplicateProduct(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800"
+                        title="Dupliquer"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => bringProductForward(p.id)}
+                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
+                        title="Mettre devant"
+                      >
+                        Avant
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendProductBackward(p.id)}
+                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
+                        title="Mettre derrière"
+                      >
+                        Arrière
+                      </button>
+                      <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+                      <button
+                        type="button"
+                        onClick={() => deleteProduct(p.id)}
+                        className="rounded p-1 text-rose-400 hover:bg-rose-500/15"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })()}
                 {config.blocks.map((b) => {
                   const textShadow = b.shadowColor && (b.shadowBlur || b.shadowX || b.shadowY)
                     ? `${(b.shadowX ?? 0) * scale}px ${(b.shadowY ?? 0) * scale}px ${(b.shadowBlur ?? 0) * scale}px ${b.shadowColor}`
