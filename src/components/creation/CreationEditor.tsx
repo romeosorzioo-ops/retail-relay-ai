@@ -1434,31 +1434,44 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
 
   async function removeBackgroundFromCurrentImage() {
-    const target = config.bgImage ?? sourceImageUrl ?? originalImageUrl;
-    if (!target) { toast.error("Aucune image à détourer."); return; }
+    // Prefer the currently selected product layer; otherwise pick the first
+    // non-cutout product layer; finally fall back to bgImage (legacy).
+    const productsNow = config.products ?? [];
+    const target =
+      (selectedProductId && productsNow.find((p) => p.id === selectedProductId)) ??
+      productsNow.find((p) => !p.isCutout) ??
+      null;
+    const targetUrl = target?.imageUrl ?? config.bgImage ?? sourceImageUrl ?? originalImageUrl;
+    if (!targetUrl) { toast.error("Aucune image à détourer."); return; }
     setCutoutBusy(true);
     try {
-      if (!originalImageUrl) setOriginalImageUrl(target);
+      if (!originalImageUrl) setOriginalImageUrl(targetUrl);
       const r = await fetch("/api/cutout-product-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: target }),
+        body: JSON.stringify({ imageUrl: targetUrl }),
       });
       const data = (await r.json().catch(() => ({}))) as { dataUrl?: string; error?: string };
       if (!r.ok || !data.dataUrl) {
         toast.error("Détourage impossible. Réessayez.");
         return;
       }
-      setConfig((c) => ({ ...c, bgImage: data.dataUrl!, visualMode: "cutout" }));
+      if (target) {
+        updateProduct(target.id, { imageUrl: data.dataUrl!, isCutout: true });
+        setSelectedProductId(target.id);
+      } else {
+        // Legacy fallback: replace bgImage AND promote it to a product layer
+        addProductLayer(data.dataUrl!, { isCutout: true });
+        setConfig((c) => ({ ...c, bgImage: null }));
+      }
       setSourceImageUrl(data.dataUrl!);
       if (isTrial && trialCurrentId) {
         setCreativeState(trialCurrentId, {
           cutoutImageUrl: data.dataUrl!,
-          bgImage: data.dataUrl!,
           visualMode: "cutout",
         });
       }
-      toast.success("Arrière-plan supprimé.");
+      toast.success("Arrière-plan supprimé. Le produit est maintenant un calque éditable.");
     } catch (e) {
       console.error("cutout failed", e);
       toast.error("Détourage impossible.");
@@ -1469,7 +1482,15 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
   function restoreOriginalImage() {
     if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
-    setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+    const target =
+      (selectedProductId && (config.products ?? []).find((p) => p.id === selectedProductId)) ??
+      (config.products ?? [])[0] ??
+      null;
+    if (target) {
+      updateProduct(target.id, { imageUrl: originalImageUrl, isCutout: false });
+    } else {
+      setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+    }
     setSourceImageUrl(originalImageUrl);
     if (isTrial && trialCurrentId) {
       setCreativeState(trialCurrentId, {
