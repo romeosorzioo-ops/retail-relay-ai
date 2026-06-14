@@ -1921,6 +1921,31 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                 <h3 className="text-sm font-semibold">Importer</h3>
                 <UploadField label="Image de fond" uploading={uploadingBg} currentUrl={config.bgImage ?? null}
                   onClear={() => setConfig((c) => ({ ...c, bgImage: null }))} onFile={(f) => uploadImage(f, "bg")} />
+                <div className="flex flex-col gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs"
+                    disabled={cutoutBusy || !config.bgImage}
+                    onClick={removeBackgroundFromCurrentImage}
+                  >
+                    {cutoutBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    Supprimer l'arrière-plan
+                  </Button>
+                  {originalImageUrl && originalImageUrl !== config.bgImage ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1.5 text-[11px]"
+                      onClick={restoreOriginalImage}
+                    >
+                      <RotateCw className="h-3 w-3" />
+                      Revenir à l'image originale
+                    </Button>
+                  ) : null}
+                </div>
                 <UploadField label="Logo" uploading={uploadingLogo} currentUrl={config.logoUrl ?? null}
                   onClear={() => setConfig((c) => ({ ...c, logoUrl: null }))} onFile={(f) => uploadImage(f, "logo")} />
                 <div>
