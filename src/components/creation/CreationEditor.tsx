@@ -2275,11 +2275,28 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           {/* ============== CANVAS ============== */}
           <main className="relative flex flex-1 items-center justify-center overflow-auto bg-zinc-800/50 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.05)_1px,transparent_0)] [background-size:24px_24px] p-8">
             <div className="flex flex-col items-center gap-3">
+              {/* Mise en avant : CTA Supprimer l'arrière-plan */}
+              {selectedProduct && !selectedProduct.isCutout && (
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={cutoutBusy}
+                  onClick={removeBackgroundFromCurrentImage}
+                  className="gap-2 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_-8px_rgba(236,72,153,0.6)] transition hover:scale-[1.02] hover:shadow-[0_12px_40px_-8px_rgba(236,72,153,0.8)]"
+                >
+                  {cutoutBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {cutoutBusy ? "Détourage en cours…" : "✨ Supprimer l'arrière-plan"}
+                </Button>
+              )}
               <div
                 ref={canvasWrapRef}
                 onPointerMove={onPointerMoveCanvas}
                 onPointerUp={onPointerUpCanvas}
-                onClick={() => { setSelectedId(null); setSelectedElementId(null); }}
+                onClick={() => { setSelectedId(null); setSelectedElementId(null); setSelectedProductId(null); }}
                 className="relative overflow-hidden rounded-lg border border-zinc-700 shadow-2xl"
                 style={{ width: previewWidth, height: previewHeight, background: config.bgColor ?? "#1f2937" }}
               >
