@@ -1437,10 +1437,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     // Prefer the currently selected product layer; otherwise pick the first
     // non-cutout product layer; finally fall back to bgImage (legacy).
     const productsNow = config.products ?? [];
-    const target: ProductLayer | null =
-      (selectedProductId ? productsNow.find((p) => p.id === selectedProductId) ?? null : null) ??
-      productsNow.find((p) => !p.isCutout) ??
-      null;
+    let target: ProductLayer | null = null;
+    if (selectedProductId) {
+      target = productsNow.find((p) => p.id === selectedProductId) ?? null;
+    }
+    if (!target) target = productsNow.find((p) => !p.isCutout) ?? null;
     const targetUrl = target?.imageUrl ?? config.bgImage ?? sourceImageUrl ?? originalImageUrl;
     if (!targetUrl) { toast.error("Aucune image à détourer."); return; }
     setCutoutBusy(true);
