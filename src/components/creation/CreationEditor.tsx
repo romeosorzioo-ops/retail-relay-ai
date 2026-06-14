@@ -646,6 +646,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     if (img) {
       setSourceType("catalog");
       setSourceImageUrl(img);
+      setOriginalImageUrl(img);
       // Detect dominant background color from the catalog image (async).
       void extractDominantColor(img).then((color) => {
         if (!color) return;
