@@ -732,14 +732,14 @@ function CatalogPage() {
                 {statusBadge(it.status)}
                 <Button size="sm" variant="outline"
                   disabled={it.status === "analyzing" || analyzeMut.isPending}
-                  onClick={(e) => { e.stopPropagation(); analyzeMut.mutate(it.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleAnalyzeClick(it); }}
                 >
                   {it.status === "analyzing" || (analyzeMut.isPending && analyzeMut.variables === it.id) ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   ) : (
                     <Sparkles className="mr-1 h-4 w-4" />
                   )}
-                  Analyser
+                  {it.status === "analyzed" ? "Réanalyser" : "Analyser"}
                 </Button>
                 <Button size="icon" variant="ghost"
                   onClick={(e) => {
