@@ -488,6 +488,7 @@ export const analyzeCatalogFn = createServerFn({ method: "POST" })
       const store = storeRes.data;
 
       let total = 0;
+      let failedPages = 0;
       for (let i = 1; i <= pageCount; i++) {
         try {
           const r = await analyzeSinglePage({
@@ -499,19 +500,43 @@ export const analyzeCatalogFn = createServerFn({ method: "POST" })
             apiKey: key,
           });
           total += r.count;
-        } catch {
+        } catch (pageError) {
+          failedPages++;
+          logCatalogAiDiagnostic({
+            functionCalled: "analyzeCatalogFn.loop",
+            catalogImportId: imp.id,
+            pageNumber: i,
+            phase: "error",
+            error: pageError,
+          });
           // continue to next page
         }
       }
 
+      if (failedPages === pageCount && pageCount > 0) {
+        throw new Error(
+          "Analyse catalogue impossible : toutes les pages ont échoué. Consultez le debug admin.",
+        );
+      }
+
       await context.supabase
         .from("catalog_imports")
-        .update({ status: "analyzed" })
+        .update({
+          status: failedPages > 0 ? "analyzed" : "analyzed",
+          error_message: failedPages > 0 ? `${failedPages} page(s) en échec.` : null,
+        })
         .eq("id", imp.id);
 
-      return { ok: true, count: total, pages: pageCount };
+      return { ok: true, count: total, pages: pageCount, failedPages };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Analyse échouée";
+      const raw = formatRawError(e);
+      const msg = raw.message || "Analyse échouée";
+      logCatalogAiDiagnostic({
+        functionCalled: "analyzeCatalogFn",
+        catalogImportId: imp.id,
+        phase: "error",
+        error: e,
+      });
       await context.supabase
         .from("catalog_imports")
         .update({ status: "failed", error_message: msg })
