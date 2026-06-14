@@ -1247,6 +1247,53 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     finally { setUploadingField(false); }
   }
 
+  async function removeBackgroundFromCurrentImage() {
+    const target = config.bgImage ?? sourceImageUrl ?? originalImageUrl;
+    if (!target) { toast.error("Aucune image à détourer."); return; }
+    setCutoutBusy(true);
+    try {
+      if (!originalImageUrl) setOriginalImageUrl(target);
+      const r = await fetch("/api/cutout-product-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: target }),
+      });
+      const data = (await r.json().catch(() => ({}))) as { dataUrl?: string; error?: string };
+      if (!r.ok || !data.dataUrl) {
+        toast.error("Détourage impossible. Réessayez.");
+        return;
+      }
+      setConfig((c) => ({ ...c, bgImage: data.dataUrl!, visualMode: "cutout" }));
+      setSourceImageUrl(data.dataUrl!);
+      if (isTrial && trialCurrentId) {
+        setCreativeState(trialCurrentId, {
+          cutoutImageUrl: data.dataUrl!,
+          bgImage: data.dataUrl!,
+          visualMode: "cutout",
+        });
+      }
+      toast.success("Arrière-plan supprimé.");
+    } catch (e) {
+      console.error("cutout failed", e);
+      toast.error("Détourage impossible.");
+    } finally {
+      setCutoutBusy(false);
+    }
+  }
+
+  function restoreOriginalImage() {
+    if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
+    setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+    setSourceImageUrl(originalImageUrl);
+    if (isTrial && trialCurrentId) {
+      setCreativeState(trialCurrentId, {
+        bgImage: originalImageUrl,
+        visualMode: "fullbleed",
+      });
+    }
+    toast.success("Image originale restaurée.");
+  }
+
   async function handleCropConfirm(box: CropBox) {
     if (!cropSrc) return;
     try {
