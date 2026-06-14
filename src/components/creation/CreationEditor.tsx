@@ -620,12 +620,14 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         visualMode: config.visualMode ?? "fullbleed",
         blocks: config.blocks,
         elements: config.elements ?? [],
+        products: (config.products ?? []) as never,
       });
     }
 
     const p = trialQueue.find((x) => x.id === trialCurrentId);
     if (!p) return;
     trialAppliedRef.current = trialCurrentId;
+    setSelectedProductId(null);
 
     // 2) Load saved state for this promo if present.
     const saved = creativeStateByPromoId[trialCurrentId];
@@ -637,6 +639,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         visualMode: saved.visualMode ?? "fullbleed",
         blocks: (saved.blocks as Block[]) ?? c.blocks,
         elements: (saved.elements as GraphicEl[]) ?? c.elements ?? [],
+        products: (saved.products as ProductLayer[]) ?? c.products ?? [],
       }));
       if (saved.bgImage) {
         setSourceType("catalog");
@@ -665,14 +668,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           return { ...b, text: `-${p.discount_percent}%`, bgColor: tpl.accent };
         return b;
       });
+      const newProducts: ProductLayer[] = img
+        ? [{
+            id: uid(),
+            imageUrl: img,
+            isCutout: false,
+            x: 15, y: 25, width: 70, height: 50,
+            rotation: 0, zIndex: 1,
+          }]
+        : [];
       return {
         ...c,
         blocks,
-        bgImage: img,
+        // Image is now a free-floating product layer, not a fixed background.
+        bgImage: null,
         bgColor: initialColor,
-        // Raw catalog image is full-bleed (it already has its own background).
-        // After cutout, the pipeline switches to "cutout" mode.
-        visualMode: img ? "fullbleed" : "cutout",
+        visualMode: "cutout",
+        products: newProducts,
       };
     });
     if (img) {
