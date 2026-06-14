@@ -403,6 +403,14 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; bx: number; by: number; rect: DOMRect } | null>(null);
   const elDragRef = useRef<{ id: string; mode: "move" | "resize" | "rotate"; startX: number; startY: number; bx: number; by: number; bw: number; bh: number; brot: number; rect: DOMRect; cx: number; cy: number } | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const prodDragRef = useRef<{
+    id: string;
+    mode: "move" | "resize-nw" | "resize-ne" | "resize-sw" | "resize-se" | "rotate";
+    startX: number; startY: number;
+    bx: number; by: number; bw: number; bh: number; brot: number;
+    rect: DOMRect; cx: number; cy: number;
+  } | null>(null);
 
   const [catalogPromoId, setCatalogPromoId] = useState<string | null>(null);
   const [catalogMode, setCatalogMode] = useState<"catalog_visual" | "field_photo" | null>(null);
