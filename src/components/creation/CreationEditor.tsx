@@ -1483,10 +1483,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
   function restoreOriginalImage() {
     if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
-    const target: ProductLayer | null =
-      (selectedProductId ? (config.products ?? []).find((p) => p.id === selectedProductId) ?? null : null) ??
-      (config.products ?? [])[0] ??
-      null;
+    let target: ProductLayer | null = null;
+    if (selectedProductId) {
+      target = (config.products ?? []).find((p) => p.id === selectedProductId) ?? null;
+    }
+    if (!target) target = (config.products ?? [])[0] ?? null;
     if (target) {
       updateProduct(target.id, { imageUrl: originalImageUrl, isCutout: false });
     } else {
