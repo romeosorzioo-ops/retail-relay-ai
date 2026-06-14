@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   MAX_IMAGE_BYTES,
@@ -9,6 +10,63 @@ import {
 } from "@/lib/upload-validation";
 
 const MAX_SIZE = 30 * 1024 * 1024;
+const CATALOG_ANALYSIS_MODEL = "google/gemini-2.5-flash";
+const CATALOG_ANALYSIS_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const CATALOG_ANALYSIS_PROVIDER = "Lovable Gateway / Gemini";
+const ESTIMATED_CATALOG_ANALYSIS_COST_PER_PAGE_EUR = 0.002;
+
+function getErrorStatus(error: unknown) {
+  const e = error as { status?: unknown; statusCode?: unknown; response?: { status?: unknown }; message?: unknown };
+  const status = e?.statusCode ?? e?.status ?? e?.response?.status;
+  if (typeof status === "number") return status;
+  const message = typeof e?.message === "string" ? e.message : String(error);
+  if (/payment required/i.test(message)) return 402;
+  return null;
+}
+
+function formatRawError(error: unknown) {
+  const e = error as {
+    name?: unknown;
+    message?: unknown;
+    stack?: unknown;
+    responseBody?: unknown;
+    data?: unknown;
+    cause?: unknown;
+  };
+  return {
+    name: typeof e?.name === "string" ? e.name : "UnknownError",
+    message: typeof e?.message === "string" ? e.message : String(error),
+    status: getErrorStatus(error),
+    responseBody: e?.responseBody ?? e?.data ?? null,
+    cause: e?.cause ? String(e.cause) : null,
+    stack: typeof e?.stack === "string" ? e.stack : null,
+  };
+}
+
+function logCatalogAiDiagnostic(args: {
+  functionCalled: string;
+  catalogImportId?: string;
+  pageNumber?: number;
+  error?: unknown;
+  phase?: "start" | "success" | "error";
+  extra?: Record<string, unknown>;
+}) {
+  const raw = args.error ? formatRawError(args.error) : null;
+  console[args.error ? "error" : "log"]("[catalog-ai-diagnostic]", {
+    phase: args.phase ?? (args.error ? "error" : "start"),
+    functionCalled: args.functionCalled,
+    provider: CATALOG_ANALYSIS_PROVIDER,
+    model: CATALOG_ANALYSIS_MODEL,
+    endpoint: CATALOG_ANALYSIS_ENDPOINT,
+    catalogImportId: args.catalogImportId ?? null,
+    pageNumber: args.pageNumber ?? null,
+    httpStatus: raw?.status ?? null,
+    rawErrorMessage: raw?.message ?? null,
+    rawResponseBody: raw?.responseBody ?? null,
+    stackTrace: raw?.stack ?? null,
+    ...args.extra,
+  });
+}
 
 /**
  * Guard against SSRF: catalog imports are uploaded through our own server fn
