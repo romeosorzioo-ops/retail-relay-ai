@@ -756,7 +756,7 @@ function CatalogPage() {
       )}
 
       {currentId && (promos.length > 0 || pages.length > 0) && (
-        <Card>
+        <Card id="promos-section">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-base">
