@@ -1151,7 +1151,143 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
       elDragRef.current = null;
     }
+    if (prodDragRef.current) {
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      prodDragRef.current = null;
+    }
   }
+
+  // ---------- Product layers (Canva-like) ----------
+  const products = config.products ?? [];
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+
+  function updateProduct(id: string, patch: Partial<ProductLayer>) {
+    setConfig((c) => ({
+      ...c,
+      products: (c.products ?? []).map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    }));
+  }
+  function deleteProduct(id: string) {
+    setConfig((c) => ({ ...c, products: (c.products ?? []).filter((p) => p.id !== id) }));
+    if (selectedProductId === id) setSelectedProductId(null);
+  }
+  function duplicateProduct(id: string) {
+    setConfig((c) => {
+      const src = (c.products ?? []).find((p) => p.id === id);
+      if (!src) return c;
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      const copy: ProductLayer = { ...src, id: uid(), x: Math.min(80, src.x + 5), y: Math.min(80, src.y + 5), zIndex: maxZ + 1 };
+      return { ...c, products: [...(c.products ?? []), copy] };
+    });
+  }
+  function bringProductForward(id: string) {
+    setConfig((c) => {
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: maxZ + 1 } : p)) };
+    });
+  }
+  function sendProductBackward(id: string) {
+    setConfig((c) => {
+      const minZ = (c.products ?? []).reduce((m, p) => Math.min(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: minZ - 1 } : p)) };
+    });
+  }
+  function addProductLayer(imageUrl: string, opts: { isCutout?: boolean } = {}) {
+    const id = uid();
+    setConfig((c) => {
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      const layer: ProductLayer = {
+        id,
+        imageUrl,
+        isCutout: !!opts.isCutout,
+        x: 15, y: 25, width: 70, height: 50,
+        rotation: 0,
+        zIndex: maxZ + 1,
+      };
+      return { ...c, products: [...(c.products ?? []), layer] };
+    });
+    setSelectedProductId(id);
+    setSelectedId(null);
+    setSelectedElementId(null);
+    // Compute natural ratio to size the layer correctly
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          const ratio = img.naturalHeight / img.naturalWidth;
+          setConfig((c) => ({
+            ...c,
+            products: (c.products ?? []).map((p) => (p.id === id ? { ...p, height: p.width * ratio } : p)),
+          }));
+        }
+      };
+      img.src = imageUrl;
+    } catch { /* noop */ }
+    return id;
+  }
+
+  function onPointerDownProduct(
+    e: React.PointerEvent,
+    p: ProductLayer,
+    mode: "move" | "resize-nw" | "resize-ne" | "resize-sw" | "resize-se" | "rotate",
+  ) {
+    e.stopPropagation();
+    setSelectedProductId(p.id);
+    setSelectedId(null);
+    setSelectedElementId(null);
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { /* noop */ }
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + ((p.x + p.width / 2) / 100) * rect.width;
+    const cy = rect.top + ((p.y / 100) * rect.height) + ((p.height / 100) * rect.width) / 2;
+    prodDragRef.current = {
+      id: p.id, mode,
+      startX: e.clientX, startY: e.clientY,
+      bx: p.x, by: p.y, bw: p.width, bh: p.height, brot: p.rotation,
+      rect, cx, cy,
+    };
+  }
+
+  function onPointerMoveProduct(e: React.PointerEvent) {
+    const d = prodDragRef.current;
+    if (!d) return;
+    const dxPct = ((e.clientX - d.startX) / d.rect.width) * 100;
+    const dyPct = ((e.clientY - d.startY) / d.rect.height) * 100;
+    if (d.mode === "move") {
+      updateProduct(d.id, {
+        x: Math.max(-20, Math.min(110, d.bx + dxPct)),
+        y: Math.max(-20, Math.min(110, d.by + dyPct)),
+      });
+    } else if (d.mode === "rotate") {
+      const angle = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI + 90;
+      updateProduct(d.id, { rotation: Math.round(angle) });
+    } else {
+      // Corner resize — keep aspect ratio (height stays width * ratio)
+      const ratio = d.bw > 0 ? d.bh / d.bw : 1;
+      let newW = d.bw;
+      let newX = d.bx;
+      let newY = d.by;
+      if (d.mode === "resize-se") {
+        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+      } else if (d.mode === "resize-ne") {
+        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+        const newH = newW * ratio;
+        newY = d.by + (d.bh - newH);
+      } else if (d.mode === "resize-sw") {
+        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        newX = d.bx + (d.bw - newW);
+      } else if (d.mode === "resize-nw") {
+        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        const newH = newW * ratio;
+        newX = d.bx + (d.bw - newW);
+        newY = d.by + (d.bh - newH);
+      }
+      updateProduct(d.id, { x: newX, y: newY, width: newW, height: newW * ratio });
+    }
+  }
+
 
   function applyTemplate(t: (typeof templates)[number]) {
     setTemplateId(t.id);
