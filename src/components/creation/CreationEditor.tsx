@@ -1437,8 +1437,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     // Prefer the currently selected product layer; otherwise pick the first
     // non-cutout product layer; finally fall back to bgImage (legacy).
     const productsNow = config.products ?? [];
-    const target =
-      (selectedProductId && productsNow.find((p) => p.id === selectedProductId)) ??
+    const target: ProductLayer | null =
+      (selectedProductId ? productsNow.find((p) => p.id === selectedProductId) ?? null : null) ??
       productsNow.find((p) => !p.isCutout) ??
       null;
     const targetUrl = target?.imageUrl ?? config.bgImage ?? sourceImageUrl ?? originalImageUrl;
