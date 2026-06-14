@@ -216,6 +216,9 @@ export const useTunnelStore = create<TunnelState>()(
               bgImage: stripPersistedDataUrl(v.bgImage),
               cutoutImageUrl: stripPersistedDataUrl(v.cutoutImageUrl),
               generatedImageUrl: stripPersistedDataUrl(v.generatedImageUrl),
+              products: (v.products ?? [])
+                .map((p) => ({ ...p, imageUrl: stripPersistedDataUrl(p.imageUrl) ?? "" }))
+                .filter((p) => !!p.imageUrl),
             },
           ]),
         ),
