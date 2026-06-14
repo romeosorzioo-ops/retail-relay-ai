@@ -11,8 +11,7 @@ import {
 
 const MAX_SIZE = 30 * 1024 * 1024;
 const CATALOG_ANALYSIS_MODEL = "google/gemini-2.5-flash";
-const CATALOG_ANALYSIS_ENDPOINT =
-  "https://ai.gateway.lovable.dev/v1/chat/completions";
+const CATALOG_ANALYSIS_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const CATALOG_ANALYSIS_PROVIDER = "Lovable Gateway / Gemini";
 const ESTIMATED_CATALOG_ANALYSIS_COST_PER_PAGE_EUR = 0.002;
 
@@ -178,9 +177,7 @@ export const deleteCatalogImportFn = createServerFn({ method: "POST" })
 
 export const listCatalogPromotionsFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ catalog_import_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("catalog_promotions")
@@ -195,9 +192,7 @@ export const listCatalogPromotionsFn = createServerFn({ method: "POST" })
 
 export const listCatalogPagesFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ catalog_import_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("catalog_pages")
@@ -234,19 +229,14 @@ const pageAnalysisSchema = z.object({
   notes: z.string().max(800).nullable().optional(),
 });
 
-
 function parseJsonLoose(text: string) {
   const t = text.trim();
   const fenced = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate =
-    fenced?.[1] ?? t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1);
+  const candidate = fenced?.[1] ?? t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1);
   return JSON.parse(candidate);
 }
 
-async function extractSinglePagePdf(
-  fullPdf: Uint8Array,
-  pageIndex: number,
-): Promise<Uint8Array> {
+async function extractSinglePagePdf(fullPdf: Uint8Array, pageIndex: number): Promise<Uint8Array> {
   const { PDFDocument } = await import("pdf-lib");
   const src = await PDFDocument.load(fullPdf, { ignoreEncryption: true });
   const out = await PDFDocument.create();
@@ -273,25 +263,21 @@ async function analyzeSinglePage(args: {
   });
 
   // mark page as analyzing
-  await context.supabase
-    .from("catalog_pages")
-    .upsert(
-      {
-        catalog_import_id: imp.id,
-        user_id: context.userId,
-        page_number: pageNumber,
-        status: "analyzing",
-        error_message: null,
-      },
-      { onConflict: "catalog_import_id,page_number" },
-    );
+  await context.supabase.from("catalog_pages").upsert(
+    {
+      catalog_import_id: imp.id,
+      user_id: context.userId,
+      page_number: pageNumber,
+      status: "analyzing",
+      error_message: null,
+    },
+    { onConflict: "catalog_import_id,page_number" },
+  );
 
   try {
     const pageBuf = await extractSinglePagePdf(fullPdf, pageNumber - 1);
 
-    const { createLovableAiGatewayProvider } = await import(
-      "@/lib/ai-gateway.server"
-    );
+    const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
     const { generateText } = await import("ai");
     const gateway = createLovableAiGatewayProvider(apiKey);
 
@@ -316,7 +302,6 @@ Ajoute aussi un champ "notes" (string) listant brièvement les zones de la page 
 Format strict:
 { "promotions": [ { ... }, ... ], "notes": "..." }
 Pas de markdown, pas de texte autour.`;
-
 
     const { text } = await generateText({
       model: gateway(CATALOG_ANALYSIS_MODEL),
@@ -369,9 +354,7 @@ Pas de markdown, pas de texte autour.`;
     }));
 
     if (rows.length > 0) {
-      const { error: insErr } = await context.supabase
-        .from("catalog_promotions")
-        .insert(rows);
+      const { error: insErr } = await context.supabase.from("catalog_promotions").insert(rows);
       if (insErr) throw new Error(insErr.message);
     }
 
@@ -432,9 +415,7 @@ Pas de markdown, pas de texte autour.`;
 
 export const analyzeCatalogFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ catalog_import_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: imp, error: impErr } = await context.supabase
       .from("catalog_imports")
@@ -692,9 +673,7 @@ const campaignSchema = z.object({
 
 export const generateCampaignFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ catalog_import_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: promos, error } = await context.supabase
       .from("catalog_promotions")
@@ -703,14 +682,11 @@ export const generateCampaignFn = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("selected", true);
     if (error) throw new Error(error.message);
-    if (!promos || promos.length === 0)
-      throw new Error("Sélectionnez au moins une promotion.");
+    if (!promos || promos.length === 0) throw new Error("Sélectionnez au moins une promotion.");
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY manquant.");
-    const { createLovableAiGatewayProvider } = await import(
-      "@/lib/ai-gateway.server"
-    );
+    const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
     const { generateText } = await import("ai");
     const gateway = createLovableAiGatewayProvider(key);
 
@@ -793,9 +769,7 @@ Pas de markdown.`;
 
 export const listCampaignRecommendationsFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ catalog_import_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: promos } = await context.supabase
       .from("catalog_promotions")
@@ -820,9 +794,7 @@ export const listCampaignRecommendationsFn = createServerFn({ method: "POST" })
 
 export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ catalog_import_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ catalog_import_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: promos } = await context.supabase
       .from("catalog_promotions")
@@ -831,9 +803,7 @@ export const addCampaignToCalendarFn = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     const ids = (promos ?? []).map((p) => p.id);
     if (ids.length === 0) throw new Error("Aucune promotion à planifier.");
-    const imageByPromo = new Map(
-      (promos ?? []).map((p) => [p.id, p.product_image_url ?? null]),
-    );
+    const imageByPromo = new Map((promos ?? []).map((p) => [p.id, p.product_image_url ?? null]));
     const { data: recos, error } = await context.supabase
       .from("campaign_recommendations")
       .select("*")
@@ -904,9 +874,7 @@ async function uploadDataUrlToStorage(opts: {
     .from("promotion-files")
     .upload(path, buffer, { contentType: opts.contentType, upsert: false });
   if (error) throw new Error(error.message);
-  const { data: pub } = opts.supabase.storage
-    .from("promotion-files")
-    .getPublicUrl(path);
+  const { data: pub } = opts.supabase.storage.from("promotion-files").getPublicUrl(path);
   return pub.publicUrl as string;
 }
 
@@ -939,17 +907,15 @@ export const savePageImageFn = createServerFn({ method: "POST" })
       dataBase64: data.data_base64,
       contentType: data.content_type,
     });
-    await context.supabase
-      .from("catalog_pages")
-      .upsert(
-        {
-          catalog_import_id: imp.id,
-          user_id: context.userId,
-          page_number: data.page_number,
-          page_image_url: url,
-        },
-        { onConflict: "catalog_import_id,page_number" },
-      );
+    await context.supabase.from("catalog_pages").upsert(
+      {
+        catalog_import_id: imp.id,
+        user_id: context.userId,
+        page_number: data.page_number,
+        page_image_url: url,
+      },
+      { onConflict: "catalog_import_id,page_number" },
+    );
     await context.supabase
       .from("catalog_promotions")
       .update({ page_image_url: url })
@@ -1011,9 +977,7 @@ export const setPromotionImageFn = createServerFn({ method: "POST" })
 
 export const clearPromotionImageFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ promotion_id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ promotion_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("catalog_promotions")
@@ -1046,9 +1010,7 @@ export const setPromotionCreationModeFn = createServerFn({ method: "POST" })
 
 export const getCatalogPromotionFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ id: z.string().uuid() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("catalog_promotions")
@@ -1168,7 +1130,9 @@ export const getCatalogPipelineDebugFn = createServerFn({ method: "GET" })
     const pages = importIds.length
       ? await supabaseAdmin
           .from("catalog_pages")
-          .select("catalog_import_id,page_number,status,promotions_count,error_message,notes,analyzed_at,updated_at")
+          .select(
+            "catalog_import_id,page_number,status,promotions_count,error_message,notes,analyzed_at,updated_at",
+          )
           .in("catalog_import_id", importIds)
           .order("updated_at", { ascending: false })
       : { data: [], error: null };
@@ -1232,7 +1196,9 @@ export const getCatalogPipelineDebugFn = createServerFn({ method: "GET" })
           promotionsDetected,
           modelUsed: CATALOG_ANALYSIS_MODEL,
           estimatedCostEur: Number(
-            ((item.page_count ?? itemPages.length) * ESTIMATED_CATALOG_ANALYSIS_COST_PER_PAGE_EUR).toFixed(3),
+            (
+              (item.page_count ?? itemPages.length) * ESTIMATED_CATALOG_ANALYSIS_COST_PER_PAGE_EUR
+            ).toFixed(3),
           ),
           pages: itemPages,
         };

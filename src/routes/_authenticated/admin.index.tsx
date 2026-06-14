@@ -66,7 +66,8 @@ function AdminDashboard() {
 
   const debug = catalogDebug.data;
   const latest = debug?.imports?.[0];
-  const paymentErrors = latest?.pages?.filter((p: any) => /payment required/i.test(p.error_message ?? "")) ?? [];
+  const paymentErrors =
+    latest?.pages?.filter((p: any) => /payment required/i.test(p.error_message ?? "")) ?? [];
 
   return (
     <div className="space-y-6">
@@ -74,9 +75,7 @@ function AdminDashboard() {
         {stats.map((s) => (
           <Card key={s.label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {s.label}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
               <s.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -97,9 +96,17 @@ function AdminDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-4">
-            <Metric label="Pages analysées" value={latest ? `${latest.analyzedPages}/${latest.page_count ?? latest.pages.length}` : "—"} />
+            <Metric
+              label="Pages analysées"
+              value={
+                latest ? `${latest.analyzedPages}/${latest.page_count ?? latest.pages.length}` : "—"
+              }
+            />
             <Metric label="Promotions détectées" value={latest?.promotionsDetected ?? "—"} />
-            <Metric label="Modèle analyse" value={debug?.architecture.catalogAnalysis.model ?? "—"} />
+            <Metric
+              label="Modèle analyse"
+              value={debug?.architecture.catalogAnalysis.model ?? "—"}
+            />
             <Metric label="Coût estimé" value={latest ? `${latest.estimatedCostEur} €` : "—"} />
           </div>
 
@@ -121,11 +128,15 @@ function AdminDashboard() {
           {paymentErrors.length > 0 && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
               <div className="mb-2 flex items-center gap-2 font-semibold text-destructive">
-                <AlertTriangle className="h-4 w-4" /> {paymentErrors.length} page(s) en Payment Required
+                <AlertTriangle className="h-4 w-4" /> {paymentErrors.length} page(s) en Payment
+                Required
               </div>
               <div className="max-h-64 space-y-2 overflow-auto text-xs">
                 {paymentErrors.slice(0, 8).map((p: any) => (
-                  <pre key={`${p.catalog_import_id}-${p.page_number}`} className="whitespace-pre-wrap rounded bg-background p-2">
+                  <pre
+                    key={`${p.catalog_import_id}-${p.page_number}`}
+                    className="whitespace-pre-wrap rounded bg-background p-2"
+                  >
                     {JSON.stringify(
                       {
                         page: p.page_number,
@@ -144,7 +155,8 @@ function AdminDashboard() {
 
           {latest && (
             <div className="rounded-lg border p-3 text-xs text-muted-foreground">
-              Dernier catalogue : <b className="text-foreground">{latest.file_name}</b> · statut {latest.status} · temps debug {debug?.durationMs ?? "—"} ms
+              Dernier catalogue : <b className="text-foreground">{latest.file_name}</b> · statut{" "}
+              {latest.status} · temps debug {debug?.durationMs ?? "—"} ms
             </div>
           )}
         </CardContent>
@@ -166,7 +178,9 @@ function StatusLine({ ok, label, value }: { ok: boolean; label: string; value: s
   const Icon = ok ? CheckCircle2 : AlertTriangle;
   return (
     <div className="flex items-start gap-2 rounded-lg border p-3 text-sm">
-      <Icon className={ok ? "mt-0.5 h-4 w-4 text-emerald-600" : "mt-0.5 h-4 w-4 text-destructive"} />
+      <Icon
+        className={ok ? "mt-0.5 h-4 w-4 text-emerald-600" : "mt-0.5 h-4 w-4 text-destructive"}
+      />
       <div className="min-w-0">
         <p className="font-medium">{label}</p>
         <p className="truncate text-xs text-muted-foreground">{value}</p>
