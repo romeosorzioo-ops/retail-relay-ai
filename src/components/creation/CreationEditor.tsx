@@ -713,9 +713,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       visualMode: config.visualMode ?? "fullbleed",
       blocks: config.blocks,
       elements: config.elements ?? [],
+      products: (config.products ?? []) as never,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.bgImage, config.bgColor, config.visualMode, config.blocks, config.elements, isTrial, trialCurrentId]);
+  }, [config.bgImage, config.bgColor, config.visualMode, config.blocks, config.elements, config.products, isTrial, trialCurrentId]);
 
 
 
