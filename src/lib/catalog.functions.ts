@@ -319,7 +319,7 @@ Pas de markdown, pas de texte autour.`;
 
 
     const { text } = await generateText({
-        model: gateway(CATALOG_ANALYSIS_MODEL),
+      model: gateway(CATALOG_ANALYSIS_MODEL),
       system: sys,
       messages: [
         {
@@ -1090,6 +1090,53 @@ export const getCatalogPipelineDebugFn = createServerFn({ method: "GET" })
       keyLength: openAiKey.length,
     };
 
+    let lovableCheck: {
+      configured: boolean;
+      status: number | null;
+      ok: boolean;
+      message: string | null;
+      endpoint: string;
+      keyPrefix: string | null;
+      keyLength: number;
+    } = {
+      configured: Boolean(lovableKey),
+      status: null,
+      ok: false,
+      message: lovableKey ? null : "LOVABLE_API_KEY manquante",
+      endpoint: CATALOG_ANALYSIS_ENDPOINT,
+      keyPrefix: lovableKey ? `${lovableKey.slice(0, 7)}…` : null,
+      keyLength: lovableKey.length,
+    };
+
+    if (lovableKey) {
+      try {
+        const response = await fetch(CATALOG_ANALYSIS_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Lovable-API-Key": lovableKey,
+            "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+          },
+          body: JSON.stringify({
+            model: CATALOG_ANALYSIS_MODEL,
+            messages: [{ role: "user", content: "Réponds OK." }],
+          }),
+        });
+        const raw = await response.text().catch(() => null);
+        lovableCheck = {
+          ...lovableCheck,
+          status: response.status,
+          ok: response.ok,
+          message: raw,
+        };
+      } catch (error) {
+        lovableCheck = {
+          ...lovableCheck,
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
     if (openAiKey) {
       try {
         const response = await fetch(openAiCheck.endpoint, {
@@ -1167,11 +1214,7 @@ export const getCatalogPipelineDebugFn = createServerFn({ method: "GET" })
         },
       },
       variables: {
-        LOVABLE_API_KEY: {
-          configured: Boolean(lovableKey),
-          keyPrefix: lovableKey ? `${lovableKey.slice(0, 7)}…` : null,
-          keyLength: lovableKey.length,
-        },
+        LOVABLE_API_KEY: lovableCheck,
         OPENAI_API_KEY: openAiCheck,
         SUPABASE_URL: { configured: Boolean(supabaseUrl) },
         SUPABASE_PUBLISHABLE_KEY: { configured: Boolean(supabasePublishable) },
