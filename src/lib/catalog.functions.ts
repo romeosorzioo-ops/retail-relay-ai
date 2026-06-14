@@ -11,12 +11,18 @@ import {
 
 const MAX_SIZE = 30 * 1024 * 1024;
 const CATALOG_ANALYSIS_MODEL = "google/gemini-2.5-flash";
-const CATALOG_ANALYSIS_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const CATALOG_ANALYSIS_ENDPOINT =
+  "https://ai.gateway.lovable.dev/v1/chat/completions";
 const CATALOG_ANALYSIS_PROVIDER = "Lovable Gateway / Gemini";
 const ESTIMATED_CATALOG_ANALYSIS_COST_PER_PAGE_EUR = 0.002;
 
 function getErrorStatus(error: unknown) {
-  const e = error as { status?: unknown; statusCode?: unknown; response?: { status?: unknown }; message?: unknown };
+  const e = error as {
+    status?: unknown;
+    statusCode?: unknown;
+    response?: { status?: unknown };
+    message?: unknown;
+  };
   const status = e?.statusCode ?? e?.status ?? e?.response?.status;
   if (typeof status === "number") return status;
   const message = typeof e?.message === "string" ? e.message : String(error);
@@ -76,9 +82,7 @@ function logCatalogAiDiagnostic(args: {
 function assertOwnedStorageUrl(fileUrl: string): void {
   const projectRef =
     process.env.SUPABASE_PROJECT_ID ??
-    (process.env.SUPABASE_URL ?? "")
-      .replace(/^https?:\/\//, "")
-      .split(".")[0];
+    (process.env.SUPABASE_URL ?? "").replace(/^https?:\/\//, "").split(".")[0];
   if (!projectRef) {
     throw new Error("Configuration Supabase manquante.");
   }
@@ -130,9 +134,7 @@ export const uploadCatalogFn = createServerFn({ method: "POST" })
         upsert: false,
       });
     if (upErr) throw new Error(upErr.message);
-    const { data: pub } = context.supabase.storage
-      .from("promotion-files")
-      .getPublicUrl(path);
+    const { data: pub } = context.supabase.storage.from("promotion-files").getPublicUrl(path);
 
     // Determine page count
     let pageCount = 0;
