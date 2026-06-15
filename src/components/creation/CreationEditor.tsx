@@ -2139,6 +2139,33 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
             {leftNav === "elements" && (
               <div className="space-y-4">
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold flex items-center gap-1.5">
+                    <LayoutTemplate className="h-4 w-4 text-primary" /> Modèles d'enseigne
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {templates.map((t) => {
+                      const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
+                      return (
+                        <button key={t.id} onClick={() => applyTemplate(t)}
+                          className={cn(
+                            "group flex flex-col gap-1 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800/40 p-1.5 text-left transition hover:border-primary hover:scale-[1.02]",
+                            templateId === t.id && "border-primary ring-1 ring-primary",
+                          )}>
+                          <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
+                            style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
+                            {t.name}
+                          </div>
+                          <span className="truncate text-[10px]">{t.name}</span>
+                        </button>
+                      );
+                    })}
+                    {templates.length === 0 && (
+                      <p className="col-span-2 text-[11px] italic text-muted-foreground">Aucun modèle disponible.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="h-px bg-zinc-800" />
                 <h3 className="text-sm font-semibold">Éléments graphiques</h3>
                 {ELEMENT_CATEGORIES.map((cat) => (
                   <div key={cat.key}>
