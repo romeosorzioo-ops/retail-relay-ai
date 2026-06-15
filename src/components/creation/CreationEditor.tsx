@@ -475,6 +475,59 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const [historyTick, setHistoryTick] = useState(0);
   const [visualName, setVisualName] = useState<string>("Visuel sans titre");
 
+  // Snapshot config into the undo stack whenever it changes (debounced).
+  useEffect(() => {
+    if (historyRef.current.suspend) return;
+    const t = window.setTimeout(() => {
+      const h = historyRef.current;
+      // Drop redo branch when a new edit happens after undo.
+      if (h.index < h.stack.length - 1) h.stack = h.stack.slice(0, h.index + 1);
+      h.stack.push(JSON.parse(JSON.stringify(config)) as Config);
+      if (h.stack.length > 60) h.stack.shift();
+      h.index = h.stack.length - 1;
+      setHistoryTick((n) => n + 1);
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [config]);
+
+  function undo() {
+    const h = historyRef.current;
+    if (h.index <= 0) return;
+    h.index -= 1;
+    h.suspend = true;
+    setConfig(JSON.parse(JSON.stringify(h.stack[h.index])) as Config);
+    setHistoryTick((n) => n + 1);
+    setTimeout(() => { h.suspend = false; }, 0);
+  }
+  function redo() {
+    const h = historyRef.current;
+    if (h.index >= h.stack.length - 1) return;
+    h.index += 1;
+    h.suspend = true;
+    setConfig(JSON.parse(JSON.stringify(h.stack[h.index])) as Config);
+    setHistoryTick((n) => n + 1);
+    setTimeout(() => { h.suspend = false; }, 0);
+  }
+  const canUndo = historyRef.current.index > 0;
+  const canRedo = historyRef.current.index < historyRef.current.stack.length - 1;
+  // Touch historyTick so the toolbar re-renders when stack updates.
+  void historyTick;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((e.key.toLowerCase() === "z" && e.shiftKey) || e.key.toLowerCase() === "y") {
+        e.preventDefault(); redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   const { data: queueData } = useQuery({
     queryKey: ["campaign-items", search.campaign ?? null],
     queryFn: () => listCampaignItemsFn({ data: { campaign_id: search.campaign ?? null } }),
