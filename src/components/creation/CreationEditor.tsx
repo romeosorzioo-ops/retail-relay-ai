@@ -1917,6 +1917,16 @@ export function CreationEditor(props: CreationEditorProps = {}) {
               <ArrowLeft className="h-3.5 w-3.5" /> Précédent
             </Button>
           )}
+          <div className="inline-flex rounded-md border border-zinc-700 bg-zinc-800/60 p-0.5">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              disabled={!canUndo} onClick={undo} title="Annuler (⌘Z)">
+              <Undo2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              disabled={!canRedo} onClick={redo} title="Rétablir (⌘⇧Z)">
+              <Redo2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
           <Button variant="ghost" size="sm" onClick={downloadPng} className="h-8 gap-1 text-xs">
             <Download className="h-3.5 w-3.5" /> Télécharger
           </Button>
