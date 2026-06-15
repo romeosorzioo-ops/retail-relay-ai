@@ -1453,6 +1453,14 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       target = productsNow.find((p) => p.id === selectedProductId) ?? null;
     }
     if (!target) target = productsNow.find((p) => !p.isCutout) ?? null;
+
+    // If the selected layer is already cutout, jump straight to the eraser
+    // — no need to re-run the AI.
+    if (target && target.isCutout) {
+      setEraserOpen(true);
+      return;
+    }
+
     const targetUrl = target?.imageUrl ?? config.bgImage ?? sourceImageUrl ?? originalImageUrl;
     if (!targetUrl) { toast.error("Aucune image à détourer."); return; }
     setCutoutBusy(true);
@@ -1469,11 +1477,16 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         return;
       }
       if (target) {
-        updateProduct(target.id, { imageUrl: data.dataUrl!, isCutout: true });
+        updateProduct(target.id, {
+          imageUrl: data.dataUrl!,
+          isCutout: true,
+          originalImageUrl: target.originalImageUrl ?? target.imageUrl,
+          cutoutImageUrl: data.dataUrl!,
+        });
         setSelectedProductId(target.id);
       } else {
         // Legacy fallback: replace bgImage AND promote it to a product layer
-        addProductLayer(data.dataUrl!, { isCutout: true });
+        addProductLayer(data.dataUrl!, { isCutout: true, originalImageUrl: targetUrl });
         setConfig((c) => ({ ...c, bgImage: null }));
       }
       setSourceImageUrl(data.dataUrl!);
@@ -1493,18 +1506,19 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
 
   function restoreOriginalImage() {
-    if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
     let target: ProductLayer | null = null;
     if (selectedProductId) {
       target = (config.products ?? []).find((p) => p.id === selectedProductId) ?? null;
     }
     if (!target) target = (config.products ?? [])[0] ?? null;
+    const orig = target?.originalImageUrl ?? originalImageUrl;
+    if (!orig) { toast.info("Aucune image originale en mémoire."); return; }
     if (target) {
-      updateProduct(target.id, { imageUrl: originalImageUrl, isCutout: false });
+      updateProduct(target.id, { imageUrl: orig, isCutout: false });
     } else {
-      setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+      setConfig((c) => ({ ...c, bgImage: orig, visualMode: "fullbleed" }));
     }
-    setSourceImageUrl(originalImageUrl);
+    setSourceImageUrl(orig);
     if (isTrial && trialCurrentId) {
       setCreativeState(trialCurrentId, {
         bgImage: originalImageUrl,
