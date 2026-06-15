@@ -1308,30 +1308,29 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     const dxPct = ((e.clientX - d.startX) / d.rect.width) * 100;
     const dyPct = ((e.clientY - d.startY) / d.rect.height) * 100;
     if (d.mode === "move") {
-      updateProduct(d.id, {
-        x: Math.max(-20, Math.min(110, d.bx + dxPct)),
-        y: Math.max(-20, Math.min(110, d.by + dyPct)),
-      });
+      // No clamping — product can leave the canvas (Canva-like freedom).
+      updateProduct(d.id, { x: d.bx + dxPct, y: d.by + dyPct });
     } else if (d.mode === "rotate") {
       const angle = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI + 90;
       updateProduct(d.id, { rotation: Math.round(angle) });
     } else {
-      // Corner resize — keep aspect ratio (height stays width * ratio)
+      // Corner resize — keep aspect ratio. Width unbounded upward; only
+      // a tiny minimum so the layer can't vanish.
       const ratio = d.bw > 0 ? d.bh / d.bw : 1;
       let newW = d.bw;
       let newX = d.bx;
       let newY = d.by;
       if (d.mode === "resize-se") {
-        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+        newW = Math.max(2, d.bw + dxPct);
       } else if (d.mode === "resize-ne") {
-        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+        newW = Math.max(2, d.bw + dxPct);
         const newH = newW * ratio;
         newY = d.by + (d.bh - newH);
       } else if (d.mode === "resize-sw") {
-        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        newW = Math.max(2, d.bw - dxPct);
         newX = d.bx + (d.bw - newW);
       } else if (d.mode === "resize-nw") {
-        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        newW = Math.max(2, d.bw - dxPct);
         const newH = newW * ratio;
         newX = d.bx + (d.bw - newW);
         newY = d.by + (d.bh - newH);
