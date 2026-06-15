@@ -468,7 +468,11 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const [currentItemId, setCurrentItemId] = useState<string | null>(search.item ?? null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [postValidateOpen, setPostValidateOpen] = useState(false);
-  const [leftNav, setLeftNav] = useState<"templates" | "text" | "elements" | "import" | "brand" | "ai">("templates");
+  const [leftNav, setLeftNav] = useState<"cutout" | "text" | "elements" | "import" | "brand" | "ai">("cutout");
+  const [eraserOpen, setEraserOpen] = useState(false);
+  // Simple undo/redo stack of full Config snapshots.
+  const historyRef = useRef<{ stack: Config[]; index: number; suspend: boolean }>({ stack: [], index: -1, suspend: false });
+  const [historyTick, setHistoryTick] = useState(0);
   const [visualName, setVisualName] = useState<string>("Visuel sans titre");
 
   const { data: queueData } = useQuery({
