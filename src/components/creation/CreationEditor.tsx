@@ -2014,59 +2014,85 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
 
 
-            {leftNav === "templates" && (
+            {leftNav === "cutout" && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Modèles de l'enseigne</h3>
-                <p className="text-[11px] text-muted-foreground">Choisissez un modèle prêt à personnaliser.</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {templates.map((t) => {
-                    const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
-                    return (
-                      <button key={t.id} onClick={() => applyTemplate(t)}
-                        className={cn(
-                          "group flex flex-col gap-1 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800/40 p-1.5 text-left transition hover:border-primary hover:scale-[1.02]",
-                          templateId === t.id && "border-primary ring-1 ring-primary",
-                        )}>
-                        <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
-                          style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
-                          {t.name}
-                        </div>
-                        <span className="truncate text-[10px]">{t.name}</span>
-                      </button>
-                    );
-                  })}
-                  {templates.length === 0 && (
-                    <p className="col-span-2 text-[11px] italic text-muted-foreground">Aucun modèle disponible.</p>
-                  )}
-                </div>
-                {catalogPromo && (
-                  <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px]">
-                    <p className="text-muted-foreground">Promo catalogue</p>
-                    <p className="font-semibold">{catalogPromo.product_name}</p>
-                    <div className="mt-1 inline-flex rounded-md border border-zinc-700 bg-background p-0.5">
-                      <Button size="sm" variant={catalogMode === "catalog_visual" ? "default" : "ghost"}
-                        className="h-6 text-[10px] gap-1" onClick={() => switchCatalogMode("catalog_visual")}
-                        disabled={!catalogPromo.product_image_url}>
-                        <ImageIcon className="h-3 w-3" /> Visuel
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Scissors className="h-4 w-4 text-primary" /> Détourage
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Isolez votre produit et retouchez-le pixel par pixel.
+                </p>
+                {!selectedProduct && (
+                  <p className="rounded-md border border-dashed border-zinc-700 bg-zinc-800/40 p-2 text-[11px] italic text-muted-foreground">
+                    Sélectionnez d'abord un produit dans le canvas.
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!selectedProduct || cutoutBusy}
+                  onClick={removeBackgroundFromCurrentImage}
+                  className="w-full gap-2 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-orange-400 text-white shadow-md hover:opacity-95"
+                >
+                  {cutoutBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  {selectedProduct?.isCutout
+                    ? "Ouvrir la gomme magique"
+                    : "Supprimer l'arrière-plan"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-1.5 text-xs"
+                  disabled={!selectedProduct}
+                  onClick={() => selectedProduct && setEraserOpen(true)}
+                >
+                  <Eraser className="h-3.5 w-3.5" /> Ouvrir la gomme magique
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="w-full gap-1.5 text-xs"
+                  disabled={!selectedProduct?.originalImageUrl}
+                  onClick={restoreOriginalImage}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Restaurer l'image originale
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="w-full gap-1.5 text-xs text-muted-foreground"
+                  disabled={!selectedProduct?.cutoutImageUrl}
+                  onClick={() => {
+                    if (!selectedProduct?.cutoutImageUrl) return;
+                    updateProduct(selectedProduct.id, { imageUrl: selectedProduct.cutoutImageUrl });
+                    toast.success("Retouches réinitialisées.");
+                  }}
+                >
+                  <RotateCw className="h-3.5 w-3.5" /> Réinitialiser les retouches
+                </Button>
+
+                {selectedProduct?.isCutout && (
+                  <>
+                    <div className="my-2 h-px bg-zinc-800" />
+                    <Label className="text-[11px] font-semibold">Transformations</Label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]"
+                        onClick={() => updateProduct(selectedProduct.id, { scaleX: (selectedProduct.scaleX ?? 1) * -1 })}>
+                        <FlipHorizontal className="h-3.5 w-3.5" /> Miroir H
                       </Button>
-                      <Button size="sm" variant={catalogMode === "field_photo" ? "default" : "ghost"}
-                        className="h-6 text-[10px] gap-1" onClick={() => switchCatalogMode("field_photo")}>
-                        <Camera className="h-3 w-3" /> Terrain
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]"
+                        onClick={() => updateProduct(selectedProduct.id, { scaleY: (selectedProduct.scaleY ?? 1) * -1 })}>
+                        <FlipVertical className="h-3.5 w-3.5" /> Miroir V
                       </Button>
                     </div>
-                  </div>
+                  </>
                 )}
-                <div className="mt-3 space-y-2">
-                  <Label className="text-[11px] font-semibold">Lier à une promotion</Label>
-                  <Select value={promotionId ?? ""} onValueChange={(v) => applyPromotion(v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choisir une promo" /></SelectTrigger>
-                    <SelectContent>
-                      {promotions.map((p) => <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             )}
+
 
             {leftNav === "text" && (
               <div className="space-y-3">
