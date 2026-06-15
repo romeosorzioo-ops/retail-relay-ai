@@ -1233,7 +1233,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: minZ - 1 } : p)) };
     });
   }
-  function addProductLayer(imageUrl: string, opts: { isCutout?: boolean } = {}) {
+  function addProductLayer(
+    imageUrl: string,
+    opts: { isCutout?: boolean; originalImageUrl?: string | null } = {},
+  ) {
     const id = uid();
     setConfig((c) => {
       const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
@@ -1244,6 +1247,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         x: 15, y: 25, width: 70, height: 50,
         rotation: 0,
         zIndex: maxZ + 1,
+        scaleX: 1,
+        scaleY: 1,
+        originalImageUrl: opts.originalImageUrl ?? (opts.isCutout ? null : imageUrl),
+        cutoutImageUrl: opts.isCutout ? imageUrl : null,
       };
       return { ...c, products: [...(c.products ?? []), layer] };
     });
