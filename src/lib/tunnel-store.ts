@@ -89,6 +89,8 @@ export type PersistedProductLayer = {
   width: number; height: number;
   rotation: number;
   zIndex: number;
+  scaleX?: number;
+  scaleY?: number;
 };
 
 export type CreativeState = {
