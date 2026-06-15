@@ -1,89 +1,100 @@
-# Refonte "Produit détouré" — éditeur type Canva
+# Refonte module Détourage — éditeur type Canva
 
-L'éditeur actuel traite le visuel du produit comme un fond figé (`bgImage`). Pour que le détourage devienne utile, le produit détouré doit devenir un **calque indépendant** transformable (déplacer / redimensionner / pivoter / réordonner), avec un CTA mis en avant et une toolbar contextuelle. Voici le plan d'implémentation.
+Gros refactor de `src/components/creation/CreationEditor.tsx` (~2500 lignes) et `src/lib/tunnel-store.ts`. Pas de migration DB.
 
-## 1. Nouveau type de calque `ProductLayer`
+## 1. Réorganisation menu latéral
 
-Ajout dans `src/components/creation/CreationEditor.tsx` (type `Config`) :
+Nouvel ordre des onglets :
+1. **Détourage** (nouveau, action principale)
+2. Texte
+3. Éléments (fusionne ancien "Modèles" + éléments graphiques)
+4. Importer
+5. Marque
+6. Outils IA
+
+Suppression de l'onglet "Modèles" — sa grille de templates est déplacée dans une section "Modèles d'enseigne" en haut de l'onglet Éléments.
+
+## 2. Nouvel onglet "Détourage"
+
+Panneau dédié avec 4 actions empilées (boutons larges, icônes) :
+- ✨ **Supprimer l'arrière-plan** (IA)
+- ↩️ Restaurer l'image originale
+- 🪄 Ouvrir la gomme magique
+- 🔄 Réinitialiser les retouches
+
+## 3. Logique bouton « Supprimer l'arrière-plan »
 
 ```ts
-type ProductLayer = {
-  id: string;
-  imageUrl: string;        // PNG détouré (transparent) ou image catalogue brute
-  isCutout: boolean;       // true après suppression du fond
-  x: number; y: number;    // % du canvas (centre)
-  width: number;           // % du canvas
-  height: number;          // % du canvas (calculé via ratio image)
-  rotation: number;        // deg
-  zIndex: number;
-};
-type Config = { ...; products: ProductLayer[]; ... }
+if (selectedLayer.isCutout) openMagicEraser();
+else runBackgroundRemoval();
 ```
+Même bouton dans la toolbar contextuelle flottante.
 
-Le champ `bgImage` reste pour le mode "fullbleed", mais dès qu'une image catalogue est détectée elle est désormais initialisée comme **un `ProductLayer`** centré à 70 % de largeur (plus comme fond).
+## 4–5. Gomme Magique (modal plein écran)
 
-## 2. CTA "Supprimer l'arrière-plan" mis en avant
+Nouveau composant `MagicEraser.tsx` (canvas HTML5 dédié) :
+- **Mode Effacer** : peint en transparence sur une mask layer.
+- **Mode Restaurer** : repeint l'opacité originale via la mask layer.
+- Contrôles : taille pinceau (1–200px), dureté (0–100%), opacité (0–100%), toggle « Afficher l'original » (overlay 50%), bouton Reset.
+- Sauvegarde : la mask finale est appliquée via `canvas.globalCompositeOperation = 'destination-out'` pour produire un PNG transparent stocké dans `ProductLayer.imageUrl`. L'image **originale détourée** est conservée séparément (`originalCutoutUrl`) pour permettre Reset/Restore.
 
-Bande sticky au-dessus du canvas, visible uniquement si un `ProductLayer` non détouré est sélectionné :
+## 6. Zoom automatique
 
-```
-[✨ Supprimer l'arrière-plan]   ← gradient Komaag, lg, shadow-glow
-```
+À l'ouverture de l'onglet Détourage ou de la gomme :
+- calcule bbox du produit sélectionné
+- applique `zoom = clamp(canvasSize / bboxSize * 0.8, 1.5, 3.0)`
+- centre la vue sur le produit (pan)
+- pan libre activé (drag avec espace ou outil main)
 
-Suppression du bouton actuel discret dans le panneau "Importer".
+État `viewport: { zoom, panX, panY }` dans `CreationEditor`.
 
-## 3. Toolbar contextuelle flottante (style Canva)
+## 7. Produit libre + transformations
 
-Quand un `ProductLayer` est sélectionné, une barre flottante apparaît au-dessus de la bounding box avec :
+Ajouts à la toolbar contextuelle :
+- Pivoter (déjà présent via handle)
+- 🔁 Retourner horizontalement (`scaleX *= -1`)
+- 🔃 Retourner verticalement (`scaleY *= -1`)
 
-- Supprimer l'arrière-plan (si pas encore détouré)
-- Remplacer l'image (file picker)
-- Recadrer (ouvre `CropModal` existant)
-- Dupliquer
-- Avant / Arrière (z-index)
-- Supprimer
+Nouveau champs `ProductLayer.scaleX/scaleY` (±1).
 
-## 4. Poignées de transformation
+## 8. Recadrage sans limite
 
-Sur sélection : 8 poignées (4 coins + 4 latérales) + 1 poignée de rotation au-dessus.
-Implémentation pointer-events maison (pas de lib externe) — drag pour déplacer, drag d'une poignée pour resize (avec maintien du ratio aux coins), rotation calculée via `atan2`. Snap auto-centre H/V (lignes guides).
+Suppression des `clamp(0, 100)` sur les poignées de redimensionnement et déplacement. Le produit peut sortir du canvas. Le canvas conserve `overflow: visible` pour l'aperçu, et l'export `toPng` continue d'utiliser le seul `<div ref={canvasRef}>` qui clip naturellement la zone exportée.
 
-## 5. Calques (layer system)
+## 9. Ordre des calques
 
-Panneau "Calques" dans la barre latérale listant dans l'ordre du fond vers l'avant :
-Fond · Formes · Badges · **Produit** · Prix · Textes
-Drag-and-drop simple pour réordonner. Chaque `ProductLayer` est rendu via `zIndex` CSS.
+Toolbar contextuelle + raccourcis clavier :
+- Premier plan : `zIndex = max + 1`
+- Avancer : `zIndex += 1` (swap voisin)
+- Reculer : `zIndex -= 1`
+- Arrière-plan : `zIndex = min - 1`
 
-## 6. Palette de fonds unis (remplace les dégradés)
+Fonctionne entre produits, textes et badges (tous reçoivent un `zIndex`).
 
-Refonte de `SOLID_PALETTE` :
-- Couleur du catalogue (auto)
-- Bleu catalogue U `#003DA5`
-- Blanc, Noir
-- Rouge promo `#dc2626`, Jaune promo `#facc15`
-- Vert frais `#16a34a`
-- Gris premium `#374151`
+## 10. Historique Undo/Redo
 
-La 1ère case = couleur dominante détectée (`extractDominantColor` existant) ; pré-sélectionnée par défaut au chargement du produit.
+Stack `history: Config[]` + `historyIndex`. Push à chaque mutation (debounce 300 ms). Raccourcis ⌘Z / ⌘⇧Z. Boutons dans la barre supérieure.
 
-## 7. Persistance des transformations
+Couvre : détourage, gomme, déplacement, rotation, resize, flip, reorder.
 
-`CreativeState` (dans `src/lib/tunnel-store.ts`) reçoit `products: ProductLayer[]`. Sauvegarde auto à chaque modif via `setCreativeState`. Lecture lors du retour Création → Validation → Publication : l'image finale est exportée via `toPng` du canvas (déjà en place), conservant tous les calques et transformations.
+## 11. Persistance
 
-## 8. Détourage = transformation du `ProductLayer` actif
+Ajout dans `PersistedProductLayer` :
+- `scaleX`, `scaleY`
+- `originalCutoutUrl` (image avant gomme, pour Reset)
+- `maskDataUrl` (mask de la gomme, pour ré-éditer ultérieurement)
 
-`removeBackgroundFromCurrentImage` (déjà présent) est adapté : au lieu d'écrire dans `config.bgImage`, il met à jour le `ProductLayer` sélectionné (`imageUrl = dataUrl`, `isCutout = true`). Le fond derrière redevient `bgColor` choisi.
+Les data URLs lourdes (mask + original) sont **stripées du localStorage** comme déjà fait pour `imageUrl`, et conservées en mémoire pendant la session. Persistance fiable : position, rotation, échelle, flips, zIndex.
 
-## Fichiers modifiés
+## Fichiers
 
-- `src/components/creation/CreationEditor.tsx` — gros refactor canvas + toolbar + handles + layers panel + palette
-- `src/lib/tunnel-store.ts` — ajout `products` dans `CreativeState`
-- (aucune migration DB : tout est stocké côté client / dans `creative_state` JSON existant)
+- `src/components/creation/CreationEditor.tsx` — refactor majeur (panneaux, toolbar, zoom, undo, suppression clamps)
+- `src/components/creation/MagicEraser.tsx` — **nouveau** (modal canvas + brush)
+- `src/components/creation/useHistory.ts` — **nouveau** hook undo/redo générique
+- `src/lib/tunnel-store.ts` — ajout `scaleX/Y` et champs gomme dans `PersistedProductLayer`
 
 ## Hors scope
 
-- Templates d'enseigne (déjà prévus, juste consommeront `bgColor` indépendamment du produit)
-- Génération IA d'image (inchangée)
-- Drag-and-drop multi-sélection (V2)
-
-Aucune ambiguïté restante — j'implémente directement après validation du plan.
+- Détection auto multi-produits (V2)
+- Détourage par couleur / baguette magique (V2)
+- Export multi-format avec éléments hors canvas (l'export reste cadré sur le canvas)
