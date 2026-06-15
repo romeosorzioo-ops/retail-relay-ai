@@ -2446,6 +2446,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                         draggable={false}
                         crossOrigin="anonymous"
                         className="pointer-events-none h-full w-full select-none object-contain"
+                        style={{ transform: `scale(${p.scaleX ?? 1}, ${p.scaleY ?? 1})` }}
                       />
                     </div>
                   );
