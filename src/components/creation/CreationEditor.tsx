@@ -5,9 +5,12 @@ import { toPng } from "html-to-image";
 import {
   Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus,
   Sparkles, Trash2, Type, Upload, Image as ImageIcon,
-  Shapes, Copy, RotateCw, Camera, Wand2, LayoutTemplate, Palette,
+  Shapes, Copy, RotateCw, RotateCcw, Camera, Wand2, LayoutTemplate, Palette,
   Send, ChevronRight, ArrowLeft, ArrowRight, CheckCircle,
+  Eraser, FlipHorizontal, FlipVertical, ChevronsUp, ChevronUp, ChevronDown, ChevronsDown,
+  Undo2, Redo2, Scissors,
 } from "lucide-react";
+import { MagicEraser } from "./MagicEraser";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -127,6 +130,10 @@ export type ProductLayer = {
   height: number;         // % of canvas width (square reference, like GraphicEl)
   rotation: number;       // degrees
   zIndex: number;
+  scaleX?: number;        // -1 = flipped horizontally
+  scaleY?: number;        // -1 = flipped vertically
+  originalImageUrl?: string | null; // raw catalog image — for "restore original"
+  cutoutImageUrl?: string | null;   // pristine cutout — for "reset eraser"
 };
 
 type Config = {
@@ -461,8 +468,65 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   const [currentItemId, setCurrentItemId] = useState<string | null>(search.item ?? null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [postValidateOpen, setPostValidateOpen] = useState(false);
-  const [leftNav, setLeftNav] = useState<"templates" | "text" | "elements" | "import" | "brand" | "ai">("templates");
+  const [leftNav, setLeftNav] = useState<"cutout" | "text" | "elements" | "import" | "brand" | "ai">("cutout");
+  const [eraserOpen, setEraserOpen] = useState(false);
+  // Simple undo/redo stack of full Config snapshots.
+  const historyRef = useRef<{ stack: Config[]; index: number; suspend: boolean }>({ stack: [], index: -1, suspend: false });
+  const [historyTick, setHistoryTick] = useState(0);
   const [visualName, setVisualName] = useState<string>("Visuel sans titre");
+
+  // Snapshot config into the undo stack whenever it changes (debounced).
+  useEffect(() => {
+    if (historyRef.current.suspend) return;
+    const t = window.setTimeout(() => {
+      const h = historyRef.current;
+      // Drop redo branch when a new edit happens after undo.
+      if (h.index < h.stack.length - 1) h.stack = h.stack.slice(0, h.index + 1);
+      h.stack.push(JSON.parse(JSON.stringify(config)) as Config);
+      if (h.stack.length > 60) h.stack.shift();
+      h.index = h.stack.length - 1;
+      setHistoryTick((n) => n + 1);
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [config]);
+
+  function undo() {
+    const h = historyRef.current;
+    if (h.index <= 0) return;
+    h.index -= 1;
+    h.suspend = true;
+    setConfig(JSON.parse(JSON.stringify(h.stack[h.index])) as Config);
+    setHistoryTick((n) => n + 1);
+    setTimeout(() => { h.suspend = false; }, 0);
+  }
+  function redo() {
+    const h = historyRef.current;
+    if (h.index >= h.stack.length - 1) return;
+    h.index += 1;
+    h.suspend = true;
+    setConfig(JSON.parse(JSON.stringify(h.stack[h.index])) as Config);
+    setHistoryTick((n) => n + 1);
+    setTimeout(() => { h.suspend = false; }, 0);
+  }
+  const canUndo = historyRef.current.index > 0;
+  const canRedo = historyRef.current.index < historyRef.current.stack.length - 1;
+  // Touch historyTick so the toolbar re-renders when stack updates.
+  void historyTick;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((e.key.toLowerCase() === "z" && e.shiftKey) || e.key.toLowerCase() === "y") {
+        e.preventDefault(); redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const { data: queueData } = useQuery({
     queryKey: ["campaign-items", search.campaign ?? null],
@@ -505,6 +569,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             isCutout: false,
             x: 15, y: 25, width: 70, height: 50,
             rotation: 0, zIndex: 1,
+            scaleX: 1, scaleY: 1,
+            originalImageUrl: catalogImage,
           } as ProductLayer]
         : (c.products ?? []);
       return {
@@ -675,6 +741,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             isCutout: false,
             x: 15, y: 25, width: 70, height: 50,
             rotation: 0, zIndex: 1,
+            scaleX: 1, scaleY: 1,
+            originalImageUrl: img,
           }]
         : [];
       return {
@@ -1212,17 +1280,57 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
   function bringProductForward(id: string) {
     setConfig((c) => {
-      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
-      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: maxZ + 1 } : p)) };
+      const ps = c.products ?? [];
+      const sorted = [...ps].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((p) => p.id === id);
+      if (idx < 0 || idx === sorted.length - 1) return c;
+      const me = sorted[idx]; const next = sorted[idx + 1];
+      return {
+        ...c,
+        products: ps.map((p) => p.id === me.id ? { ...p, zIndex: next.zIndex }
+                              : p.id === next.id ? { ...p, zIndex: me.zIndex } : p),
+      };
     });
   }
   function sendProductBackward(id: string) {
     setConfig((c) => {
-      const minZ = (c.products ?? []).reduce((m, p) => Math.min(m, p.zIndex), 0);
-      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: minZ - 1 } : p)) };
+      const ps = c.products ?? [];
+      const sorted = [...ps].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((p) => p.id === id);
+      if (idx <= 0) return c;
+      const me = sorted[idx]; const prev = sorted[idx - 1];
+      return {
+        ...c,
+        products: ps.map((p) => p.id === me.id ? { ...p, zIndex: prev.zIndex }
+                              : p.id === prev.id ? { ...p, zIndex: me.zIndex } : p),
+      };
     });
   }
-  function addProductLayer(imageUrl: string, opts: { isCutout?: boolean } = {}) {
+  function bringProductToFront(id: string) {
+    setConfig((c) => {
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => p.id === id ? { ...p, zIndex: maxZ + 1 } : p) };
+    });
+  }
+  function sendProductToBack(id: string) {
+    setConfig((c) => {
+      const minZ = (c.products ?? []).reduce((m, p) => Math.min(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => p.id === id ? { ...p, zIndex: minZ - 1 } : p) };
+    });
+  }
+  function flipProduct(id: string, axis: "x" | "y") {
+    setConfig((c) => ({
+      ...c,
+      products: (c.products ?? []).map((p) => p.id === id
+        ? { ...p, scaleX: axis === "x" ? ((p.scaleX ?? 1) * -1) : (p.scaleX ?? 1),
+                  scaleY: axis === "y" ? ((p.scaleY ?? 1) * -1) : (p.scaleY ?? 1) }
+        : p),
+    }));
+  }
+  function addProductLayer(
+    imageUrl: string,
+    opts: { isCutout?: boolean; originalImageUrl?: string | null } = {},
+  ) {
     const id = uid();
     setConfig((c) => {
       const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
@@ -1233,6 +1341,10 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         x: 15, y: 25, width: 70, height: 50,
         rotation: 0,
         zIndex: maxZ + 1,
+        scaleX: 1,
+        scaleY: 1,
+        originalImageUrl: opts.originalImageUrl ?? (opts.isCutout ? null : imageUrl),
+        cutoutImageUrl: opts.isCutout ? imageUrl : null,
       };
       return { ...c, products: [...(c.products ?? []), layer] };
     });
@@ -1286,30 +1398,29 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     const dxPct = ((e.clientX - d.startX) / d.rect.width) * 100;
     const dyPct = ((e.clientY - d.startY) / d.rect.height) * 100;
     if (d.mode === "move") {
-      updateProduct(d.id, {
-        x: Math.max(-20, Math.min(110, d.bx + dxPct)),
-        y: Math.max(-20, Math.min(110, d.by + dyPct)),
-      });
+      // No clamping — product can leave the canvas (Canva-like freedom).
+      updateProduct(d.id, { x: d.bx + dxPct, y: d.by + dyPct });
     } else if (d.mode === "rotate") {
       const angle = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI + 90;
       updateProduct(d.id, { rotation: Math.round(angle) });
     } else {
-      // Corner resize — keep aspect ratio (height stays width * ratio)
+      // Corner resize — keep aspect ratio. Width unbounded upward; only
+      // a tiny minimum so the layer can't vanish.
       const ratio = d.bw > 0 ? d.bh / d.bw : 1;
       let newW = d.bw;
       let newX = d.bx;
       let newY = d.by;
       if (d.mode === "resize-se") {
-        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+        newW = Math.max(2, d.bw + dxPct);
       } else if (d.mode === "resize-ne") {
-        newW = Math.max(5, Math.min(150, d.bw + dxPct));
+        newW = Math.max(2, d.bw + dxPct);
         const newH = newW * ratio;
         newY = d.by + (d.bh - newH);
       } else if (d.mode === "resize-sw") {
-        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        newW = Math.max(2, d.bw - dxPct);
         newX = d.bx + (d.bw - newW);
       } else if (d.mode === "resize-nw") {
-        newW = Math.max(5, Math.min(150, d.bw - dxPct));
+        newW = Math.max(2, d.bw - dxPct);
         const newH = newW * ratio;
         newX = d.bx + (d.bw - newW);
         newY = d.by + (d.bh - newH);
@@ -1442,6 +1553,14 @@ export function CreationEditor(props: CreationEditorProps = {}) {
       target = productsNow.find((p) => p.id === selectedProductId) ?? null;
     }
     if (!target) target = productsNow.find((p) => !p.isCutout) ?? null;
+
+    // If the selected layer is already cutout, jump straight to the eraser
+    // — no need to re-run the AI.
+    if (target && target.isCutout) {
+      setEraserOpen(true);
+      return;
+    }
+
     const targetUrl = target?.imageUrl ?? config.bgImage ?? sourceImageUrl ?? originalImageUrl;
     if (!targetUrl) { toast.error("Aucune image à détourer."); return; }
     setCutoutBusy(true);
@@ -1458,11 +1577,16 @@ export function CreationEditor(props: CreationEditorProps = {}) {
         return;
       }
       if (target) {
-        updateProduct(target.id, { imageUrl: data.dataUrl!, isCutout: true });
+        updateProduct(target.id, {
+          imageUrl: data.dataUrl!,
+          isCutout: true,
+          originalImageUrl: target.originalImageUrl ?? target.imageUrl,
+          cutoutImageUrl: data.dataUrl!,
+        });
         setSelectedProductId(target.id);
       } else {
         // Legacy fallback: replace bgImage AND promote it to a product layer
-        addProductLayer(data.dataUrl!, { isCutout: true });
+        addProductLayer(data.dataUrl!, { isCutout: true, originalImageUrl: targetUrl });
         setConfig((c) => ({ ...c, bgImage: null }));
       }
       setSourceImageUrl(data.dataUrl!);
@@ -1482,18 +1606,19 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
 
   function restoreOriginalImage() {
-    if (!originalImageUrl) { toast.info("Aucune image originale en mémoire."); return; }
     let target: ProductLayer | null = null;
     if (selectedProductId) {
       target = (config.products ?? []).find((p) => p.id === selectedProductId) ?? null;
     }
     if (!target) target = (config.products ?? [])[0] ?? null;
+    const orig = target?.originalImageUrl ?? originalImageUrl;
+    if (!orig) { toast.info("Aucune image originale en mémoire."); return; }
     if (target) {
-      updateProduct(target.id, { imageUrl: originalImageUrl, isCutout: false });
+      updateProduct(target.id, { imageUrl: orig, isCutout: false });
     } else {
-      setConfig((c) => ({ ...c, bgImage: originalImageUrl, visualMode: "fullbleed" }));
+      setConfig((c) => ({ ...c, bgImage: orig, visualMode: "fullbleed" }));
     }
-    setSourceImageUrl(originalImageUrl);
+    setSourceImageUrl(orig);
     if (isTrial && trialCurrentId) {
       setCreativeState(trialCurrentId, {
         bgImage: originalImageUrl,
@@ -1713,7 +1838,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     : activeTab === "queue" ? "create" : "create";
 
   const NAV_ITEMS = [
-    { key: "templates" as const, icon: LayoutTemplate, label: "Modèles" },
+    { key: "cutout" as const,    icon: Scissors,       label: "Détourage" },
     { key: "text" as const,      icon: Type,           label: "Texte" },
     { key: "elements" as const,  icon: Shapes,         label: "Éléments" },
     { key: "import" as const,    icon: Upload,         label: "Importer" },
@@ -1792,6 +1917,16 @@ export function CreationEditor(props: CreationEditorProps = {}) {
               <ArrowLeft className="h-3.5 w-3.5" /> Précédent
             </Button>
           )}
+          <div className="inline-flex rounded-md border border-zinc-700 bg-zinc-800/60 p-0.5">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              disabled={!canUndo} onClick={undo} title="Annuler (⌘Z)">
+              <Undo2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              disabled={!canRedo} onClick={redo} title="Rétablir (⌘⇧Z)">
+              <Redo2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
           <Button variant="ghost" size="sm" onClick={downloadPng} className="h-8 gap-1 text-xs">
             <Download className="h-3.5 w-3.5" /> Télécharger
           </Button>
@@ -2003,59 +2138,85 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
 
 
-            {leftNav === "templates" && (
+            {leftNav === "cutout" && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Modèles de l'enseigne</h3>
-                <p className="text-[11px] text-muted-foreground">Choisissez un modèle prêt à personnaliser.</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {templates.map((t) => {
-                    const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
-                    return (
-                      <button key={t.id} onClick={() => applyTemplate(t)}
-                        className={cn(
-                          "group flex flex-col gap-1 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800/40 p-1.5 text-left transition hover:border-primary hover:scale-[1.02]",
-                          templateId === t.id && "border-primary ring-1 ring-primary",
-                        )}>
-                        <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
-                          style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
-                          {t.name}
-                        </div>
-                        <span className="truncate text-[10px]">{t.name}</span>
-                      </button>
-                    );
-                  })}
-                  {templates.length === 0 && (
-                    <p className="col-span-2 text-[11px] italic text-muted-foreground">Aucun modèle disponible.</p>
-                  )}
-                </div>
-                {catalogPromo && (
-                  <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px]">
-                    <p className="text-muted-foreground">Promo catalogue</p>
-                    <p className="font-semibold">{catalogPromo.product_name}</p>
-                    <div className="mt-1 inline-flex rounded-md border border-zinc-700 bg-background p-0.5">
-                      <Button size="sm" variant={catalogMode === "catalog_visual" ? "default" : "ghost"}
-                        className="h-6 text-[10px] gap-1" onClick={() => switchCatalogMode("catalog_visual")}
-                        disabled={!catalogPromo.product_image_url}>
-                        <ImageIcon className="h-3 w-3" /> Visuel
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Scissors className="h-4 w-4 text-primary" /> Détourage
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Isolez votre produit et retouchez-le pixel par pixel.
+                </p>
+                {!selectedProduct && (
+                  <p className="rounded-md border border-dashed border-zinc-700 bg-zinc-800/40 p-2 text-[11px] italic text-muted-foreground">
+                    Sélectionnez d'abord un produit dans le canvas.
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!selectedProduct || cutoutBusy}
+                  onClick={removeBackgroundFromCurrentImage}
+                  className="w-full gap-2 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-orange-400 text-white shadow-md hover:opacity-95"
+                >
+                  {cutoutBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  {selectedProduct?.isCutout
+                    ? "Ouvrir la gomme magique"
+                    : "Supprimer l'arrière-plan"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-1.5 text-xs"
+                  disabled={!selectedProduct}
+                  onClick={() => selectedProduct && setEraserOpen(true)}
+                >
+                  <Eraser className="h-3.5 w-3.5" /> Ouvrir la gomme magique
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="w-full gap-1.5 text-xs"
+                  disabled={!selectedProduct?.originalImageUrl}
+                  onClick={restoreOriginalImage}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Restaurer l'image originale
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="w-full gap-1.5 text-xs text-muted-foreground"
+                  disabled={!selectedProduct?.cutoutImageUrl}
+                  onClick={() => {
+                    if (!selectedProduct?.cutoutImageUrl) return;
+                    updateProduct(selectedProduct.id, { imageUrl: selectedProduct.cutoutImageUrl });
+                    toast.success("Retouches réinitialisées.");
+                  }}
+                >
+                  <RotateCw className="h-3.5 w-3.5" /> Réinitialiser les retouches
+                </Button>
+
+                {selectedProduct?.isCutout && (
+                  <>
+                    <div className="my-2 h-px bg-zinc-800" />
+                    <Label className="text-[11px] font-semibold">Transformations</Label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]"
+                        onClick={() => updateProduct(selectedProduct.id, { scaleX: (selectedProduct.scaleX ?? 1) * -1 })}>
+                        <FlipHorizontal className="h-3.5 w-3.5" /> Miroir H
                       </Button>
-                      <Button size="sm" variant={catalogMode === "field_photo" ? "default" : "ghost"}
-                        className="h-6 text-[10px] gap-1" onClick={() => switchCatalogMode("field_photo")}>
-                        <Camera className="h-3 w-3" /> Terrain
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]"
+                        onClick={() => updateProduct(selectedProduct.id, { scaleY: (selectedProduct.scaleY ?? 1) * -1 })}>
+                        <FlipVertical className="h-3.5 w-3.5" /> Miroir V
                       </Button>
                     </div>
-                  </div>
+                  </>
                 )}
-                <div className="mt-3 space-y-2">
-                  <Label className="text-[11px] font-semibold">Lier à une promotion</Label>
-                  <Select value={promotionId ?? ""} onValueChange={(v) => applyPromotion(v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choisir une promo" /></SelectTrigger>
-                    <SelectContent>
-                      {promotions.map((p) => <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             )}
+
 
             {leftNav === "text" && (
               <div className="space-y-3">
@@ -2102,6 +2263,33 @@ export function CreationEditor(props: CreationEditorProps = {}) {
 
             {leftNav === "elements" && (
               <div className="space-y-4">
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold flex items-center gap-1.5">
+                    <LayoutTemplate className="h-4 w-4 text-primary" /> Modèles d'enseigne
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {templates.map((t) => {
+                      const cfg = (t.config_json ?? {}) as { bgColor?: string; primaryColor?: string };
+                      return (
+                        <button key={t.id} onClick={() => applyTemplate(t)}
+                          className={cn(
+                            "group flex flex-col gap-1 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800/40 p-1.5 text-left transition hover:border-primary hover:scale-[1.02]",
+                            templateId === t.id && "border-primary ring-1 ring-primary",
+                          )}>
+                          <div className="flex aspect-square w-full items-center justify-center rounded text-center text-[10px] font-bold text-white"
+                            style={{ background: cfg.bgColor ?? cfg.primaryColor ?? "#444" }}>
+                            {t.name}
+                          </div>
+                          <span className="truncate text-[10px]">{t.name}</span>
+                        </button>
+                      );
+                    })}
+                    {templates.length === 0 && (
+                      <p className="col-span-2 text-[11px] italic text-muted-foreground">Aucun modèle disponible.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="h-px bg-zinc-800" />
                 <h3 className="text-sm font-semibold">Éléments graphiques</h3>
                 {ELEMENT_CATEGORIES.map((cat) => (
                   <div key={cat.key}>
@@ -2357,6 +2545,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                         draggable={false}
                         crossOrigin="anonymous"
                         className="pointer-events-none h-full w-full select-none object-contain"
+                        style={{ transform: `scale(${p.scaleX ?? 1}, ${p.scaleY ?? 1})` }}
                       />
                     </div>
                   );
@@ -2416,18 +2605,20 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                         zIndex: 250,
                       }}
                     >
-                      {!p.isCutout && (
-                        <button
-                          type="button"
-                          disabled={cutoutBusy}
-                          onClick={removeBackgroundFromCurrentImage}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium hover:bg-zinc-800 disabled:opacity-50"
-                          title="Supprimer l'arrière-plan"
-                        >
-                          {cutoutBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                          Détourer
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        disabled={cutoutBusy}
+                        onClick={removeBackgroundFromCurrentImage}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium hover:bg-zinc-800 disabled:opacity-50"
+                        title={p.isCutout ? "Ouvrir la gomme magique" : "Supprimer l'arrière-plan"}
+                      >
+                        {cutoutBusy
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : p.isCutout
+                            ? <Eraser className="h-3 w-3" />
+                            : <Wand2 className="h-3 w-3" />}
+                        {p.isCutout ? "Gomme" : "Détourer"}
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -2456,29 +2647,34 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                         <LayoutTemplate className="h-3 w-3" /> Recadrer
                       </button>
                       <span className="mx-0.5 h-4 w-px bg-zinc-700" />
-                      <button
-                        type="button"
-                        onClick={() => duplicateProduct(p.id)}
-                        className="rounded p-1 hover:bg-zinc-800"
-                        title="Dupliquer"
-                      >
+                      <button type="button" onClick={() => flipProduct(p.id, "x")}
+                        className="rounded p-1 hover:bg-zinc-800" title="Miroir horizontal">
+                        <FlipHorizontal className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => flipProduct(p.id, "y")}
+                        className="rounded p-1 hover:bg-zinc-800" title="Miroir vertical">
+                        <FlipVertical className="h-3 w-3" />
+                      </button>
+                      <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+                      <button type="button" onClick={() => duplicateProduct(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Dupliquer">
                         <Copy className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => bringProductForward(p.id)}
-                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
-                        title="Mettre devant"
-                      >
-                        Avant
+                      <button type="button" onClick={() => bringProductToFront(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Premier plan">
+                        <ChevronsUp className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => sendProductBackward(p.id)}
-                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
-                        title="Mettre derrière"
-                      >
-                        Arrière
+                      <button type="button" onClick={() => bringProductForward(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Avancer">
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => sendProductBackward(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Reculer">
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => sendProductToBack(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Arrière-plan">
+                        <ChevronsDown className="h-3 w-3" />
                       </button>
                       <span className="mx-0.5 h-4 w-px bg-zinc-700" />
                       <button
@@ -2829,6 +3025,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedProduct && (
+        <MagicEraser
+          open={eraserOpen}
+          onClose={() => setEraserOpen(false)}
+          imageUrl={selectedProduct.imageUrl}
+          originalImageUrl={selectedProduct.cutoutImageUrl ?? selectedProduct.imageUrl}
+          onSave={(dataUrl) => {
+            updateProduct(selectedProduct.id, {
+              imageUrl: dataUrl,
+              isCutout: true,
+              cutoutImageUrl: selectedProduct.cutoutImageUrl ?? selectedProduct.imageUrl,
+            });
+            toast.success("Retouches appliquées.");
+          }}
+        />
+      )}
     </div>
   );
 }
