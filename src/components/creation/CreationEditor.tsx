@@ -5,9 +5,12 @@ import { toPng } from "html-to-image";
 import {
   Bold, Italic, Underline, Strikethrough, Download, Loader2, Plus,
   Sparkles, Trash2, Type, Upload, Image as ImageIcon,
-  Shapes, Copy, RotateCw, Camera, Wand2, LayoutTemplate, Palette,
+  Shapes, Copy, RotateCw, RotateCcw, Camera, Wand2, LayoutTemplate, Palette,
   Send, ChevronRight, ArrowLeft, ArrowRight, CheckCircle,
+  Eraser, FlipHorizontal, FlipVertical, ChevronsUp, ChevronUp, ChevronDown, ChevronsDown,
+  Undo2, Redo2, Scissors,
 } from "lucide-react";
+import { MagicEraser } from "./MagicEraser";
 import { CropModal, type CropBox } from "@/components/crop-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
