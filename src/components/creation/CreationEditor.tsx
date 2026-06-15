@@ -1227,15 +1227,52 @@ export function CreationEditor(props: CreationEditorProps = {}) {
   }
   function bringProductForward(id: string) {
     setConfig((c) => {
-      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
-      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: maxZ + 1 } : p)) };
+      const ps = c.products ?? [];
+      const sorted = [...ps].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((p) => p.id === id);
+      if (idx < 0 || idx === sorted.length - 1) return c;
+      const me = sorted[idx]; const next = sorted[idx + 1];
+      return {
+        ...c,
+        products: ps.map((p) => p.id === me.id ? { ...p, zIndex: next.zIndex }
+                              : p.id === next.id ? { ...p, zIndex: me.zIndex } : p),
+      };
     });
   }
   function sendProductBackward(id: string) {
     setConfig((c) => {
-      const minZ = (c.products ?? []).reduce((m, p) => Math.min(m, p.zIndex), 0);
-      return { ...c, products: (c.products ?? []).map((p) => (p.id === id ? { ...p, zIndex: minZ - 1 } : p)) };
+      const ps = c.products ?? [];
+      const sorted = [...ps].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((p) => p.id === id);
+      if (idx <= 0) return c;
+      const me = sorted[idx]; const prev = sorted[idx - 1];
+      return {
+        ...c,
+        products: ps.map((p) => p.id === me.id ? { ...p, zIndex: prev.zIndex }
+                              : p.id === prev.id ? { ...p, zIndex: me.zIndex } : p),
+      };
     });
+  }
+  function bringProductToFront(id: string) {
+    setConfig((c) => {
+      const maxZ = (c.products ?? []).reduce((m, p) => Math.max(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => p.id === id ? { ...p, zIndex: maxZ + 1 } : p) };
+    });
+  }
+  function sendProductToBack(id: string) {
+    setConfig((c) => {
+      const minZ = (c.products ?? []).reduce((m, p) => Math.min(m, p.zIndex), 0);
+      return { ...c, products: (c.products ?? []).map((p) => p.id === id ? { ...p, zIndex: minZ - 1 } : p) };
+    });
+  }
+  function flipProduct(id: string, axis: "x" | "y") {
+    setConfig((c) => ({
+      ...c,
+      products: (c.products ?? []).map((p) => p.id === id
+        ? { ...p, scaleX: axis === "x" ? ((p.scaleX ?? 1) * -1) : (p.scaleX ?? 1),
+                  scaleY: axis === "y" ? ((p.scaleY ?? 1) * -1) : (p.scaleY ?? 1) }
+        : p),
+    }));
   }
   function addProductLayer(
     imageUrl: string,
