@@ -686,6 +686,8 @@ export function CreationEditor(props: CreationEditorProps = {}) {
             isCutout: false,
             x: 15, y: 25, width: 70, height: 50,
             rotation: 0, zIndex: 1,
+            scaleX: 1, scaleY: 1,
+            originalImageUrl: img,
           }]
         : [];
       return {
