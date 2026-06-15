@@ -2542,18 +2542,20 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                         zIndex: 250,
                       }}
                     >
-                      {!p.isCutout && (
-                        <button
-                          type="button"
-                          disabled={cutoutBusy}
-                          onClick={removeBackgroundFromCurrentImage}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium hover:bg-zinc-800 disabled:opacity-50"
-                          title="Supprimer l'arrière-plan"
-                        >
-                          {cutoutBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                          Détourer
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        disabled={cutoutBusy}
+                        onClick={removeBackgroundFromCurrentImage}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium hover:bg-zinc-800 disabled:opacity-50"
+                        title={p.isCutout ? "Ouvrir la gomme magique" : "Supprimer l'arrière-plan"}
+                      >
+                        {cutoutBusy
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : p.isCutout
+                            ? <Eraser className="h-3 w-3" />
+                            : <Wand2 className="h-3 w-3" />}
+                        {p.isCutout ? "Gomme" : "Détourer"}
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -2582,29 +2584,34 @@ export function CreationEditor(props: CreationEditorProps = {}) {
                         <LayoutTemplate className="h-3 w-3" /> Recadrer
                       </button>
                       <span className="mx-0.5 h-4 w-px bg-zinc-700" />
-                      <button
-                        type="button"
-                        onClick={() => duplicateProduct(p.id)}
-                        className="rounded p-1 hover:bg-zinc-800"
-                        title="Dupliquer"
-                      >
+                      <button type="button" onClick={() => flipProduct(p.id, "x")}
+                        className="rounded p-1 hover:bg-zinc-800" title="Miroir horizontal">
+                        <FlipHorizontal className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => flipProduct(p.id, "y")}
+                        className="rounded p-1 hover:bg-zinc-800" title="Miroir vertical">
+                        <FlipVertical className="h-3 w-3" />
+                      </button>
+                      <span className="mx-0.5 h-4 w-px bg-zinc-700" />
+                      <button type="button" onClick={() => duplicateProduct(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Dupliquer">
                         <Copy className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => bringProductForward(p.id)}
-                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
-                        title="Mettre devant"
-                      >
-                        Avant
+                      <button type="button" onClick={() => bringProductToFront(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Premier plan">
+                        <ChevronsUp className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => sendProductBackward(p.id)}
-                        className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-zinc-800"
-                        title="Mettre derrière"
-                      >
-                        Arrière
+                      <button type="button" onClick={() => bringProductForward(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Avancer">
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => sendProductBackward(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Reculer">
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => sendProductToBack(p.id)}
+                        className="rounded p-1 hover:bg-zinc-800" title="Arrière-plan">
+                        <ChevronsDown className="h-3 w-3" />
                       </button>
                       <span className="mx-0.5 h-4 w-px bg-zinc-700" />
                       <button
