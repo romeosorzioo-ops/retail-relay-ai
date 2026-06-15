@@ -2962,6 +2962,23 @@ export function CreationEditor(props: CreationEditorProps = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedProduct && (
+        <MagicEraser
+          open={eraserOpen}
+          onClose={() => setEraserOpen(false)}
+          imageUrl={selectedProduct.imageUrl}
+          originalImageUrl={selectedProduct.cutoutImageUrl ?? selectedProduct.imageUrl}
+          onSave={(dataUrl) => {
+            updateProduct(selectedProduct.id, {
+              imageUrl: dataUrl,
+              isCutout: true,
+              cutoutImageUrl: selectedProduct.cutoutImageUrl ?? selectedProduct.imageUrl,
+            });
+            toast.success("Retouches appliquées.");
+          }}
+        />
+      )}
     </div>
   );
 }
