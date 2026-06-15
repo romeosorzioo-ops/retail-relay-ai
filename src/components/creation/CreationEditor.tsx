@@ -127,6 +127,10 @@ export type ProductLayer = {
   height: number;         // % of canvas width (square reference, like GraphicEl)
   rotation: number;       // degrees
   zIndex: number;
+  scaleX?: number;        // -1 = flipped horizontally
+  scaleY?: number;        // -1 = flipped vertically
+  originalImageUrl?: string | null; // raw catalog image — for "restore original"
+  cutoutImageUrl?: string | null;   // pristine cutout — for "reset eraser"
 };
 
 type Config = {
