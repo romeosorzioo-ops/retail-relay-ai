@@ -1724,7 +1724,7 @@ export function CreationEditor(props: CreationEditorProps = {}) {
     : activeTab === "queue" ? "create" : "create";
 
   const NAV_ITEMS = [
-    { key: "templates" as const, icon: LayoutTemplate, label: "Modèles" },
+    { key: "cutout" as const,    icon: Scissors,       label: "Détourage" },
     { key: "text" as const,      icon: Type,           label: "Texte" },
     { key: "elements" as const,  icon: Shapes,         label: "Éléments" },
     { key: "import" as const,    icon: Upload,         label: "Importer" },
